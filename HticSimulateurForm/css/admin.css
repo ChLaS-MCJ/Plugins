@@ -1,0 +1,663 @@
+/* css/admin.css - Design sobre et professionnel pour l'interface d'administration HTIC Simulateur */
+
+/* Variables CSS simplifiées et sobres */
+:root {
+    --primary-50: #f8fafc;
+    --primary-100: #f1f5f9;
+    --primary-200: #e2e8f0;
+    --primary-300: #cbd5e1;
+    --primary-400: #94a3b8;
+    --primary-500: #64748b;
+    --primary-600: #475569;
+    --primary-700: #334155;
+    --primary-800: #1e293b;
+    --primary-900: #0f172a;
+
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+
+    --blue-50: #eff6ff;
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+
+    --success-50: #f0fdf4;
+    --success-500: #22c55e;
+    --success-600: #16a34a;
+
+    --warning-50: #fffbeb;
+    --warning-500: #f59e0b;
+    --warning-600: #d97706;
+
+    --danger-50: #fef2f2;
+    --danger-500: #ef4444;
+    --danger-600: #dc2626;
+
+    --accent-color: var(--blue-600);
+    --border-light: var(--gray-200);
+    --border-medium: var(--gray-300);
+    --background-card: #ffffff;
+    --background-section: var(--gray-50);
+
+    --shadow-subtle: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    --shadow-soft: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-medium: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 2.5rem;
+    --spacing-3xl: 3rem;
+}
+
+/* Base et typographie */
+.wrap {
+    max-width: none;
+    margin: 0 auto;
+    padding: var(--spacing-xl);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.wrap h1 {
+    color: var(--gray-800);
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-3xl);
+    text-align: center;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+}
+
+/* Container principal simplifié */
+.htic-simulateur-tabs {
+    background: var(--background-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+    margin-top: var(--spacing-xl);
+}
+
+/* Navigation épurée */
+.htic-simulateur-tabs .nav-tab-wrapper {
+    background: var(--background-section);
+    border-bottom: 1px solid var(--border-light);
+    padding: var(--spacing-sm);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-xs);
+}
+
+.htic-simulateur-tabs .nav-tab {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--gray-600);
+    text-decoration: none;
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin: 0;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.htic-simulateur-tabs .nav-tab:hover {
+    background: var(--background-card);
+    color: var(--accent-color);
+    border-color: var(--border-medium);
+}
+
+.htic-simulateur-tabs .nav-tab.nav-tab-active {
+    color: var(--accent-color);
+    background: var(--background-card);
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-subtle);
+    font-weight: 600;
+}
+
+/* Icônes des onglets simplifiées */
+.nav-tab .tab-icon {
+    font-size: 1.2rem;
+}
+
+.nav-tab[href="#tab-elec-residentiel"] .tab-icon::before {
+    content: "⚡";
+}
+
+.nav-tab[href="#tab-gaz-residentiel"] .tab-icon::before {
+    content: "🔥";
+}
+
+.nav-tab[href="#tab-elec-professionnel"] .tab-icon::before {
+    content: "🏢";
+}
+
+.nav-tab[href="#tab-gaz-professionnel"] .tab-icon::before {
+    content: "🏭";
+}
+
+/* BARRE DE RECHERCHE REDESIGNÉE COMPLÈTEMENT */
+.search-container {
+    position: relative;
+    margin: var(--spacing-2xl) auto var(--spacing-xl) auto;
+    max-width: 500px;
+    padding: 0 var(--spacing-lg);
+}
+
+.field-search,
+#field-search {
+    width: 100% !important;
+    padding: 18px 24px 18px 60px !important;
+    border: 3px solid #e2e8f0 !important;
+    border-radius: 50px !important;
+    font-size: 16px !important;
+    background: #ffffff !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
+    font-weight: 500 !important;
+    color: var(--gray-800) !important;
+    box-sizing: border-box !important;
+    line-height: 1.4 !important;
+    letter-spacing: 0.01em !important;
+    outline: none !important;
+}
+
+.field-search::placeholder,
+#field-search::placeholder {
+    color: #9ca3af !important;
+    font-weight: 400 !important;
+    font-size: 15px !important;
+}
+
+.field-search:focus,
+#field-search:focus {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.12), 0 12px 30px rgba(0, 0, 0, 0.12) !important;
+    background: #ffffff !important;
+    transform: translateY(-2px) !important;
+}
+
+.search-container::before {
+    content: "" !important;
+    position: absolute !important;
+    left: 44px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 24px !important;
+    height: 24px !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='3' stroke='%234f46e5'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' d='m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z' /%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+    pointer-events: none !important;
+    opacity: 0.8 !important;
+    z-index: 2 !important;
+    transition: all 0.3s ease !important;
+}
+
+.search-container:focus-within::before {
+    opacity: 1 !important;
+    transform: translateY(-50%) scale(1.15) !important;
+}
+
+/* Animation de hover pour desktop */
+@media (hover: hover) {
+
+    .field-search:hover,
+    #field-search:hover {
+        border-color: #cbd5e1 !important;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1) !important;
+        transform: translateY(-1px) !important;
+    }
+}
+
+/* Contenu */
+.tab-content {
+    background: transparent;
+    padding: 0;
+    border: none;
+    min-height: 600px;
+}
+
+.tab-pane {
+    display: none;
+    padding: var(--spacing-2xl) var(--spacing-xl);
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Sections épurées */
+.htic-simulateur-section {
+    background: var(--background-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-2xl);
+    margin-bottom: var(--spacing-2xl);
+    box-shadow: var(--shadow-subtle);
+    transition: box-shadow 0.2s ease;
+}
+
+.htic-simulateur-section:hover {
+    box-shadow: var(--shadow-soft);
+}
+
+/* Titres simplifiés */
+.htic-simulateur-section h3 {
+    margin: 0 0 var(--spacing-xl) 0;
+    color: var(--gray-800);
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    border: none;
+    padding: 0;
+}
+
+.htic-simulateur-section h3::before {
+    content: "⚙️";
+    width: 2.5rem;
+    height: 2.5rem;
+    background: var(--accent-color);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+
+.htic-simulateur-section h4 {
+    color: var(--gray-700);
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: var(--spacing-2xl) 0 var(--spacing-lg) 0;
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid var(--border-light);
+}
+
+/* Tableaux épurés avec en-têtes en dégradé gris uniforme */
+.wp-list-table {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-subtle);
+    border: 1px solid var(--border-light);
+    background: var(--background-card);
+    margin: var(--spacing-lg) 0;
+}
+
+.wp-list-table thead {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-bottom: 1px solid var(--border-medium);
+}
+
+.wp-list-table th {
+    background: transparent;
+    color: var(--gray-800);
+    font-weight: 600;
+    text-align: center;
+    padding: var(--spacing-md);
+    font-size: 0.875rem;
+    border: none;
+}
+
+.wp-list-table td {
+    padding: var(--spacing-md);
+    text-align: center;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--gray-100);
+    background: white;
+    transition: background-color 0.2s ease;
+}
+
+.wp-list-table tbody tr:hover td {
+    background: var(--gray-50);
+}
+
+.wp-list-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Inputs épurés et professionnels */
+.wp-list-table input[type="number"],
+.form-table input[type="number"] {
+    width: 100px;
+    text-align: right;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    transition: all 0.2s ease;
+    background: var(--background-card);
+    color: var(--gray-800);
+}
+
+.wp-list-table input[type="number"]:focus,
+.form-table input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Indicateurs visuels subtils */
+input[type="number"][step="0.0001"] {
+    border-left: 3px solid var(--warning-500);
+}
+
+input[type="number"][step="0.01"] {
+    border-left: 3px solid var(--accent-color);
+}
+
+input[type="number"]:not([step]) {
+    border-left: 3px solid var(--gray-400);
+}
+
+/* Tables de formulaire */
+.form-table {
+    background: var(--background-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-subtle);
+    border: 1px solid var(--border-light);
+    margin: var(--spacing-lg) 0;
+}
+
+.form-table th {
+    background: var(--background-section);
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-weight: 600;
+    color: var(--gray-700);
+    border-bottom: 1px solid var(--border-light);
+    width: 30%;
+    font-size: 0.9rem;
+}
+
+.form-table td {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--gray-100);
+    background: white;
+}
+
+.form-table tr:last-child th,
+.form-table tr:last-child td {
+    border-bottom: none;
+}
+
+.form-table label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    font-weight: 500;
+    color: var(--gray-600);
+    font-size: 0.85rem;
+}
+
+/* Boutons épurés */
+.submit input[type="submit"] {
+    background: var(--accent-color);
+    border: none;
+    color: white;
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-subtle);
+}
+
+.submit input[type="submit"]:hover {
+    background: var(--blue-700);
+    box-shadow: var(--shadow-soft);
+    transform: translateY(-1px);
+}
+
+.submit input[type="submit"]:active {
+    transform: translateY(0);
+}
+
+/* Actions avec design sobre */
+.htic-simulateur-actions {
+    margin-top: var(--spacing-2xl);
+    padding: var(--spacing-xl);
+    background: var(--background-section);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    border: 1px solid var(--border-light);
+}
+
+.htic-simulateur-actions .button {
+    margin: var(--spacing-xs);
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-medium);
+    background: var(--background-card);
+    color: var(--gray-700);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.htic-simulateur-actions .button:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    box-shadow: var(--shadow-subtle);
+}
+
+.htic-simulateur-actions .button-primary {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.htic-simulateur-actions .button-primary:hover {
+    background: var(--blue-700);
+    border-color: var(--blue-700);
+    color: white;
+}
+
+/* Messages sobres */
+.htic-simulateur-message {
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin: var(--spacing-lg) 0;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    box-shadow: var(--shadow-subtle);
+    border-left: 4px solid;
+    background: var(--background-card);
+}
+
+.htic-simulateur-updated {
+    border-left-color: var(--success-500);
+    color: var(--success-600);
+    background: var(--success-50);
+}
+
+.htic-simulateur-error {
+    border-left-color: var(--danger-500);
+    color: var(--danger-600);
+    background: var(--danger-50);
+}
+
+.htic-simulateur-info {
+    border-left-color: var(--accent-color);
+    color: var(--blue-700);
+    background: var(--blue-50);
+}
+
+/* Statut de sauvegarde sobre */
+.save-status {
+    position: fixed;
+    top: 32px;
+    right: var(--spacing-lg);
+    background: var(--accent-color);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    font-weight: 500;
+    z-index: 1000;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    box-shadow: var(--shadow-medium);
+    font-size: 0.9rem;
+}
+
+.save-status.show {
+    transform: translateX(0);
+}
+
+.save-status.error {
+    background: var(--danger-500);
+}
+
+/* États visuels subtils */
+.preview-change {
+    background: var(--warning-50) !important;
+    border-color: var(--warning-500) !important;
+}
+
+.field-error {
+    border-color: var(--danger-500) !important;
+    background: var(--danger-50) !important;
+}
+
+.field-success {
+    border-color: var(--success-500) !important;
+    background: var(--success-50) !important;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .wrap {
+        padding: var(--spacing-lg);
+    }
+
+    .tab-pane {
+        padding: var(--spacing-xl);
+    }
+
+    .htic-simulateur-section {
+        padding: var(--spacing-xl);
+    }
+}
+
+@media (max-width: 768px) {
+    .wrap h1 {
+        font-size: 1.875rem;
+    }
+
+    .htic-simulateur-tabs .nav-tab-wrapper {
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .htic-simulateur-tabs .nav-tab {
+        text-align: center;
+        margin: 0;
+    }
+
+    .tab-pane {
+        padding: var(--spacing-lg);
+    }
+
+    .htic-simulateur-section {
+        padding: var(--spacing-lg);
+    }
+
+    .htic-simulateur-section h3 {
+        font-size: 1.25rem;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .wp-list-table input[type="number"],
+    .form-table input[type="number"] {
+        width: 80px;
+        font-size: 0.8rem;
+    }
+
+    .search-container {
+        max-width: none;
+        margin: var(--spacing-lg) var(--spacing-md);
+    }
+
+    .field-search,
+    #field-search {
+        padding: 16px 20px 16px 50px !important;
+        font-size: 15px !important;
+    }
+
+    .search-container::before {
+        left: 32px !important;
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    .htic-simulateur-actions .button {
+        display: block;
+        margin: var(--spacing-xs) auto;
+        width: 100%;
+        max-width: 250px;
+    }
+}
+
+/* Scrollbar discrète */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}
+
+/* Focus discret mais visible */
+*:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 1px;
+}

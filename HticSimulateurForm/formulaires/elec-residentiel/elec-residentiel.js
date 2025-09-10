@@ -1,4 +1,4 @@
-// elec-residentiel.js - JavaScript pour collecte de données uniquement
+// elec-residentiel.js - JavaScript pour collecte de données et calcul
 
 jQuery(document).ready(function ($) {
 
@@ -329,7 +329,7 @@ jQuery(document).ready(function ($) {
         return true;
     }
 
-    // Collecte des données UNIQUEMENT
+    // Collecte des données
     function saveCurrentStepData() {
         const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
 
@@ -353,7 +353,6 @@ jQuery(document).ready(function ($) {
                 formData[name] = $field.val();
             }
         });
-
     }
 
     function collectAllFormData() {
@@ -383,9 +382,8 @@ jQuery(document).ready(function ($) {
         return formData;
     }
 
-    // Lancement du calcul - ENVOI DES DONNÉES SEULEMENT
+    // Lancement du calcul - ENVOI DES DONNÉES
     function calculateResults() {
-
         // Collecter toutes les données
         const allData = collectAllFormData();
 
@@ -402,39 +400,73 @@ jQuery(document).ready(function ($) {
             </div>
         `);
 
-        // ENVOYER LES DONNÉES AU CALCULATEUR EXTERNE
+        // ENVOYER LES DONNÉES AU CALCULATEUR
         sendDataToCalculator(allData, configData);
     }
 
-    // Envoi des données au calculateur externe
+    // Envoi des données au calculateur externe - CORRIGÉ
+    // Dans elec-residentiel.js, remplacer la fonction sendDataToCalculator par :
+
     function sendDataToCalculator(userData, configData) {
+        // Vérifier quelle variable de localisation est disponible
+        let ajaxConfig;
+
+        if (typeof hticSimulateur !== 'undefined') {
+            ajaxConfig = hticSimulateur;
+        } else if (typeof hticSimulateurUnifix !== 'undefined') {
+            ajaxConfig = {
+                ajaxUrl: hticSimulateurUnifix.ajaxUrl,
+                nonce: hticSimulateurUnifix.calculateNonce,
+                type: 'elec-residentiel'
+            };
+        } else {
+            ajaxConfig = {
+                ajaxUrl: '/wp-admin/admin-ajax.php',
+                nonce: '',
+                type: 'elec-residentiel'
+            };
+        }
+
+        console.log('📤 Envoi des données au calculateur PHP:', userData);
+
         // AJAX vers le fichier de calcul PHP
         $.ajax({
-            url: hticSimulateur.ajaxUrl,
+            url: ajaxConfig.ajaxUrl,
             type: 'POST',
             dataType: 'json',
             data: {
                 action: 'htic_calculate_estimation',
-                nonce: hticSimulateur.nonce,
+                nonce: ajaxConfig.nonce,
                 type: 'elec-residentiel',
                 user_data: userData,
                 config_data: configData
             },
             success: function (response) {
+                console.log('📥 Réponse complète du serveur:', response);
+
                 if (response.success) {
+                    // AFFICHER LES LOGS PHP DANS LA CONSOLE JAVASCRIPT
+                    if (response.data.console_logs) {
+                        console.log('💬 === LOGS DU CALCULATEUR PHP ===');
+                        response.data.console_logs.forEach(function (log) {
+                            console.log(log);
+                        });
+                        console.log('💬 === FIN LOGS PHP ===');
+                    }
+
                     displayResults(response.data);
                 } else {
                     displayError('Erreur lors du calcul: ' + response.data);
                 }
             },
             error: function (xhr, status, error) {
-                console.error('Erreur AJAX:', error);
+                console.error('❌ Erreur AJAX:', error);
                 displayError('Erreur de connexion lors du calcul');
             }
         });
     }
 
-    // Affichage des résultats (reçus du calculateur)
+    // Affichage des résultats
     function displayResults(results) {
 
         const resultsHtml = `
@@ -451,20 +483,21 @@ jQuery(document).ready(function ($) {
                 <div class="tarifs-comparison">
                     <h3>💰 Comparaison des tarifs</h3>
                     <div class="tarifs-grid">
-                        <div class="tarif-card">
+                        <div class="tarif-card ${results.tarifs.recommande === 'base' ? 'recommended' : ''}">
                             <h4>Tarif BASE</h4>
                             <div class="tarif-prix">${results.tarifs.base.total_annuel}€<span>/an</span></div>
                             <div class="tarif-mensuel">${results.tarifs.base.total_mensuel}€/mois</div>
+                            ${results.tarifs.recommande === 'base' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
                         </div>
-                        <div class="tarif-card recommended">
+                        <div class="tarif-card ${results.tarifs.recommande === 'hc' ? 'recommended' : ''}">
                             <h4>Heures Creuses</h4>
                             <div class="tarif-prix">${results.tarifs.hc.total_annuel}€<span>/an</span></div>
                             <div class="tarif-mensuel">${results.tarifs.hc.total_mensuel}€/mois</div>
-                            <span class="recommended-badge">⭐ Recommandé</span>
+                            ${results.tarifs.recommande === 'hc' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
                         </div>
                     </div>
                     <div class="economies">
-                        <p>💡 <strong>Économies potentielles :</strong> jusqu'à ${Math.abs(results.tarifs.base.total_annuel - results.tarifs.hc.total_annuel)}€/an en choisissant le bon tarif !</p>
+                        <p>💡 <strong>Économies potentielles :</strong> jusqu'à ${Math.round(results.tarifs.economies)}€/an en choisissant le meilleur tarif !</p>
                     </div>
                 </div>
                 
@@ -475,24 +508,24 @@ jQuery(document).ready(function ($) {
                         ${results.repartition.chauffage > 0 ? `
                         <div class="repartition-item">
                             <span class="repartition-color" style="background: #ef4444;"></span>
-                            <span>Chauffage : ${results.repartition.chauffage.toLocaleString()} kWh</span>
+                            <span>Chauffage : ${Math.round(results.repartition.chauffage).toLocaleString()} kWh</span>
                         </div>` : ''}
                         ${results.repartition.eau_chaude > 0 ? `
                         <div class="repartition-item">
                             <span class="repartition-color" style="background: #3b82f6;"></span>
-                            <span>Eau chaude : ${results.repartition.eau_chaude.toLocaleString()} kWh</span>
+                            <span>Eau chaude : ${Math.round(results.repartition.eau_chaude).toLocaleString()} kWh</span>
                         </div>` : ''}
                         <div class="repartition-item">
                             <span class="repartition-color" style="background: #10b981;"></span>
-                            <span>Électroménager : ${results.repartition.electromenagers.toLocaleString()} kWh</span>
+                            <span>Électroménager : ${Math.round(results.repartition.electromenagers).toLocaleString()} kWh</span>
                         </div>
                         <div class="repartition-item">
                             <span class="repartition-color" style="background: #f59e0b;"></span>
-                            <span>Éclairage : ${results.repartition.eclairage.toLocaleString()} kWh</span>
+                            <span>Éclairage : ${Math.round(results.repartition.eclairage).toLocaleString()} kWh</span>
                         </div>
                         <div class="repartition-item">
                             <span class="repartition-color" style="background: #8b5cf6;"></span>
-                            <span>Autres : ${results.repartition.autres.toLocaleString()} kWh</span>
+                            <span>Autres : ${Math.round((results.repartition.cuisson || 0) + (results.repartition.piscine || 0) + (results.repartition.equipements_speciaux || 0) + (results.repartition.multimedia || 0)).toLocaleString()} kWh</span>
                         </div>
                     </div>
                 </div>
@@ -529,7 +562,6 @@ jQuery(document).ready(function ($) {
 
         $('#results-container').html(resultsHtml);
         $('.results-summary').hide().fadeIn(600);
-
     }
 
     function displayError(message) {
@@ -600,18 +632,7 @@ jQuery(document).ready(function ($) {
     window.HticSimulateurData = {
         getCurrentData: () => formData,
         getAllData: collectAllFormData,
-        getConfigData: () => configData
+        getConfigData: () => configData,
     };
-
-    // Debug
-    if (window.location.search.includes('debug=1')) {
-        window.hticSimulateurDebug = {
-            currentStep: () => currentStep,
-            formData: () => formData,
-            configData: () => configData,
-            goToStep: goToStep,
-            collectData: collectAllFormData
-        };
-    }
 
 });

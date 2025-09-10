@@ -160,7 +160,6 @@ jQuery(document).ready(function ($) {
             error: function (xhr, status, error) {
                 showSaveStatus('error');
                 showNotification('❌ Erreur de connexion lors de la sauvegarde', 'error');
-                console.error('Erreur AJAX:', error, xhr.responseText);
             }
         });
     }
@@ -319,7 +318,6 @@ jQuery(document).ready(function ($) {
 
             } catch (error) {
                 showNotification('❌ Erreur lors de la lecture du fichier: ' + error.message, 'error');
-                console.error('Erreur d\'import:', error);
             }
         };
 
@@ -367,7 +365,6 @@ jQuery(document).ready(function ($) {
                 error: function (xhr, status, error) {
                     importedTabs++;
                     showNotification(`❌ Erreur de connexion pour ${tabType}`, 'error');
-                    console.error('Erreur import:', error);
 
                     if (importedTabs === totalTabs) {
                         showNotification('⚠️ Import terminé avec des erreurs', 'warning');
@@ -599,50 +596,8 @@ jQuery(document).ready(function ($) {
     // Gestion des erreurs AJAX globales
     $(document).ajaxError(function (event, xhr, settings, thrownError) {
         if (settings.data && settings.data.indexOf('htic_simulateur') !== -1) {
-            console.error('Erreur AJAX HTIC Simulateur:', thrownError, xhr.responseText);
             showNotification('❌ Erreur de communication avec le serveur', 'error');
         }
     });
 
-    // Debug mode (à retirer en production)
-    if (window.location.search.includes('debug=1')) {
-        console.log('🐛 Mode debug HTIC Simulateur activé');
-        window.hticSimulateurDebug = {
-            getCurrentData: () => collectTabData(currentActiveTab),
-            showNotif: showNotification,
-            saveTab: () => saveCurrentTab(true)
-        };
-    }
-
 });
-
-// =================
-// FONCTIONS GLOBALES
-// =================
-
-// Fonctions utilitaires disponibles globalement
-window.HticSimulateurAdmin = {
-
-    // Réinitialiser un onglet spécifique
-    resetTab: function (tabId) {
-        if (confirm('⚠️ Êtes-vous sûr de vouloir réinitialiser cet onglet aux valeurs par défaut ?')) {
-            // Cette fonction devrait être implémentée côté serveur
-            console.log('Reset tab:', tabId);
-        }
-    },
-
-    // Dupliquer les valeurs d'un onglet vers un autre
-    duplicateTab: function (sourceTab, targetTab) {
-        if (confirm(`📋 Copier les valeurs de ${sourceTab} vers ${targetTab} ?`)) {
-            // Implémenter la logique de duplication
-            console.log('Duplicate from', sourceTab, 'to', targetTab);
-        }
-    },
-
-    // Calculer une estimation basée sur les valeurs actuelles
-    calculateEstimate: function (params) {
-        // Fonction utilitaire pour les tests
-        console.log('Calculate estimate with params:', params);
-    }
-
-};

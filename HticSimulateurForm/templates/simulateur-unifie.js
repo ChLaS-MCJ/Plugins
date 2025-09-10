@@ -23,7 +23,6 @@ jQuery(document).ready(function ($) {
         selectProfile('particulier');
         selectEnergy('elec');
 
-        console.log('🚀 Simulateur moderne initialisé');
     }
 
     // ================================
@@ -35,9 +34,7 @@ jQuery(document).ready(function ($) {
         if (configElement) {
             try {
                 config = JSON.parse(configElement.textContent);
-                console.log('📊 Configuration chargée:', Object.keys(config.types).length, 'types');
             } catch (e) {
-                console.error('❌ Erreur chargement configuration:', e);
                 config = { types: {}, ajaxUrl: '', nonce: '', pluginUrl: '' };
             }
         }
@@ -89,7 +86,6 @@ jQuery(document).ready(function ($) {
             updateSummary();
         }
 
-        console.log('📍 Étape', step, 'activée');
     }
 
     function updateNavigationButtons() {
@@ -141,7 +137,6 @@ jQuery(document).ready(function ($) {
         // Débloquer le bouton suivant
         $('.btn-next').prop('disabled', false);
 
-        console.log('👤 Profil sélectionné:', profile);
     }
 
     function selectEnergy(energy) {
@@ -157,7 +152,6 @@ jQuery(document).ready(function ($) {
         // Débloquer le bouton suivant
         $('.btn-next').prop('disabled', false);
 
-        console.log('⚡ Énergie sélectionnée:', energy);
     }
 
     function updateCurrentType() {
@@ -168,7 +162,6 @@ jQuery(document).ready(function ($) {
             currentType = selectedEnergy + '-professionnel';
         }
 
-        console.log('🔄 Type mis à jour:', currentType);
     }
 
     function updateSummary() {
@@ -186,7 +179,6 @@ jQuery(document).ready(function ($) {
             $('#summary-title').text(typeConfig.title);
             $('#summary-description').text(typeConfig.subtitle);
 
-            console.log('📋 Résumé mis à jour pour:', currentType);
         }
     }
 
@@ -259,7 +251,6 @@ jQuery(document).ready(function ($) {
                 }
             },
             error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX:', error);
                 showErrorState('Erreur de connexion au serveur');
             }
         });
@@ -269,14 +260,12 @@ jQuery(document).ready(function ($) {
         $('.formulaire-content').html(data.html || data);
         loadFormulaireAssets(type);
         initializeFormulaire(type);
-        console.log('✅ Formulaire', type, 'chargé');
     }
 
     function showCachedFormulaire(type) {
         const cachedData = formulaireLoaded[type];
         $('.formulaire-content').html(cachedData.html || cachedData);
         initializeFormulaire(type);
-        console.log('📋 Formulaire', type, 'restauré depuis le cache');
     }
 
     function loadFormulaireAssets(type) {
@@ -294,7 +283,6 @@ jQuery(document).ready(function ($) {
         if (!$('script[src*="' + type + '.js"]').length) {
             $.getScript(baseUrl + type + '.js?v=' + Date.now())
                 .done(function () {
-                    console.log('✅ Script', type, 'chargé');
                 })
                 .fail(function () {
                     console.warn('⚠️ Impossible de charger le script', type);
@@ -395,7 +383,6 @@ jQuery(document).ready(function ($) {
             history.pushState(null, '', window.location.pathname);
         }
 
-        console.log('🔙 Retour au sélecteur');
     }
 
     function setTypeFromString(type) {
@@ -892,8 +879,6 @@ jQuery(document).ready(function ($) {
         }
         </style>
     `).appendTo('head');
-
-    console.log('✅ Simulateur moderne prêt - API exposée');
 
     // Déclencher un événement personnalisé
     $(document).trigger('htic:simulateur:ready', {

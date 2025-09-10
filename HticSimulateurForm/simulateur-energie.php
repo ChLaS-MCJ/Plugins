@@ -41,6 +41,10 @@ class HticSimulateurEnergieAdmin {
         // AJAX handlers
         add_action('wp_ajax_htic_load_formulaire', array($this, 'ajax_load_formulaire'));
         add_action('wp_ajax_nopriv_htic_load_formulaire', array($this, 'ajax_load_formulaire'));
+
+        // CORRECTION : Déplacer ces lignes dans le constructeur
+        add_action('wp_ajax_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
+        add_action('wp_ajax_nopriv_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
     }
     
     public function activate() {
@@ -194,16 +198,6 @@ class HticSimulateurEnergieAdmin {
             HTIC_SIMULATEUR_VERSION
         );
         
-        // CSS commun
-        if (file_exists(HTIC_SIMULATEUR_PATH . 'includes/common.css')) {
-            wp_enqueue_style(
-                'htic-simulateur-common', 
-                HTIC_SIMULATEUR_URL . 'includes/common.css', 
-                array(), 
-                HTIC_SIMULATEUR_VERSION
-            );
-        }
-        
         // JS du simulateur unifié
         wp_enqueue_script(
             'htic-simulateur-unifie-js',
@@ -213,16 +207,17 @@ class HticSimulateurEnergieAdmin {
             true
         );
         
-        // JS commun
-        if (file_exists(HTIC_SIMULATEUR_PATH . 'includes/common.js')) {
-            wp_enqueue_script(
-                'htic-simulateur-common-js', 
-                HTIC_SIMULATEUR_URL . 'includes/common.js', 
-                array('jquery'), 
-                HTIC_SIMULATEUR_VERSION, 
-                true
-            );
-        }
+        // AJOUTER CETTE LOCALISATION MANQUANTE :
+        wp_localize_script(
+            'htic-simulateur-unifie-js', 
+            'hticSimulateurUnifix', 
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('htic_simulateur_nonce'),
+                'calculateNonce' => wp_create_nonce('htic_simulateur_calculate'),
+                'pluginUrl' => HTIC_SIMULATEUR_URL
+            )
+        );
     }
     
     // ================================
@@ -280,6 +275,80 @@ class HticSimulateurEnergieAdmin {
     }
     
     // ================================
+    // NOUVEAU : AJAX HANDLER POUR LE CALCUL
+    // ================================
+    
+    public function ajax_calculate_estimation() {
+        error_log('[HTIC] === DÉBUT AJAX CALCULATE ESTIMATION ===');
+        
+        // Vérification de sécurité
+        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+            error_log('[HTIC] ERREUR: Nonce invalide');
+            wp_send_json_error('Nonce invalide');
+            return;
+        }
+        
+        $type = sanitize_text_field($_POST['type']);
+        $user_data = $_POST['user_data'];
+        $config_data = $_POST['config_data'];
+        
+        error_log('[HTIC] Type: ' . $type);
+        error_log('[HTIC] Données utilisateur reçues: ' . print_r($user_data, true));
+        error_log('[HTIC] Données config reçues: ' . count($config_data) . ' paramètres');
+        
+        try {
+            // Charger le calculateur approprié
+            switch ($type) {
+                case 'elec-residentiel':
+                    // Inclure le fichier calculateur
+                    $calculateur_path = HTIC_SIMULATEUR_PATH . 'includes/calculateur-elec-residentiel.php';
+                    
+                    if (!file_exists($calculateur_path)) {
+                        error_log('[HTIC] ERREUR: Fichier calculateur non trouvé: ' . $calculateur_path);
+                        wp_send_json_error('Fichier calculateur non trouvé');
+                        return;
+                    }
+                    
+                    require_once $calculateur_path;
+                    
+                    // Appeler la fonction de calcul
+                    $result = htic_calculateur_elec_residentiel($user_data, $config_data);
+                    break;
+                    
+                case 'gaz-residentiel':
+                    wp_send_json_error('Calculateur gaz résidentiel pas encore implémenté');
+                    return;
+                    
+                case 'elec-professionnel':
+                    wp_send_json_error('Calculateur électricité professionnel pas encore implémenté');
+                    return;
+                    
+                case 'gaz-professionnel':
+                    wp_send_json_error('Calculateur gaz professionnel pas encore implémenté');
+                    return;
+                    
+                default:
+                    error_log('[HTIC] ERREUR: Type de calculateur non reconnu: ' . $type);
+                    wp_send_json_error('Type de calculateur non reconnu: ' . $type);
+                    return;
+            }
+            
+            // Retourner le résultat
+            if ($result['success']) {
+                error_log('[HTIC] === SUCCÈS CALCUL ===');
+                wp_send_json_success($result['data']);
+            } else {
+                error_log('[HTIC] === ÉCHEC CALCUL : ' . $result['error'] . ' ===');
+                wp_send_json_error($result['error']);
+            }
+            
+        } catch (Exception $e) {
+            error_log('[HTIC] === EXCEPTION DANS LE CALCUL : ' . $e->getMessage() . ' ===');
+            wp_send_json_error('Erreur lors du calcul: ' . $e->getMessage());
+        }
+    }
+    
+    // ================================
     // GESTION DES RESSOURCES
     // ================================
     
@@ -328,13 +397,13 @@ class HticSimulateurEnergieAdmin {
                 true
             );
             
-            // Localisation pour AJAX
+            // CORRECTION : Localisation pour AJAX
             wp_localize_script(
                 'htic-simulateur-' . $type . '-js', 
                 'hticSimulateur', 
                 array(
                     'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'nonce' => wp_create_nonce('htic_simulateur_calculate'),
+                    'nonce' => wp_create_nonce('htic_simulateur_calculate'), // NONCE CORRIGÉ
                     'type' => $type,
                     'restUrl' => rest_url('htic-simulateur/v1/')
                 )
@@ -439,18 +508,7 @@ class HticSimulateurEnergieAdmin {
             'hc_abo_30' => 39.94, 'hc_hp_30' => 0.27, 'hc_hc_30' => 0.2068,
             'hc_abo_36' => 46.24, 'hc_hp_36' => 0.27, 'hc_hc_36' => 0.2068,
             
-            // Tarifs TEMPO
-            'tempo_abo_3' => 13.23, 'tempo_rouge_hp_3' => 0.7562, 'tempo_rouge_hc_3' => 0.1568, 'tempo_blanc_hp_3' => 0.1894, 'tempo_blanc_hc_3' => 0.1486, 'tempo_bleu_hp_3' => 0.1609, 'tempo_bleu_hc_3' => 0.1296,
-            'tempo_abo_6' => 16.55, 'tempo_rouge_hp_6' => 0.7562, 'tempo_rouge_hc_6' => 0.1568, 'tempo_blanc_hp_6' => 0.1894, 'tempo_blanc_hc_6' => 0.1486, 'tempo_bleu_hp_6' => 0.1609, 'tempo_bleu_hc_6' => 0.1296,
-            'tempo_abo_9' => 23.08, 'tempo_rouge_hp_9' => 0.7562, 'tempo_rouge_hc_9' => 0.1568, 'tempo_blanc_hp_9' => 0.1894, 'tempo_blanc_hc_9' => 0.1486, 'tempo_bleu_hp_9' => 0.1609, 'tempo_bleu_hc_9' => 0.1296,
-            'tempo_abo_12' => 26.18, 'tempo_rouge_hp_12' => 0.7562, 'tempo_rouge_hc_12' => 0.1568, 'tempo_blanc_hp_12' => 0.1894, 'tempo_blanc_hc_12' => 0.1486, 'tempo_bleu_hp_12' => 0.1609, 'tempo_bleu_hc_12' => 0.1296,
-            'tempo_abo_15' => 38.22, 'tempo_rouge_hp_15' => 0.7562, 'tempo_rouge_hc_15' => 0.1568, 'tempo_blanc_hp_15' => 0.1894, 'tempo_blanc_hc_15' => 0.1486, 'tempo_bleu_hp_15' => 0.1609, 'tempo_bleu_hc_15' => 0.1296,
-            'tempo_abo_18' => 39.5, 'tempo_rouge_hp_18' => 0.7562, 'tempo_rouge_hc_18' => 0.1568, 'tempo_blanc_hp_18' => 0.1894, 'tempo_blanc_hc_18' => 0.1486, 'tempo_bleu_hp_18' => 0.1609, 'tempo_bleu_hc_18' => 0.1296,
-            'tempo_abo_24' => 45.87, 'tempo_rouge_hp_24' => 0.7562, 'tempo_rouge_hc_24' => 0.1568, 'tempo_blanc_hp_24' => 0.1894, 'tempo_blanc_hc_24' => 0.1486, 'tempo_bleu_hp_24' => 0.1609, 'tempo_bleu_hc_24' => 0.1296,
-            'tempo_abo_30' => 52.0, 'tempo_rouge_hp_30' => 0.7562, 'tempo_rouge_hc_30' => 0.1568, 'tempo_blanc_hp_30' => 0.1894, 'tempo_blanc_hc_30' => 0.1486, 'tempo_bleu_hp_30' => 0.1609, 'tempo_bleu_hc_30' => 0.1296,
-            'tempo_abo_36' => 58.0, 'tempo_rouge_hp_36' => 0.7562, 'tempo_rouge_hc_36' => 0.1568, 'tempo_blanc_hp_36' => 0.1894, 'tempo_blanc_hc_36' => 0.1486, 'tempo_bleu_hp_36' => 0.1609, 'tempo_bleu_hc_36' => 0.1296,
-            
-            // Consommations équipements
+            // Autres données...
             'chauffe_eau' => 900,
             'lave_linge' => 100,
             'four' => 125,
@@ -472,13 +530,7 @@ class HticSimulateurEnergieAdmin {
             
             // Répartitions
             'repartition_hp' => 60,
-            'repartition_hc' => 40,
-            'tempo_bleu_hp_pct' => 50,
-            'tempo_bleu_hc_pct' => 25,
-            'tempo_blanc_hp_pct' => 10,
-            'tempo_blanc_hc_pct' => 5,
-            'tempo_rouge_hp_pct' => 5,
-            'tempo_rouge_hc_pct' => 5
+            'repartition_hc' => 40
         );
     }
     

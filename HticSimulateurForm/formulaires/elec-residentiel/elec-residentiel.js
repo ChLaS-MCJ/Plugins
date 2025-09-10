@@ -412,22 +412,24 @@ jQuery(document).ready(function ($) {
         let ajaxConfig;
 
         if (typeof hticSimulateur !== 'undefined') {
+            // Si appelé directement via shortcode
             ajaxConfig = hticSimulateur;
         } else if (typeof hticSimulateurUnifix !== 'undefined') {
+            // Si appelé via simulateur unifié
             ajaxConfig = {
                 ajaxUrl: hticSimulateurUnifix.ajaxUrl,
                 nonce: hticSimulateurUnifix.calculateNonce,
                 type: 'elec-residentiel'
             };
         } else {
+            // Fallback - construire manuellement
             ajaxConfig = {
                 ajaxUrl: '/wp-admin/admin-ajax.php',
-                nonce: '',
+                nonce: '', // Sera vide mais on peut essayer quand même
                 type: 'elec-residentiel'
             };
+            console.warn('Variables de localisation non trouvées, utilisation du fallback');
         }
-
-        console.log('📤 Envoi des données au calculateur PHP:', userData);
 
         // AJAX vers le fichier de calcul PHP
         $.ajax({
@@ -442,25 +444,15 @@ jQuery(document).ready(function ($) {
                 config_data: configData
             },
             success: function (response) {
-                console.log('📥 Réponse complète du serveur:', response);
-
                 if (response.success) {
-                    // AFFICHER LES LOGS PHP DANS LA CONSOLE JAVASCRIPT
-                    if (response.data.console_logs) {
-                        console.log('💬 === LOGS DU CALCULATEUR PHP ===');
-                        response.data.console_logs.forEach(function (log) {
-                            console.log(log);
-                        });
-                        console.log('💬 === FIN LOGS PHP ===');
-                    }
-
                     displayResults(response.data);
                 } else {
                     displayError('Erreur lors du calcul: ' + response.data);
                 }
             },
             error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX:', error);
+                console.error('Erreur AJAX:', error);
+                console.error('Détails xhr:', xhr);
                 displayError('Erreur de connexion lors du calcul');
             }
         });

@@ -598,3 +598,605 @@
         width: 100%;
     }
 }
+
+/* Ajouter ce CSS dans elec-residentiel.css pour l'affichage des résultats */
+
+/* Résultats */
+.results-summary {
+    padding: var(--space-xl);
+}
+
+.result-card {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--gray-200);
+}
+
+.main-result {
+    background: linear-gradient(135deg, #222F46 0%, #57709d 100%);
+    color: white;
+    border: none;
+}
+
+.result-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-lg);
+}
+
+.result-card h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 var(--space-lg) 0;
+}
+
+.main-result h3 {
+    color: white;
+}
+
+.big-number {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: var(--space-md);
+}
+
+.big-number span {
+    font-size: 1.5rem;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+/* Comparaison tarifs */
+.tarifs-comparison {
+    margin-bottom: var(--space-2xl);
+}
+
+.tarifs-comparison h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-xl) 0;
+    text-align: center;
+}
+
+.tarifs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-xl);
+}
+
+.tarif-card {
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+    text-align: center;
+    transition: var(--transition);
+    position: relative;
+}
+
+.tarif-card.recommended {
+    border-color: var(--primary);
+    background: var(--primary-50);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.tarif-card h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-lg) 0;
+}
+
+.tarif-prix {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+    margin-bottom: var(--space-sm);
+}
+
+.tarif-prix span {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--gray-600);
+}
+
+.tarif-mensuel {
+    font-size: 1.125rem;
+    color: var(--gray-600);
+    margin-bottom: var(--space-md);
+}
+
+.recommended-badge {
+    position: absolute;
+    top: -10px;
+    right: var(--space-lg);
+    background: var(--primary);
+    color: white;
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-lg);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.economies {
+    background: var(--success-50);
+    border: 1px solid var(--success-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    text-align: center;
+}
+
+.economies p {
+    margin: 0;
+    color: var(--success-700);
+}
+
+/* Répartition consommation */
+.repartition-conso {
+    margin-bottom: var(--space-2xl);
+}
+
+.repartition-conso h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-xl) 0;
+    text-align: center;
+}
+
+.repartition-details {
+    display: grid;
+    gap: var(--space-md);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.repartition-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    font-weight: 500;
+}
+
+.repartition-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Récapitulatif */
+.recap-section {
+    margin-bottom: var(--space-2xl);
+}
+
+.recap-section h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-xl) 0;
+    text-align: center;
+}
+
+.recap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.recap-item {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+}
+
+.recap-item strong {
+    color: var(--gray-900);
+}
+
+/* Actions */
+.results-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-lg);
+    margin-top: var(--space-2xl);
+}
+
+/* État d'erreur */
+.error-state {
+    text-align: center;
+    padding: var(--space-3xl);
+}
+
+.error-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-lg);
+    color: var(--error);
+}
+
+.error-state h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-lg) 0;
+}
+
+.error-state p {
+    color: var(--gray-600);
+    margin: 0 0 var(--space-xl) 0;
+}
+
+/* Responsive pour les résultats */
+@media (max-width: 768px) {
+    .tarifs-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-lg);
+    }
+
+    .recap-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+    }
+
+    .results-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .big-number {
+        font-size: 2.5rem;
+    }
+
+    .tarif-prix {
+        font-size: 2rem;
+    }
+}
+
+/* Ajouter ce CSS dans elec-residentiel.css pour le récap détaillé */
+
+/* Détails des calculs */
+.details-calculs {
+    margin-bottom: 2rem;
+}
+
+.details-calculs h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 1.5rem 0;
+    text-align: center;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    transition: var(--transition);
+    box-shadow: var(--shadow-xs);
+}
+
+.detail-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.detail-icon {
+    font-size: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.detail-header h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0;
+    flex: 1;
+}
+
+.detail-result {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-50);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+}
+
+.detail-content {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.detail-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.detail-row strong {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.detail-calcul {
+    font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    background: var(--gray-50);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    color: var(--gray-800);
+    border: 1px solid var(--gray-200);
+}
+
+.detail-valeurs {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    line-height: 1.4;
+}
+
+/* Graphique de répartition amélioré */
+.repartition-chart {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.chart-item {
+    margin-bottom: 1rem;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    transition: var(--transition);
+}
+
+.chart-item:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.chart-bar {
+    height: 8px;
+    background: var(--gray-200);
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+.chart-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+    background: linear-gradient(90deg, currentColor 0%, currentColor 80%, rgba(255, 255, 255, 0.3) 100%);
+}
+
+.chart-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+}
+
+.chart-icon {
+    font-size: 1.25rem;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.chart-name {
+    font-weight: 600;
+    color: var(--gray-900);
+    flex: 1;
+}
+
+.chart-value {
+    font-weight: 600;
+    color: var(--gray-800);
+    font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.chart-percent {
+    color: var(--gray-600);
+    font-size: 0.8rem;
+    min-width: 50px;
+    text-align: right;
+}
+
+/* Responsive pour les détails */
+@media (max-width: 768px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .detail-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .detail-result {
+        order: -1;
+        width: 100%;
+        text-align: center;
+    }
+
+    .chart-label {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .chart-value,
+    .chart-percent {
+        order: 1;
+        flex-basis: 100%;
+        text-align: center;
+        margin-top: 0.25rem;
+    }
+}
+
+/* Variables CSS pour les couleurs du graphique */
+:root {
+    --space-xs: 0.5rem;
+    --space-sm: 0.75rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    --space-3xl: 4rem;
+}
+
+/* Animation d'entrée pour les cartes */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.detail-card {
+    animation: slideInUp 0.5s ease-out;
+    animation-fill-mode: both;
+}
+
+.detail-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.detail-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.detail-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.detail-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.detail-card:nth-child(5) {
+    animation-delay: 0.5s;
+}
+
+.detail-card:nth-child(6) {
+    animation-delay: 0.6s;
+}
+
+.recap-grid-complete {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.recap-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.recap-card h4 {
+    margin: 0 0 0.75rem 0;
+    color: #333;
+    font-size: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+}
+
+.recap-item {
+    margin: 0.5rem 0;
+    line-height: 1.4;
+}
+
+.recap-item strong {
+    color: #495057;
+    min-width: 120px;
+    display: inline-block;
+}
+
+.debug-section,
+.debug-calculs {
+    display: none;
+}
+
+.tarif-details {
+    margin-top: 0.5rem;
+    opacity: 0.7;
+}
+
+.repartition-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.repartition-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .recap-grid-complete {
+        grid-template-columns: 1fr;
+    }
+}

@@ -25,28 +25,26 @@ class HticSimulateurEnergieAdmin {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         add_action('wp_ajax_save_simulateur_data', array($this, 'save_simulateur_data'));
         
+        // NOUVEAU : Handlers pour le calcul
+        add_action('wp_ajax_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
+        add_action('wp_ajax_nopriv_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
+        
         // Hooks d'activation/désactivation
         register_activation_hook(__FILE__, array($this, 'activate'));
         register_deactivation_hook(__FILE__, array($this, 'deactivate'));
         
-        // Shortcodes pour les formulaires
+        // Shortcodes existants...
         add_shortcode('htic_simulateur_elec_residentiel', array($this, 'shortcode_elec_residentiel'));
         add_shortcode('htic_simulateur_gaz_residentiel', array($this, 'shortcode_gaz_residentiel'));
         add_shortcode('htic_simulateur_elec_professionnel', array($this, 'shortcode_elec_professionnel'));
         add_shortcode('htic_simulateur_gaz_professionnel', array($this, 'shortcode_gaz_professionnel'));
-        
-        // Shortcode principal unifié
         add_shortcode('htic_simulateur_energie', array($this, 'shortcode_simulateur_unifie'));
         
-        // AJAX handlers
+        // AJAX handlers existants
         add_action('wp_ajax_htic_load_formulaire', array($this, 'ajax_load_formulaire'));
         add_action('wp_ajax_nopriv_htic_load_formulaire', array($this, 'ajax_load_formulaire'));
-
-        // CORRECTION : Déplacer ces lignes dans le constructeur
-        add_action('wp_ajax_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
-        add_action('wp_ajax_nopriv_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
     }
-    
+        
     public function activate() {
         $this->create_default_options();
         $this->create_tables();
@@ -274,80 +272,46 @@ class HticSimulateurEnergieAdmin {
         ));
     }
     
-    // ================================
-    // NOUVEAU : AJAX HANDLER POUR LE CALCUL
-    // ================================
-    
     public function ajax_calculate_estimation() {
-        error_log('[HTIC] === DÉBUT AJAX CALCULATE ESTIMATION ===');
-        
         // Vérification de sécurité
-        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
-            error_log('[HTIC] ERREUR: Nonce invalide');
+        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate') && 
+            !wp_verify_nonce($_POST['nonce'], 'htic_simulateur_nonce')) {
             wp_send_json_error('Nonce invalide');
             return;
         }
         
         $type = sanitize_text_field($_POST['type']);
-        $user_data = $_POST['user_data'];
-        $config_data = $_POST['config_data'];
+        $userData = $_POST['user_data'];
+        $configData = $_POST['config_data'];
         
-        error_log('[HTIC] Type: ' . $type);
-        error_log('[HTIC] Données utilisateur reçues: ' . print_r($user_data, true));
-        error_log('[HTIC] Données config reçues: ' . count($config_data) . ' paramètres');
+        // Nettoyer les données utilisateur
+        $cleanUserData = array();
+        foreach ($userData as $key => $value) {
+            if (is_array($value)) {
+                $cleanUserData[sanitize_key($key)] = array_map('sanitize_text_field', $value);
+            } else {
+                $cleanUserData[sanitize_key($key)] = sanitize_text_field($value);
+            }
+        }
+
+        // Charger le calculateur
+        require_once HTIC_SIMULATEUR_PATH . 'includes/calculateur-elec-residentiel.php';
         
         try {
-            // Charger le calculateur approprié
-            switch ($type) {
-                case 'elec-residentiel':
-                    // Inclure le fichier calculateur
-                    $calculateur_path = HTIC_SIMULATEUR_PATH . 'includes/calculateur-elec-residentiel.php';
-                    
-                    if (!file_exists($calculateur_path)) {
-                        error_log('[HTIC] ERREUR: Fichier calculateur non trouvé: ' . $calculateur_path);
-                        wp_send_json_error('Fichier calculateur non trouvé');
-                        return;
-                    }
-                    
-                    require_once $calculateur_path;
-                    
-                    // Appeler la fonction de calcul
-                    $result = htic_calculateur_elec_residentiel($user_data, $config_data);
-                    break;
-                    
-                case 'gaz-residentiel':
-                    wp_send_json_error('Calculateur gaz résidentiel pas encore implémenté');
-                    return;
-                    
-                case 'elec-professionnel':
-                    wp_send_json_error('Calculateur électricité professionnel pas encore implémenté');
-                    return;
-                    
-                case 'gaz-professionnel':
-                    wp_send_json_error('Calculateur gaz professionnel pas encore implémenté');
-                    return;
-                    
-                default:
-                    error_log('[HTIC] ERREUR: Type de calculateur non reconnu: ' . $type);
-                    wp_send_json_error('Type de calculateur non reconnu: ' . $type);
-                    return;
-            }
+            $result = htic_calculateur_elec_residentiel($cleanUserData, $configData);
             
-            // Retourner le résultat
             if ($result['success']) {
-                error_log('[HTIC] === SUCCÈS CALCUL ===');
                 wp_send_json_success($result['data']);
             } else {
-                error_log('[HTIC] === ÉCHEC CALCUL : ' . $result['error'] . ' ===');
-                wp_send_json_error($result['error']);
+                wp_send_json_error($result['data']);
             }
             
         } catch (Exception $e) {
-            error_log('[HTIC] === EXCEPTION DANS LE CALCUL : ' . $e->getMessage() . ' ===');
+            error_log("[HTIC AJAX] Erreur calcul: " . $e->getMessage());
             wp_send_json_error('Erreur lors du calcul: ' . $e->getMessage());
         }
     }
-    
+            
     // ================================
     // GESTION DES RESSOURCES
     // ================================
@@ -388,24 +352,23 @@ class HticSimulateurEnergieAdmin {
         }
         
         // Enqueue JS spécifique
-        if (file_exists($formulaire_path . $type . '.js')) {
+       if (file_exists($formulaire_path . $type . '.js')) {
             wp_enqueue_script(
                 'htic-simulateur-' . $type . '-js', 
                 $formulaire_url . $type . '.js', 
-                array('jquery', 'htic-simulateur-common-js'), 
+                array('jquery'), 
                 HTIC_SIMULATEUR_VERSION, 
                 true
             );
             
-            // CORRECTION : Localisation pour AJAX
+            // LOCALISATION CORRIGÉE
             wp_localize_script(
                 'htic-simulateur-' . $type . '-js', 
                 'hticSimulateur', 
                 array(
                     'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'nonce' => wp_create_nonce('htic_simulateur_calculate'), // NONCE CORRIGÉ
-                    'type' => $type,
-                    'restUrl' => rest_url('htic-simulateur/v1/')
+                    'nonce' => wp_create_nonce('htic_simulateur_calculate'),
+                    'type' => $type
                 )
             );
         }

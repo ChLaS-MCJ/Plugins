@@ -21,6 +21,8 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
         <h1>Simulateur Électricité Résidentiel</h1>
         <p>Estimez votre consommation et trouvez le meilleur tarif pour votre logement</p>
     </div>
+
+    
     
     <!-- Indicateur de progression -->
     <div class="progress-container">

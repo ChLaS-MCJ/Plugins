@@ -31,16 +31,82 @@ class HticCalculateurElecResidentiel {
         // Afficher les données reçues
         $this->displayReceivedData();
         
-        // Calculer les résultats factices
+        // Calculer le chauffage
+        $consoChauffage = $this->calculateChauffage();
+        
+        // Pour l'instant, utiliser des valeurs factices pour le reste
         $results = $this->getFakeResults();
+        
+        // Remplacer la consommation chauffage par le vrai calcul
+        $results['repartition']['chauffage'] = $consoChauffage;
+        
+        // Recalculer la consommation totale
+        $consommationTotale = array_sum($results['repartition']);
+        $results['consommation_annuelle'] = $consommationTotale;
         
         $this->consoleLog("✅ Calcul terminé avec succès");
         
         return array(
             'success' => true,
             'data' => $results,
-            'console_logs' => $this->consoleLogs // Envoyer les logs au JavaScript
+            'console_logs' => $this->consoleLogs
         );
+    }
+    
+    /**
+     * Calcul de la consommation chauffage électrique
+     */
+    private function calculateChauffage() {
+        // Vérifier si c'est un chauffage électrique
+        $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
+        if (!in_array($this->userData['type_chauffage'], $chauffagesElectriques)) {
+            $this->consoleLog("🔥 Pas de chauffage électrique sélectionné");
+            return 0;
+        }
+
+        $surface = intval($this->userData['surface']);
+        $typeLogement = $this->userData['type_logement'];
+        $typeChauffage = $this->userData['type_chauffage'];
+        $isolation = $this->userData['isolation'];
+
+        // Coefficient logement (maison = 1.0, appartement = 0.95)
+        $coeffLogement = ($typeLogement === 'appartement') ? 0.95 : 1.0;
+
+        // Mapping des types d'isolation vers les clés de configuration
+        $isolationMapping = array(
+            'avant_1980' => 'mauvaise',
+            '1980_2000' => 'moyenne', 
+            'apres_2000' => 'bonne',
+            'renovation' => 'tres_bonne'
+        );
+
+        $isolationKey = $isolationMapping[$isolation];
+
+        // Construire la clé de configuration selon le format du back
+        $configKey = $typeLogement . '_' . $typeChauffage . '_' . $isolationKey;
+
+        // Récupérer la consommation par m² depuis la configuration
+        $consoParM2 = 0;
+        if (isset($this->configData[$configKey])) {
+            $consoParM2 = floatval($this->configData[$configKey]);
+        } else {
+            $this->consoleLog("❌ ERREUR: Clé de configuration manquante: {$configKey}");
+            return 0;
+        }
+
+        // Calcul final selon la formule Excel
+        $consommationChauffage = $surface * $consoParM2 * $coeffLogement;
+
+        $this->consoleLog("🔥 CALCUL CHAUFFAGE:");
+        $this->consoleLog("   Surface: {$surface} m²");
+        $this->consoleLog("   Type logement: {$typeLogement} (coeff: {$coeffLogement})");
+        $this->consoleLog("   Type chauffage: {$typeChauffage}");
+        $this->consoleLog("   Isolation: {$isolation} → {$isolationKey}");
+        $this->consoleLog("   Clé config: {$configKey}");
+        $this->consoleLog("   Conso/m²: {$consoParM2} kWh");
+        $this->consoleLog("   Résultat: {$surface} × {$consoParM2} × {$coeffLogement} = {$consommationChauffage} kWh/an");
+
+        return round($consommationChauffage);
     }
     
     /**
@@ -61,14 +127,6 @@ class HticCalculateurElecResidentiel {
         $this->consoleLog("⚙️ === CONFIGURATION DISPONIBLE ===");
         $this->consoleLog("📊 Nombre de paramètres config: " . count($this->configData));
         
-        // Quelques exemples de config
-        $exemples = ['puissance_defaut', 'chauffe_eau', 'base_kwh_15'];
-        foreach ($exemples as $exemple) {
-            if (isset($this->configData[$exemple])) {
-                $this->consoleLog("⚙️ {$exemple}: " . $this->configData[$exemple]);
-            }
-        }
-        
         // Vérification des données obligatoires
         $obligatoires = ['type_logement', 'surface', 'nb_personnes', 'type_chauffage'];
         $this->consoleLog("🔍 === VÉRIFICATION DONNÉES OBLIGATOIRES ===");
@@ -81,7 +139,7 @@ class HticCalculateurElecResidentiel {
     }
     
     /**
-     * Résultats factices pour test
+     * Résultats factices pour test (sera remplacé progressivement)
      */
     private function getFakeResults() {
         $surface = isset($this->userData['surface']) ? intval($this->userData['surface']) : 100;
@@ -90,11 +148,6 @@ class HticCalculateurElecResidentiel {
         $consommationBase = $surface * 50;
         $consommationPersonnes = $nbPersonnes * 500;
         $consommationTotale = $consommationBase + $consommationPersonnes;
-        
-        $this->consoleLog("🧮 === CALCUL FACTICE ===");
-        $this->consoleLog("🏠 Surface: {$surface}m² × 50 = {$consommationBase} kWh");
-        $this->consoleLog("👥 Personnes: {$nbPersonnes} × 500 = {$consommationPersonnes} kWh");
-        $this->consoleLog("⚡ Total: {$consommationTotale} kWh/an");
         
         return array(
             'consommation_annuelle' => $consommationTotale,
@@ -114,7 +167,7 @@ class HticCalculateurElecResidentiel {
                 )
             ),
             'repartition' => array(
-                'chauffage' => 800,
+                'chauffage' => 0,
                 'eau_chaude' => (isset($this->userData['eau_chaude']) && $this->userData['eau_chaude'] === 'oui') ? 1800 : 0,
                 'electromenagers' => 1500,
                 'eclairage' => 400,

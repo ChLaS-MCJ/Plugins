@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: HTIC Simulateur Consommation Énergie
- * Description: Plugin unifié pour simuler la consommation énergétique avec sélecteur à onglets
- * Version: 2.0.0
+ * Description: Plugin pour gérer et afficher le simulateur de consommation énergétique avec interface d'administration
+ * Version: 1.0.0
  * Author: HTIC
  * Text Domain: htic-simulateur
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 // Définir les constantes du plugin
 define('HTIC_SIMULATEUR_URL', plugin_dir_url(__FILE__));
 define('HTIC_SIMULATEUR_PATH', plugin_dir_path(__FILE__));
-define('HTIC_SIMULATEUR_VERSION', '2.0.0');
+define('HTIC_SIMULATEUR_VERSION', '1.0.0');
 
 class HticSimulateurEnergieAdmin {
     
@@ -29,25 +29,25 @@ class HticSimulateurEnergieAdmin {
         register_activation_hook(__FILE__, array($this, 'activate'));
         register_deactivation_hook(__FILE__, array($this, 'deactivate'));
         
-        // Shortcode principal unifié (NOUVEAU)
-        add_shortcode('htic_simulateur_energie', array($this, 'shortcode_simulateur_unifie'));
-        
-        // Shortcodes individuels (conservés pour compatibilité)
+        // Shortcodes pour les formulaires
         add_shortcode('htic_simulateur_elec_residentiel', array($this, 'shortcode_elec_residentiel'));
         add_shortcode('htic_simulateur_gaz_residentiel', array($this, 'shortcode_gaz_residentiel'));
         add_shortcode('htic_simulateur_elec_professionnel', array($this, 'shortcode_elec_professionnel'));
         add_shortcode('htic_simulateur_gaz_professionnel', array($this, 'shortcode_gaz_professionnel'));
         
+        // Shortcode principal unifié
+        add_shortcode('htic_simulateur_energie', array($this, 'shortcode_simulateur_unifie'));
+        
         // AJAX handlers
         add_action('wp_ajax_htic_load_formulaire', array($this, 'ajax_load_formulaire'));
         add_action('wp_ajax_nopriv_htic_load_formulaire', array($this, 'ajax_load_formulaire'));
-        add_action('wp_ajax_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
-        add_action('wp_ajax_nopriv_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
     }
     
     public function activate() {
         $this->create_default_options();
         $this->create_tables();
+        
+        // Créer la structure des dossiers si elle n'existe pas
         $this->create_formulaires_structure();
     }
     
@@ -56,6 +56,7 @@ class HticSimulateurEnergieAdmin {
         
         // Créer les dossiers nécessaires
         $directories = array(
+            'admin',
             'templates',
             'formulaires',
             'formulaires/elec-residentiel',
@@ -112,7 +113,61 @@ class HticSimulateurEnergieAdmin {
     }
     
     // ================================
-    // SHORTCODE PRINCIPAL UNIFIÉ (NOUVEAU)
+    // SHORTCODES POUR LES FORMULAIRES
+    // ================================
+    
+    public function shortcode_elec_residentiel($atts) {
+        $atts = shortcode_atts(array(
+            'theme' => 'default'
+        ), $atts);
+        
+        // Enqueue les ressources spécifiques
+        $this->enqueue_formulaire_assets('elec-residentiel');
+        
+        // Capturer le contenu du template
+        ob_start();
+        include HTIC_SIMULATEUR_PATH . 'formulaires/elec-residentiel/elec-residentiel.php';
+        return ob_get_clean();
+    }
+    
+    public function shortcode_gaz_residentiel($atts) {
+        $atts = shortcode_atts(array(
+            'theme' => 'default'
+        ), $atts);
+        
+        $this->enqueue_formulaire_assets('gaz-residentiel');
+        
+        ob_start();
+        include HTIC_SIMULATEUR_PATH . 'formulaires/gaz-residentiel/gaz-residentiel.php';
+        return ob_get_clean();
+    }
+    
+    public function shortcode_elec_professionnel($atts) {
+        $atts = shortcode_atts(array(
+            'theme' => 'default'
+        ), $atts);
+        
+        $this->enqueue_formulaire_assets('elec-professionnel');
+        
+        ob_start();
+        include HTIC_SIMULATEUR_PATH . 'formulaires/elec-professionnel/elec-professionnel.php';
+        return ob_get_clean();
+    }
+    
+    public function shortcode_gaz_professionnel($atts) {
+        $atts = shortcode_atts(array(
+            'theme' => 'default'
+        ), $atts);
+        
+        $this->enqueue_formulaire_assets('gaz-professionnel');
+        
+        ob_start();
+        include HTIC_SIMULATEUR_PATH . 'formulaires/gaz-professionnel/gaz-professionnel.php';
+        return ob_get_clean();
+    }
+    
+    // ================================
+    // SHORTCODE PRINCIPAL UNIFIÉ
     // ================================
     
     public function shortcode_simulateur_unifie($atts) {
@@ -171,66 +226,6 @@ class HticSimulateurEnergieAdmin {
     }
     
     // ================================
-    // SHORTCODES INDIVIDUELS (CONSERVÉS)
-    // ================================
-    
-    public function shortcode_elec_residentiel($atts) {
-        $atts = shortcode_atts(array('theme' => 'default'), $atts);
-        $this->enqueue_formulaire_assets('elec-residentiel');
-        
-        ob_start();
-        $template_path = HTIC_SIMULATEUR_PATH . 'formulaires/elec-residentiel/elec-residentiel.php';
-        if (file_exists($template_path)) {
-            include $template_path;
-        } else {
-            echo '<p>⚠️ Template non trouvé: ' . $template_path . '</p>';
-        }
-        return ob_get_clean();
-    }
-    
-    public function shortcode_gaz_residentiel($atts) {
-        $atts = shortcode_atts(array('theme' => 'default'), $atts);
-        $this->enqueue_formulaire_assets('gaz-residentiel');
-        
-        ob_start();
-        $template_path = HTIC_SIMULATEUR_PATH . 'formulaires/gaz-residentiel/gaz-residentiel.php';
-        if (file_exists($template_path)) {
-            include $template_path;
-        } else {
-            echo '<p>⚠️ Template en cours de développement</p>';
-        }
-        return ob_get_clean();
-    }
-    
-    public function shortcode_elec_professionnel($atts) {
-        $atts = shortcode_atts(array('theme' => 'default'), $atts);
-        $this->enqueue_formulaire_assets('elec-professionnel');
-        
-        ob_start();
-        $template_path = HTIC_SIMULATEUR_PATH . 'formulaires/elec-professionnel/elec-professionnel.php';
-        if (file_exists($template_path)) {
-            include $template_path;
-        } else {
-            echo '<p>⚠️ Template en cours de développement</p>';
-        }
-        return ob_get_clean();
-    }
-    
-    public function shortcode_gaz_professionnel($atts) {
-        $atts = shortcode_atts(array('theme' => 'default'), $atts);
-        $this->enqueue_formulaire_assets('gaz-professionnel');
-        
-        ob_start();
-        $template_path = HTIC_SIMULATEUR_PATH . 'formulaires/gaz-professionnel/gaz-professionnel.php';
-        if (file_exists($template_path)) {
-            include $template_path;
-        } else {
-            echo '<p>⚠️ Template en cours de développement</p>';
-        }
-        return ob_get_clean();
-    }
-    
-    // ================================
     // AJAX HANDLER POUR CHARGEMENT FORMULAIRES
     // ================================
     
@@ -260,7 +255,7 @@ class HticSimulateurEnergieAdmin {
         $template_path = HTIC_SIMULATEUR_PATH . 'formulaires/' . $type . '/' . $type . '.php';
         
         if (!file_exists($template_path)) {
-            wp_send_json_error('Template de formulaire non trouvé: ' . $template_path);
+            wp_send_json_error('Template de formulaire non trouvé');
             return;
         }
         
@@ -273,7 +268,7 @@ class HticSimulateurEnergieAdmin {
         include $template_path;
         $html = ob_get_clean();
         
-        // Retourner le HTML et les informations sur les assets
+        // Retourner le HTML
         wp_send_json_success(array(
             'html' => $html,
             'type' => $type,
@@ -282,96 +277,6 @@ class HticSimulateurEnergieAdmin {
                 'js' => HTIC_SIMULATEUR_URL . 'formulaires/' . $type . '/' . $type . '.js'
             )
         ));
-    }
-    
-    // ================================
-    // AJAX HANDLER POUR CALCULS
-    // ================================
-    
-    public function ajax_calculate_estimation() {
-        // Vérification de sécurité
-        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
-            wp_send_json_error('Nonce invalide');
-            return;
-        }
-        
-        $type = sanitize_text_field($_POST['type']);
-        $user_data = $_POST['user_data'];
-        $config_data = $_POST['config_data'];
-        
-        // Charger le calculateur si disponible
-        $calculateur_path = HTIC_SIMULATEUR_PATH . 'includes/calculateur.php';
-        if (file_exists($calculateur_path)) {
-            require_once $calculateur_path;
-            
-            if (class_exists('HticCalculateur')) {
-                $calculateur = new HticCalculateur();
-                $result = $calculateur->calculate($type, $user_data, $config_data);
-                wp_send_json_success($result);
-                return;
-            }
-        }
-        
-        // Fallback: calculateur simplifié
-        $result = $this->calculate_estimation_fallback($type, $user_data);
-        wp_send_json_success($result);
-    }
-    
-    private function calculate_estimation_fallback($type, $user_data) {
-        // Calculateur de base pour les tests
-        $surface = intval($user_data['surface'] ?? 100);
-        $nb_personnes = intval($user_data['nb_personnes'] ?? 3);
-        
-        switch ($type) {
-            case 'elec-residentiel':
-                $consommation_base = $surface * 45; // kWh/m²/an
-                $consommation_personnes = $nb_personnes * 500; // kWh/personne/an
-                $consommation_totale = $consommation_base + $consommation_personnes;
-                
-                return array(
-                    'consommation_annuelle' => $consommation_totale,
-                    'puissance_recommandee' => $surface > 120 ? '15' : '12',
-                    'tarifs' => array(
-                        'base' => array(
-                            'total_annuel' => round($consommation_totale * 0.25),
-                            'total_mensuel' => round($consommation_totale * 0.25 / 12)
-                        ),
-                        'hc' => array(
-                            'total_annuel' => round($consommation_totale * 0.23),
-                            'total_mensuel' => round($consommation_totale * 0.23 / 12)
-                        )
-                    ),
-                    'repartition' => array(
-                        'chauffage' => round($consommation_totale * 0.6),
-                        'eau_chaude' => round($consommation_totale * 0.2),
-                        'electromenagers' => round($consommation_totale * 0.15),
-                        'eclairage' => round($consommation_totale * 0.05)
-                    ),
-                    'recap' => $user_data
-                );
-                
-            case 'gaz-residentiel':
-                $consommation_gaz = $surface * 80; // kWh/m²/an
-                
-                return array(
-                    'consommation_annuelle' => $consommation_gaz,
-                    'cout_annuel' => round($consommation_gaz * 0.088),
-                    'cout_mensuel' => round($consommation_gaz * 0.088 / 12),
-                    'repartition' => array(
-                        'chauffage' => round($consommation_gaz * 0.8),
-                        'eau_chaude' => round($consommation_gaz * 0.15),
-                        'cuisson' => round($consommation_gaz * 0.05)
-                    ),
-                    'recap' => $user_data
-                );
-                
-            default:
-                return array(
-                    'consommation_annuelle' => 3000,
-                    'cout_annuel' => 750,
-                    'recap' => $user_data
-                );
-        }
     }
     
     // ================================
@@ -438,294 +343,179 @@ class HticSimulateurEnergieAdmin {
     }
     
     // ================================
-    // ADMIN INTERFACE (CONSERVÉE)
+    // ADMIN INTERFACE
     // ================================
     
     public function admin_page() {
-        $elec_residentiel = get_option('htic_simulateur_elec_residentiel_data', $this->get_default_elec_residentiel());
-        $gaz_residentiel = get_option('htic_simulateur_gaz_residentiel_data', $this->get_default_gaz_residentiel());
-        $elec_professionnel = get_option('htic_simulateur_elec_professionnel_data', $this->get_default_elec_professionnel());
-        $gaz_professionnel = get_option('htic_simulateur_gaz_professionnel_data', $this->get_default_gaz_professionnel());
+        // Créer le dossier admin s'il n'existe pas
+        $admin_path = HTIC_SIMULATEUR_PATH . 'admin/';
+        if (!file_exists($admin_path)) {
+            wp_mkdir_p($admin_path);
+        }
         
         ?>
         <div class="wrap">
             <h1>Configuration du Simulateur Énergie HTIC</h1>
             
-            <!-- Guide d'utilisation mis à jour -->
+            <!-- Guide d'utilisation des shortcodes -->
             <div class="notice notice-info">
-                <h3>📝 Shortcode principal (NOUVEAU) :</h3>
-                <p><strong>Simulateur Unifié avec menu à onglets :</strong> <code>[htic_simulateur_energie]</code></p>
-                <p><em>💡 Ce shortcode affiche un menu permettant de choisir entre Électricité/Gaz et Particulier/Professionnel !</em></p>
-                <hr style="margin: 1rem 0;">
-                <h4>Shortcodes individuels (conservés pour compatibilité) :</h4>
-                <p><strong>Électricité Résidentiel :</strong> <code>[htic_simulateur_elec_residentiel]</code></p>
-                <p><strong>Gaz Résidentiel :</strong> <code>[htic_simulateur_gaz_residentiel]</code></p>
-                <p><strong>Électricité Professionnel :</strong> <code>[htic_simulateur_elec_professionnel]</code></p>
-                <p><strong>Gaz Professionnel :</strong> <code>[htic_simulateur_gaz_professionnel]</code></p>
+                <h3>📝 Shortcodes pour vos pages :</h3>
+                <p><strong>Simulateur Unifié :</strong> <code>[htic_simulateur_energie]</code></p>
             </div>
             
             <div class="htic-simulateur-tabs">
                 <nav class="nav-tab-wrapper">
                     <a href="#tab-elec-residentiel" class="nav-tab nav-tab-active">
-                        <span class="tab-icon"></span>
-                        Électricité Résidentiel
+                        <span class="tab-icon"></span>Électricité Résidentiel
                     </a>
                     <a href="#tab-gaz-residentiel" class="nav-tab">
-                        <span class="tab-icon"></span>
-                        Gaz Résidentiel
+                        <span class="tab-icon"></span>Gaz Résidentiel
                     </a>
                     <a href="#tab-elec-professionnel" class="nav-tab">
-                        <span class="tab-icon"></span>
-                        Électricité Professionnel
+                        <span class="tab-icon"></span>Électricité Professionnel
                     </a>
                     <a href="#tab-gaz-professionnel" class="nav-tab">
-                        <span class="tab-icon"></span>
-                        Gaz Professionnel
+                        <span class="tab-icon"></span>Gaz Professionnel
                     </a>
                 </nav>
                 
                 <div class="tab-content">
-                    <!-- ONGLET 1: Électricité Résidentiel -->
+                    <!-- Onglet 1: Électricité Résidentiel -->
                     <div id="tab-elec-residentiel" class="tab-pane active">
-                        <form method="post" action="options.php" class="htic-simulateur-form">
-                            <?php settings_fields('htic_simulateur_elec_residentiel'); ?>
-                            
-                            <h2>⚡ Tarifs Électricité Résidentiel (TTC)</h2>
-                            <p class="description">Configuration pour le simulateur électricité particuliers</p>
-                            
-                            <div class="htic-simulateur-section">
-                                <h3>Configuration Générale</h3>
-                                <table class="form-table">
-                                    <tr>
-                                        <th scope="row">Puissance recommandée par défaut</th>
-                                        <td>
-                                            <input type="number" name="htic_simulateur_elec_residentiel_data[puissance_defaut]" 
-                                                   value="<?php echo esc_attr($elec_residentiel['puissance_defaut'] ?? 15); ?>" /> KVA
-                                        </td>
-                                    </tr>
-                                </table>
-                                
-                                <h4>💡 Tarifs BASE</h4>
-                                <table class="wp-list-table widefat fixed striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Puissance (KVA)</th>
-                                            <th>Abonnement (€/mois)</th>
-                                            <th>Prix kWh (€)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        $puissances = [3, 6, 9, 12, 15, 18, 24, 30, 36];
-                                        foreach($puissances as $p): 
-                                        ?>
-                                        <tr>
-                                            <td><?php echo $p; ?></td>
-                                            <td>
-                                                <input type="number" step="0.01" 
-                                                       name="htic_simulateur_elec_residentiel_data[base_abo_<?php echo $p; ?>]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['base_abo_'.$p] ?? ''); ?>" />
-                                            </td>
-                                            <td>
-                                                <input type="number" step="0.0001" 
-                                                       name="htic_simulateur_elec_residentiel_data[base_kwh_<?php echo $p; ?>]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['base_kwh_'.$p] ?? ''); ?>" />
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                                
-                                <h4>🔄 Tarifs Heures Creuses</h4>
-                                <table class="wp-list-table widefat fixed striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Puissance (KVA)</th>
-                                            <th>Abonnement (€/mois)</th>
-                                            <th>Prix kWh HP (€)</th>
-                                            <th>Prix kWh HC (€)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        $puissances_hc = [6, 9, 12, 15, 18, 24, 30, 36];
-                                        foreach($puissances_hc as $p): 
-                                        ?>
-                                        <tr>
-                                            <td><?php echo $p; ?></td>
-                                            <td>
-                                                <input type="number" step="0.01" 
-                                                       name="htic_simulateur_elec_residentiel_data[hc_abo_<?php echo $p; ?>]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['hc_abo_'.$p] ?? ''); ?>" />
-                                            </td>
-                                            <td>
-                                                <input type="number" step="0.0001" 
-                                                       name="htic_simulateur_elec_residentiel_data[hc_hp_<?php echo $p; ?>]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['hc_hp_'.$p] ?? ''); ?>" />
-                                            </td>
-                                            <td>
-                                                <input type="number" step="0.0001" 
-                                                       name="htic_simulateur_elec_residentiel_data[hc_hc_<?php echo $p; ?>]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['hc_hc_'.$p] ?? ''); ?>" />
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                                
-                                <h4>🏠 Consommations par usage (kWh/an)</h4>
-                                <table class="form-table">
-                                    <tr>
-                                        <th scope="row">Chauffage électrique convecteurs (par m²)</th>
-                                        <td>
-                                            <label>Avant 1980 : 
-                                                <input type="number" name="htic_simulateur_elec_residentiel_data[chauffage_avant_1980]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['chauffage_avant_1980'] ?? 215); ?>" /> kWh/m²
-                                            </label><br>
-                                            <label>1980-2000 : 
-                                                <input type="number" name="htic_simulateur_elec_residentiel_data[chauffage_1980_2000]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['chauffage_1980_2000'] ?? 150); ?>" /> kWh/m²
-                                            </label><br>
-                                            <label>Après 2000 : 
-                                                <input type="number" name="htic_simulateur_elec_residentiel_data[chauffage_apres_2000]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['chauffage_apres_2000'] ?? 75); ?>" /> kWh/m²
-                                            </label><br>
-                                            <label>Rénovation récente : 
-                                                <input type="number" name="htic_simulateur_elec_residentiel_data[chauffage_renovation]" 
-                                                       value="<?php echo esc_attr($elec_residentiel['chauffage_renovation'] ?? 37.5); ?>" /> kWh/m²
-                                            </label>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                            
-                            <?php submit_button('💾 Sauvegarder les tarifs électricité résidentiel'); ?>
-                        </form>
+                        <?php include $admin_path . 'admin-elec-residentiel.php'; ?>
                     </div>
                     
-                    <!-- ONGLET 2: Gaz Résidentiel -->
+                    <!-- Onglet 2: Gaz Résidentiel -->
                     <div id="tab-gaz-residentiel" class="tab-pane">
-                        <form method="post" action="options.php" class="htic-simulateur-form">
-                            <?php settings_fields('htic_simulateur_gaz_residentiel'); ?>
-                            
-                            <h2>🔥 Tarifs Gaz Résidentiel (TTC)</h2>
-                            <p class="description">Configuration pour le simulateur gaz particuliers</p>
-                            
-                            <div class="htic-simulateur-section">
-                                <h3>Tarifs Réglementés Gaz</h3>
-                                <table class="form-table">
-                                    <tr>
-                                        <th scope="row">Abonnement Base (€/an)</th>
-                                        <td>
-                                            <input type="number" step="0.01" name="htic_simulateur_gaz_residentiel_data[gaz_abo_base]" 
-                                                   value="<?php echo esc_attr($gaz_residentiel['gaz_abo_base'] ?? 102.12); ?>" />
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">Prix kWh Gaz Base (€/kWh)</th>
-                                        <td>
-                                            <input type="number" step="0.0001" name="htic_simulateur_gaz_residentiel_data[gaz_kwh_base]" 
-                                                   value="<?php echo esc_attr($gaz_residentiel['gaz_kwh_base'] ?? 0.0878); ?>" />
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                            
-                            <?php submit_button('💾 Sauvegarder les tarifs gaz résidentiel'); ?>
-                        </form>
+                        <?php include $admin_path . 'admin-gaz-residentiel.php'; ?>
                     </div>
                     
-                    <!-- ONGLET 3: Électricité Professionnel -->
+                    <!-- Onglet 3: Électricité Professionnel -->
                     <div id="tab-elec-professionnel" class="tab-pane">
-                        <form method="post" action="options.php" class="htic-simulateur-form">
-                            <?php settings_fields('htic_simulateur_elec_professionnel'); ?>
-                            
-                            <h2>🏢 Tarifs Électricité Professionnel (TTC)</h2>
-                            <p class="description">Configuration pour le simulateur électricité professionnels</p>
-                            
-                            <div class="htic-simulateur-section">
-                                <h3>Tarifs Professionnels</h3>
-                                <table class="wp-list-table widefat fixed striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Puissance (KVA)</th>
-                                            <th>Abonnement (€/mois)</th>
-                                            <th>Prix kWh (€)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        $puissances_pro = [6, 9, 12, 15, 18, 24, 36];
-                                        foreach($puissances_pro as $p): 
-                                        ?>
-                                        <tr>
-                                            <td><?php echo $p; ?></td>
-                                            <td>
-                                                <input type="number" step="0.01" 
-                                                       name="htic_simulateur_elec_professionnel_data[pro_elec_abo_<?php echo $p; ?>]" 
-                                                       value="<?php echo esc_attr($elec_professionnel['pro_elec_abo_'.$p] ?? ''); ?>" />
-                                            </td>
-                                            <td>
-                                                <input type="number" step="0.0001" 
-                                                       name="htic_simulateur_elec_professionnel_data[pro_elec_kwh_<?php echo $p; ?>]" 
-                                                       value="<?php echo esc_attr($elec_professionnel['pro_elec_kwh_'.$p] ?? ''); ?>" />
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <?php submit_button('💾 Sauvegarder les tarifs électricité professionnel'); ?>
-                        </form>
+                        <?php include $admin_path . 'admin-elec-professionnel.php'; ?>
                     </div>
                     
-                    <!-- ONGLET 4: Gaz Professionnel -->
+                    <!-- Onglet 4: Gaz Professionnel -->
                     <div id="tab-gaz-professionnel" class="tab-pane">
-                        <form method="post" action="options.php" class="htic-simulateur-form">
-                            <?php settings_fields('htic_simulateur_gaz_professionnel'); ?>
-                            
-                            <h2>🏭 Tarifs Gaz Professionnel (TTC)</h2>
-                            <p class="description">Configuration pour le simulateur gaz professionnels</p>
-                            
-                            <div class="htic-simulateur-section">
-                                <h3>Tarifs Professionnels Gaz</h3>
-                                <table class="form-table">
-                                    <tr>
-                                        <th scope="row">Abonnement Professionnel (€/an)</th>
-                                        <td>
-                                            <input type="number" step="0.01" name="htic_simulateur_gaz_professionnel_data[pro_gaz_abo]" 
-                                                   value="<?php echo esc_attr($gaz_professionnel['pro_gaz_abo'] ?? 156.12); ?>" />
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">Prix kWh Gaz Pro (€/kWh)</th>
-                                        <td>
-                                            <input type="number" step="0.0001" name="htic_simulateur_gaz_professionnel_data[pro_gaz_kwh]" 
-                                                   value="<?php echo esc_attr($gaz_professionnel['pro_gaz_kwh'] ?? 0.0798); ?>" />
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                            
-                            <?php submit_button('💾 Sauvegarder les tarifs gaz professionnel'); ?>
-                        </form>
+                        <?php include $admin_path . 'admin-gaz-professionnel.php'; ?>
                     </div>
                 </div>
             </div>
             
             <div class="htic-simulateur-actions">
-                <button type="button" class="button button-primary" id="reset-defaults">
-                    🔄 Réinitialiser aux valeurs par défaut
-                </button>
+                <button type="button" class="button button-primary" id="reset-defaults">Réinitialiser aux valeurs par défaut</button>
             </div>
         </div>
         <?php
     }
     
     // ================================
-    // SAUVEGARDE AJAX
+    // MÉTHODES PAR DÉFAUT AVEC DONNÉES COMPLÈTES
     // ================================
+    
+    public function get_default_elec_residentiel() {
+        return array(
+            'puissance_defaut' => 15,
+            
+            // Tarifs BASE
+            'base_abo_3' => 9.69, 'base_kwh_3' => 0.2516,
+            'base_abo_6' => 12.67, 'base_kwh_6' => 0.2516,
+            'base_abo_9' => 15.89, 'base_kwh_9' => 0.2516,
+            'base_abo_12' => 19.16, 'base_kwh_12' => 0.2516,
+            'base_abo_15' => 22.21, 'base_kwh_15' => 0.2516,
+            'base_abo_18' => 25.24, 'base_kwh_18' => 0.2516,
+            'base_abo_24' => 31.96, 'base_kwh_24' => 0.2516,
+            'base_abo_30' => 37.68, 'base_kwh_30' => 0.2516,
+            'base_abo_36' => 44.43, 'base_kwh_36' => 0.2516,
+            
+            // Tarifs HC
+            'hc_abo_3' => 0, 'hc_hp_3' => 0, 'hc_hc_3' => 0,
+            'hc_abo_6' => 13.28, 'hc_hp_6' => 0.27, 'hc_hc_6' => 0.2068,
+            'hc_abo_9' => 16.82, 'hc_hp_9' => 0.27, 'hc_hc_9' => 0.2068,
+            'hc_abo_12' => 20.28, 'hc_hp_12' => 0.27, 'hc_hc_12' => 0.2068,
+            'hc_abo_15' => 23.57, 'hc_hp_15' => 0.27, 'hc_hc_15' => 0.2068,
+            'hc_abo_18' => 26.84, 'hc_hp_18' => 0.27, 'hc_hc_18' => 0.2068,
+            'hc_abo_24' => 33.7, 'hc_hp_24' => 0.27, 'hc_hc_24' => 0.2068,
+            'hc_abo_30' => 39.94, 'hc_hp_30' => 0.27, 'hc_hc_30' => 0.2068,
+            'hc_abo_36' => 46.24, 'hc_hp_36' => 0.27, 'hc_hc_36' => 0.2068,
+            
+            // Tarifs TEMPO
+            'tempo_abo_3' => 13.23, 'tempo_rouge_hp_3' => 0.7562, 'tempo_rouge_hc_3' => 0.1568, 'tempo_blanc_hp_3' => 0.1894, 'tempo_blanc_hc_3' => 0.1486, 'tempo_bleu_hp_3' => 0.1609, 'tempo_bleu_hc_3' => 0.1296,
+            'tempo_abo_6' => 16.55, 'tempo_rouge_hp_6' => 0.7562, 'tempo_rouge_hc_6' => 0.1568, 'tempo_blanc_hp_6' => 0.1894, 'tempo_blanc_hc_6' => 0.1486, 'tempo_bleu_hp_6' => 0.1609, 'tempo_bleu_hc_6' => 0.1296,
+            'tempo_abo_9' => 23.08, 'tempo_rouge_hp_9' => 0.7562, 'tempo_rouge_hc_9' => 0.1568, 'tempo_blanc_hp_9' => 0.1894, 'tempo_blanc_hc_9' => 0.1486, 'tempo_bleu_hp_9' => 0.1609, 'tempo_bleu_hc_9' => 0.1296,
+            'tempo_abo_12' => 26.18, 'tempo_rouge_hp_12' => 0.7562, 'tempo_rouge_hc_12' => 0.1568, 'tempo_blanc_hp_12' => 0.1894, 'tempo_blanc_hc_12' => 0.1486, 'tempo_bleu_hp_12' => 0.1609, 'tempo_bleu_hc_12' => 0.1296,
+            'tempo_abo_15' => 38.22, 'tempo_rouge_hp_15' => 0.7562, 'tempo_rouge_hc_15' => 0.1568, 'tempo_blanc_hp_15' => 0.1894, 'tempo_blanc_hc_15' => 0.1486, 'tempo_bleu_hp_15' => 0.1609, 'tempo_bleu_hc_15' => 0.1296,
+            'tempo_abo_18' => 39.5, 'tempo_rouge_hp_18' => 0.7562, 'tempo_rouge_hc_18' => 0.1568, 'tempo_blanc_hp_18' => 0.1894, 'tempo_blanc_hc_18' => 0.1486, 'tempo_bleu_hp_18' => 0.1609, 'tempo_bleu_hc_18' => 0.1296,
+            'tempo_abo_24' => 45.87, 'tempo_rouge_hp_24' => 0.7562, 'tempo_rouge_hc_24' => 0.1568, 'tempo_blanc_hp_24' => 0.1894, 'tempo_blanc_hc_24' => 0.1486, 'tempo_bleu_hp_24' => 0.1609, 'tempo_bleu_hc_24' => 0.1296,
+            'tempo_abo_30' => 52.0, 'tempo_rouge_hp_30' => 0.7562, 'tempo_rouge_hc_30' => 0.1568, 'tempo_blanc_hp_30' => 0.1894, 'tempo_blanc_hc_30' => 0.1486, 'tempo_bleu_hp_30' => 0.1609, 'tempo_bleu_hc_30' => 0.1296,
+            'tempo_abo_36' => 58.0, 'tempo_rouge_hp_36' => 0.7562, 'tempo_rouge_hc_36' => 0.1568, 'tempo_blanc_hp_36' => 0.1894, 'tempo_blanc_hc_36' => 0.1486, 'tempo_bleu_hp_36' => 0.1609, 'tempo_bleu_hc_36' => 0.1296,
+            
+            // Consommations équipements
+            'chauffe_eau' => 900,
+            'lave_linge' => 100,
+            'four' => 125,
+            'seche_linge' => 175,
+            'lave_vaisselle' => 100,
+            'cave_vin' => 150,
+            'refrigerateur' => 125,
+            'congelateur' => 125,
+            'plaque_cuisson' => 215,
+            'tv_pc_box' => 300,
+            'piscine' => 1400,
+            'piscine_chauffee' => 4000,
+            'spa_jacuzzi' => 2000,
+            'aquarium' => 240,
+            'voiture_electrique' => 1500,
+            'climatiseur_mobile' => 150,
+            'eclairage' => 750,
+            'forfait_petits_electromenagers' => 150,
+            
+            // Répartitions
+            'repartition_hp' => 60,
+            'repartition_hc' => 40,
+            'tempo_bleu_hp_pct' => 50,
+            'tempo_bleu_hc_pct' => 25,
+            'tempo_blanc_hp_pct' => 10,
+            'tempo_blanc_hc_pct' => 5,
+            'tempo_rouge_hp_pct' => 5,
+            'tempo_rouge_hc_pct' => 5
+        );
+    }
+    
+    public function get_default_gaz_residentiel() {
+        return array(
+            'gaz_abo_base' => 102.12, 
+            'gaz_kwh_base' => 0.0878,
+            'gaz_chauffage_avant_1980' => 180, 
+            'gaz_chauffage_1980_2000' => 120,
+            'gaz_chauffage_apres_2000' => 80, 
+            'gaz_chauffage_renovation' => 60,
+            'gaz_eau_chaude' => 1200, 
+            'gaz_cuisson' => 365
+        );
+    }
+    
+    public function get_default_elec_professionnel() {
+        return array(
+            'pro_elec_abo_6' => 15.67, 'pro_elec_kwh_6' => 0.2716,
+            'pro_elec_abo_9' => 18.89, 'pro_elec_kwh_9' => 0.2716,
+            'pro_elec_abo_12' => 22.28, 'pro_elec_kwh_12' => 0.2716,
+            'pro_elec_abo_15' => 25.57, 'pro_elec_kwh_15' => 0.2716,
+            'pro_elec_abo_18' => 28.84, 'pro_elec_kwh_18' => 0.2716,
+            'pro_elec_abo_24' => 35.96, 'pro_elec_kwh_24' => 0.2716,
+            'pro_elec_abo_36' => 48.43, 'pro_elec_kwh_36' => 0.2716,
+            'pro_bureau' => 120, 'pro_commerce' => 180,
+            'pro_restaurant' => 300, 'pro_artisanat' => 250, 'pro_industrie_legere' => 400
+        );
+    }
+    
+    public function get_default_gaz_professionnel() {
+        return array(
+            'pro_gaz_abo' => 156.12, 'pro_gaz_kwh' => 0.0798,
+            'pro_gaz_bureau' => 80, 'pro_gaz_commerce' => 120,
+            'pro_gaz_restaurant' => 200, 'pro_gaz_artisanat' => 180, 'pro_gaz_industrie' => 300
+        );
+    }
     
     public function save_simulateur_data() {
         if (!current_user_can('manage_options')) {
@@ -753,97 +543,6 @@ class HticSimulateurEnergieAdmin {
         }
         
         wp_send_json_success('Données sauvegardées avec succès');
-    }
-    
-    // ================================
-    // MÉTHODES DE DONNÉES PAR DÉFAUT
-    // ================================
-    
-    private function get_default_elec_residentiel() {
-        return array(
-            'puissance_defaut' => 15,
-            // Tarifs BASE
-            'base_abo_3' => 9.69, 'base_kwh_3' => 0.2516,
-            'base_abo_6' => 12.67, 'base_kwh_6' => 0.2516,
-            'base_abo_9' => 15.89, 'base_kwh_9' => 0.2516,
-            'base_abo_12' => 19.16, 'base_kwh_12' => 0.2516,
-            'base_abo_15' => 22.21, 'base_kwh_15' => 0.2516,
-            'base_abo_18' => 25.24, 'base_kwh_18' => 0.2516,
-            'base_abo_24' => 31.96, 'base_kwh_24' => 0.2516,
-            'base_abo_30' => 37.68, 'base_kwh_30' => 0.2516,
-            'base_abo_36' => 44.43, 'base_kwh_36' => 0.2516,
-            // Tarifs HC
-            'hc_abo_6' => 13.28, 'hc_hp_6' => 0.27, 'hc_hc_6' => 0.2068,
-            'hc_abo_9' => 16.82, 'hc_hp_9' => 0.27, 'hc_hc_9' => 0.2068,
-            'hc_abo_12' => 20.28, 'hc_hp_12' => 0.27, 'hc_hc_12' => 0.2068,
-            'hc_abo_15' => 23.57, 'hc_hp_15' => 0.27, 'hc_hc_15' => 0.2068,
-            'hc_abo_18' => 26.84, 'hc_hp_18' => 0.27, 'hc_hc_18' => 0.2068,
-            'hc_abo_24' => 33.7, 'hc_hp_24' => 0.27, 'hc_hc_24' => 0.2068,
-            'hc_abo_30' => 39.94, 'hc_hp_30' => 0.27, 'hc_hc_30' => 0.2068,
-            'hc_abo_36' => 46.24, 'hc_hp_36' => 0.27, 'hc_hc_36' => 0.2068,
-            // Chauffage
-            'chauffage_avant_1980' => 215,
-            'chauffage_1980_2000' => 150,
-            'chauffage_apres_2000' => 75,
-            'chauffage_renovation' => 37.5,
-            // Autres consommations
-            'eau_chaude' => 1800,
-            'electromenagers' => 1497,
-            'eclairage' => 750,
-            'equipements_supp' => 1500,
-            'multimedia' => 300,
-            // Coefficients
-            'coeff_maison' => 1.0,
-            'coeff_appartement' => 0.95,
-            'coeff_1_pers' => 0.33,
-            'coeff_2_pers' => 0.67,
-            'coeff_3_pers' => 0.93,
-            'coeff_4_pers' => 1.23,
-            'coeff_5_pers' => 1.30,
-            'coeff_6_pers' => 1.83
-        );
-    }
-    
-    private function get_default_gaz_residentiel() {
-        return array(
-            'gaz_abo_base' => 102.12,
-            'gaz_kwh_base' => 0.0878,
-            'gaz_chauffage_avant_1980' => 180,
-            'gaz_chauffage_1980_2000' => 120,
-            'gaz_chauffage_apres_2000' => 80,
-            'gaz_chauffage_renovation' => 60,
-            'gaz_eau_chaude' => 1200,
-            'gaz_cuisson' => 365
-        );
-    }
-    
-    private function get_default_elec_professionnel() {
-        return array(
-            'pro_elec_abo_6' => 15.67, 'pro_elec_kwh_6' => 0.2716,
-            'pro_elec_abo_9' => 18.89, 'pro_elec_kwh_9' => 0.2716,
-            'pro_elec_abo_12' => 22.28, 'pro_elec_kwh_12' => 0.2716,
-            'pro_elec_abo_15' => 25.57, 'pro_elec_kwh_15' => 0.2716,
-            'pro_elec_abo_18' => 28.84, 'pro_elec_kwh_18' => 0.2716,
-            'pro_elec_abo_24' => 35.96, 'pro_elec_kwh_24' => 0.2716,
-            'pro_elec_abo_36' => 48.43, 'pro_elec_kwh_36' => 0.2716,
-            'pro_bureau' => 120,
-            'pro_commerce' => 180,
-            'pro_restaurant' => 300,
-            'pro_artisanat' => 250,
-            'pro_industrie_legere' => 400
-        );
-    }
-    
-    private function get_default_gaz_professionnel() {
-        return array(
-            'pro_gaz_abo' => 156.12,
-            'pro_gaz_kwh' => 0.0798,
-            'pro_gaz_bureau' => 80,
-            'pro_gaz_commerce' => 120,
-            'pro_gaz_restaurant' => 200,
-            'pro_gaz_artisanat' => 180,
-            'pro_gaz_industrie' => 300
-        );
     }
     
     private function create_default_options() {

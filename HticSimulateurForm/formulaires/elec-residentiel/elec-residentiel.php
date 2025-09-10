@@ -1,6 +1,6 @@
 <?php
 /**
- * Template du formulaire Électricité Résidentiel
+ * Template du formulaire Électricité Résidentiel - Version mise à jour
  * Fichier: formulaires/elec-residentiel/elec-residentiel.php
  */
 
@@ -169,47 +169,69 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
         </div>
         
-        <!-- Étape 2: Chauffage et eau chaude -->
+        <!-- Étape 2: Chauffage et eau chaude (MISE À JOUR) -->
         <div class="form-step" data-step="2">
             <div class="step-header">
                 <h2>🔥 Chauffage et eau chaude</h2>
-                <p>Sélectionnez vos équipements électriques</p>
+                <p>Sélectionnez vos équipements électriques - Nouveaux types de chauffage disponibles</p>
             </div>
             
             <div class="form-grid">
-                <!-- Chauffage électrique -->
+                <!-- Chauffage électrique (ÉTENDU) -->
                 <div class="form-group full-width">
-                    <label class="form-label">Chauffage électrique</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-card">
-                            <input type="checkbox" name="chauffage_electrique" value="convecteurs">
-                            <div class="checkbox-content">
-                                <div class="checkbox-icon">🔥</div>
-                                <div class="checkbox-text">
+                    <label class="form-label">Type de chauffage électrique</label>
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="type_chauffage_electrique" value="convecteurs">
+                            <div class="radio-content">
+                                <div class="radio-icon">🔥</div>
+                                <div class="radio-text">
                                     <strong>Convecteurs électriques</strong>
-                                    <span>Radiateurs électriques classiques</span>
+                                    <span>Radiateurs électriques classiques (consommation élevée)</span>
                                 </div>
                             </div>
                         </label>
                         
-                        <label class="checkbox-card">
-                            <input type="checkbox" name="chauffage_electrique" value="inertie">
-                            <div class="checkbox-content">
-                                <div class="checkbox-icon">🌡️</div>
-                                <div class="checkbox-text">
+                        <label class="radio-card">
+                            <input type="radio" name="type_chauffage_electrique" value="inertie">
+                            <div class="radio-content">
+                                <div class="radio-icon">🌡️</div>
+                                <div class="radio-text">
                                     <strong>Radiateurs à inertie</strong>
-                                    <span>Chaleur douce et diffuse</span>
+                                    <span>Chaleur douce et diffuse (consommation modérée)</span>
                                 </div>
                             </div>
                         </label>
                         
-                        <label class="checkbox-card">
-                            <input type="checkbox" name="chauffage_electrique" value="clim_reversible">
-                            <div class="checkbox-content">
-                                <div class="checkbox-icon">❄️</div>
-                                <div class="checkbox-text">
+                        <label class="radio-card">
+                            <input type="radio" name="type_chauffage_electrique" value="clim_reversible">
+                            <div class="radio-content">
+                                <div class="radio-icon">❄️</div>
+                                <div class="radio-text">
                                     <strong>Climatisation réversible</strong>
-                                    <span>Pompe à chaleur air/air</span>
+                                    <span>Pompe à chaleur air/air (économique)</span>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="radio-card">
+                            <input type="radio" name="type_chauffage_electrique" value="pac_air_eau">
+                            <div class="radio-content">
+                                <div class="radio-icon">💨</div>
+                                <div class="radio-text">
+                                    <strong>PAC Air/Eau</strong>
+                                    <span>Pompe à chaleur air/eau (très économique)</span>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="radio-card">
+                            <input type="radio" name="type_chauffage_electrique" value="aucun">
+                            <div class="radio-content">
+                                <div class="radio-icon">🚫</div>
+                                <div class="radio-text">
+                                    <strong>Pas de chauffage électrique</strong>
+                                    <span>Autre énergie (gaz, bois, etc.)</span>
                                 </div>
                             </div>
                         </label>
@@ -218,16 +240,42 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                 
                 <!-- Eau chaude électrique -->
                 <div class="form-group full-width">
-                    <label class="checkbox-card large">
-                        <input type="checkbox" name="eau_chaude_electrique" value="oui">
-                        <div class="checkbox-content">
-                            <div class="checkbox-icon">💧</div>
-                            <div class="checkbox-text">
-                                <strong>Eau chaude électrique</strong>
-                                <span>Ballon électrique, chauffe-eau instantané</span>
+                    <label class="form-label">Eau chaude sanitaire</label>
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="eau_chaude_electrique" value="oui">
+                            <div class="radio-content">
+                                <div class="radio-icon">💧</div>
+                                <div class="radio-text">
+                                    <strong>Eau chaude électrique</strong>
+                                    <span>Ballon électrique, chauffe-eau instantané</span>
+                                </div>
                             </div>
-                        </div>
-                    </label>
+                        </label>
+                        
+                        <label class="radio-card">
+                            <input type="radio" name="eau_chaude_electrique" value="non">
+                            <div class="radio-content">
+                                <div class="radio-icon">🔥</div>
+                                <div class="radio-text">
+                                    <strong>Autre énergie</strong>
+                                    <span>Gaz, solaire, thermodynamique</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Info sur les consommations -->
+                <div class="info-box">
+                    <div class="info-icon">💡</div>
+                    <div class="info-content">
+                        <h4>Consommations estimées par type</h4>
+                        <p><strong>PAC Air/Eau :</strong> Solution la plus économique (jusqu'à 75% d'économie)</p>
+                        <p><strong>Climatisation réversible :</strong> Économique et polyvalente (50% d'économie)</p>
+                        <p><strong>Radiateurs à inertie :</strong> Plus efficaces que les convecteurs (20% d'économie)</p>
+                        <p><strong>Convecteurs :</strong> Solution basique, consommation la plus élevée</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -248,7 +296,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                             <div class="checkbox-icon">🍳</div>
                             <div class="checkbox-text">
                                 <strong>Cuisson électrique</strong>
-                                <span>Plaques électriques, induction</span>
+                                <span>Plaques électriques, induction, four électrique</span>
                             </div>
                         </div>
                     </label>
@@ -264,7 +312,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                                 <div class="checkbox-icon">🏊</div>
                                 <div class="checkbox-text">
                                     <strong>Piscine</strong>
-                                    <span>Filtration uniquement</span>
+                                    <span>Filtration uniquement (+1400 kWh/an)</span>
                                 </div>
                             </div>
                         </label>
@@ -275,7 +323,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                                 <div class="checkbox-icon">🌊</div>
                                 <div class="checkbox-text">
                                     <strong>Piscine chauffée</strong>
-                                    <span>Avec chauffage électrique</span>
+                                    <span>Avec chauffage électrique (+4000 kWh/an)</span>
                                 </div>
                             </div>
                         </label>
@@ -286,7 +334,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                                 <div class="checkbox-icon">🛁</div>
                                 <div class="checkbox-text">
                                     <strong>Spa / Jacuzzi</strong>
-                                    <span>Chauffage et pompes</span>
+                                    <span>Chauffage et pompes (+2000 kWh/an)</span>
                                 </div>
                             </div>
                         </label>
@@ -297,19 +345,44 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                                 <div class="checkbox-icon">🚗</div>
                                 <div class="checkbox-text">
                                     <strong>Voiture électrique</strong>
-                                    <span>Recharge à domicile</span>
+                                    <span>Recharge à domicile (+1500 kWh/an)</span>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="equipements_speciaux" value="climatiseur_mobile">
+                            <div class="checkbox-content">
+                                <div class="checkbox-icon">🌬️</div>
+                                <div class="checkbox-text">
+                                    <strong>Climatiseur mobile</strong>
+                                    <span>Climatisation d'appoint (+800 kWh/an)</span>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="equipements_speciaux" value="cave_a_vin">
+                            <div class="checkbox-content">
+                                <div class="checkbox-icon">🍷</div>
+                                <div class="checkbox-text">
+                                    <strong>Cave à vin</strong>
+                                    <span>Réfrigération spécialisée (+400 kWh/an)</span>
                                 </div>
                             </div>
                         </label>
                     </div>
                 </div>
                 
-                <!-- Info automatique -->
+                <!-- Info automatique MISE À JOUR -->
                 <div class="info-box">
                     <div class="info-icon">ℹ️</div>
                     <div class="info-content">
-                        <h4>Inclus automatiquement</h4>
-                        <p>Électroménager, éclairage, multimédia et autres équipements de base sont déjà pris en compte dans le calcul.</p>
+                        <h4>Inclus automatiquement dans le calcul</h4>
+                        <p><strong>Électroménager (1497 kWh/an) :</strong> Réfrigérateur, lave-linge, lave-vaisselle, four micro-ondes, aspirateur</p>
+                        <p><strong>Éclairage (750 kWh/an) :</strong> Éclairage LED et traditionnel selon la surface</p>
+                        <p><strong>Multimédia (300 kWh/an) :</strong> TV, ordinateurs, box internet, décodeurs</p>
+                        <p><strong>Petits équipements (1500 kWh/an) :</strong> Autres appareils du quotidien</p>
                     </div>
                 </div>
             </div>
@@ -319,7 +392,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
         <div class="form-step" data-step="4">
             <div class="step-header">
                 <h2>📊 Vos résultats personnalisés</h2>
-                <p>Estimation basée sur vos informations</p>
+                <p>Estimation basée sur vos informations - Maintenant avec tarif TEMPO</p>
             </div>
             
             <div id="results-container">

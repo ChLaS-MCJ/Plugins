@@ -1,9 +1,11 @@
-// templates/simulateur-unifie.js
+// templates/simulateur-unifie.js - Version moderne et professionnelle
 
 jQuery(document).ready(function ($) {
 
     // Variables globales
-    let currentCategory = 'particulier';
+    let currentStep = 1;
+    let selectedProfile = 'particulier';
+    let selectedEnergy = 'elec';
     let currentType = '';
     let config = {};
     let formulaireLoaded = {};
@@ -13,16 +15,15 @@ jQuery(document).ready(function ($) {
 
     function init() {
         loadConfiguration();
-        setupTabNavigation();
-        setupTypeSelection();
+        setupStepNavigation();
+        setupSelectionHandlers();
         setupFormulaireMethods();
 
-        // Vérifier s'il y a un type par défaut
-        if (config.defaultType && config.defaultType !== '') {
-            selectTypeDirectly(config.defaultType);
-        }
+        // Pré-sélectionner les options par défaut
+        selectProfile('particulier');
+        selectEnergy('elec');
 
-        console.log('🚀 Simulateur unifié initialisé');
+        console.log('🚀 Simulateur moderne initialisé');
     }
 
     // ================================
@@ -34,124 +35,179 @@ jQuery(document).ready(function ($) {
         if (configElement) {
             try {
                 config = JSON.parse(configElement.textContent);
-                console.log('📊 Configuration globale chargée:', Object.keys(config.types).length, 'types');
+                console.log('📊 Configuration chargée:', Object.keys(config.types).length, 'types');
             } catch (e) {
                 console.error('❌ Erreur chargement configuration:', e);
-                config = { types: {}, defaultType: '', ajaxUrl: '', nonce: '', pluginUrl: '' };
+                config = { types: {}, ajaxUrl: '', nonce: '', pluginUrl: '' };
             }
         }
     }
 
     // ================================
-    // NAVIGATION ENTRE ONGLETS
+    // NAVIGATION ENTRE LES ÉTAPES
     // ================================
 
-    function setupTabNavigation() {
-        // Navigation principale (Particulier/Professionnel)
-        $('.main-tab').on('click', function () {
-            const category = $(this).data('category');
-            switchMainCategory(category);
-        });
-    }
-
-    function switchMainCategory(category) {
-        if (category === currentCategory) return;
-
-        // Mettre à jour les onglets principaux
-        $('.main-tab').removeClass('active');
-        $('.main-tab[data-category="' + category + '"]').addClass('active');
-
-        // Mettre à jour les groupes d'énergie
-        $('.energy-group').removeClass('active');
-        $('.energy-group[data-category="' + category + '"]').addClass('active');
-
-        // Réinitialiser la sélection des énergies
-        $('.energy-tab').removeClass('active');
-        $('.energy-group[data-category="' + category + '"] .energy-tab:first').addClass('active');
-
-        currentCategory = category;
-        currentType = '';
-
-        console.log('📂 Catégorie changée:', category);
-    }
-
-    // ================================
-    // SÉLECTION DU TYPE D'ÉNERGIE
-    // ================================
-
-    function setupTypeSelection() {
-        // Sélection au clic sur une carte énergie
-        $('.energy-tab').on('click', function () {
-            const type = $(this).data('type');
-            selectType(type);
-        });
-
-        // Navigation par clavier
-        $(document).on('keydown', function (e) {
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                navigateEnergyTabs(e.key === 'ArrowRight');
-            }
-            if (e.key === 'Enter') {
-                const activeTab = $('.energy-tab.active');
-                if (activeTab.length) {
-                    const type = activeTab.data('type');
-                    selectType(type);
-                }
+    function setupStepNavigation() {
+        // Boutons suivant
+        $('.btn-next').on('click', function () {
+            if (currentStep < 3) {
+                goToStep(currentStep + 1);
             }
         });
+
+        // Boutons retour
+        $('.btn-back').on('click', function () {
+            if (currentStep > 1) {
+                goToStep(currentStep - 1);
+            }
+        });
+
+        // Bouton de démarrage de simulation
+        $('.btn-start-simulation').on('click', function () {
+            startSimulation();
+        });
     }
 
-    function selectType(type) {
-        if (!config.types[type]) {
-            console.error('❌ Type non trouvé:', type);
+    function goToStep(step) {
+        // Masquer l'étape actuelle
+        $('.selection-step.active').removeClass('active');
+
+        // Afficher la nouvelle étape
+        $(`.selection-step[data-step="${step}"]`).addClass('active');
+
+        // Mettre à jour l'indicateur de progression
+        $('.step-indicator').removeClass('active');
+        $(`.step-indicator[data-step="${step}"]`).addClass('active');
+
+        currentStep = step;
+
+        // Mettre à jour les boutons
+        updateNavigationButtons();
+
+        // Actions spécifiques par étape
+        if (step === 3) {
+            updateSummary();
+        }
+
+        console.log('📍 Étape', step, 'activée');
+    }
+
+    function updateNavigationButtons() {
+        const $btnNext = $('.btn-next');
+        const $btnBack = $('.btn-back');
+
+        // Gérer l'état du bouton suivant selon l'étape
+        switch (currentStep) {
+            case 1:
+                $btnNext.prop('disabled', !selectedProfile);
+                break;
+            case 2:
+                $btnNext.prop('disabled', !selectedEnergy);
+                break;
+            case 3:
+                // Pas de bouton suivant à l'étape 3
+                break;
+        }
+    }
+
+    // ================================
+    // GESTION DES SÉLECTIONS
+    // ================================
+
+    function setupSelectionHandlers() {
+        // Sélection du profil
+        $('.profile-card').on('click', function () {
+            const profile = $(this).data('profile');
+            selectProfile(profile);
+        });
+
+        // Sélection de l'énergie
+        $('.energy-card').on('click', function () {
+            const energy = $(this).data('energy');
+            selectEnergy(energy);
+        });
+    }
+
+    function selectProfile(profile) {
+        selectedProfile = profile;
+
+        // Mettre à jour l'interface
+        $('.profile-card').removeClass('active');
+        $(`.profile-card[data-profile="${profile}"]`).addClass('active');
+
+        // Mettre à jour le type actuel
+        updateCurrentType();
+
+        // Débloquer le bouton suivant
+        $('.btn-next').prop('disabled', false);
+
+        console.log('👤 Profil sélectionné:', profile);
+    }
+
+    function selectEnergy(energy) {
+        selectedEnergy = energy;
+
+        // Mettre à jour l'interface
+        $('.energy-card').removeClass('active');
+        $(`.energy-card[data-energy="${energy}"]`).addClass('active');
+
+        // Mettre à jour le type actuel
+        updateCurrentType();
+
+        // Débloquer le bouton suivant
+        $('.btn-next').prop('disabled', false);
+
+        console.log('⚡ Énergie sélectionnée:', energy);
+    }
+
+    function updateCurrentType() {
+        // Construire le type à partir des sélections
+        if (selectedProfile === 'particulier') {
+            currentType = selectedEnergy + '-residentiel';
+        } else {
+            currentType = selectedEnergy + '-professionnel';
+        }
+
+        console.log('🔄 Type mis à jour:', currentType);
+    }
+
+    function updateSummary() {
+        const typeConfig = config.types[currentType];
+
+        if (typeConfig) {
+            // Mettre à jour l'icône
+            $('#summary-icon').text(typeConfig.icon);
+
+            // Mettre à jour le badge
+            const profileLabel = selectedProfile === 'particulier' ? 'Particulier' : 'Professionnel';
+            $('#summary-badge').text(profileLabel);
+
+            // Mettre à jour le titre et description
+            $('#summary-title').text(typeConfig.title);
+            $('#summary-description').text(typeConfig.subtitle);
+
+            console.log('📋 Résumé mis à jour pour:', currentType);
+        }
+    }
+
+    // ================================
+    // DÉMARRAGE DE LA SIMULATION
+    // ================================
+
+    function startSimulation() {
+        if (!currentType || !config.types[currentType]) {
+            showNotification('⚠️ Configuration manquante pour ce type de simulation', 'warning');
             return;
         }
 
-        // Mettre à jour la sélection visuelle
-        $('.energy-group.active .energy-tab').removeClass('active');
-        $('.energy-tab[data-type="' + type + '"]').addClass('active');
-
-        currentType = type;
-
         // Animation de transition
-        $('#type-selector').fadeOut(300, function () {
-            loadFormulaire(type);
+        $('.simulateur-selector-moderne').fadeOut(400, function () {
+            loadFormulaire(currentType);
         });
 
-        console.log('⚡ Type sélectionné:', type);
+        // Mettre à jour l'URL
+        updateURL(currentType);
     }
-
-    function selectTypeDirectly(type) {
-        // Sélection directe d'un type (via paramètre defaultType)
-        if (!config.types[type]) return;
-
-        // Déterminer la catégorie
-        const category = type.includes('residentiel') ? 'particulier' : 'professionnel';
-
-        // Mettre à jour l'interface
-        switchMainCategory(category);
-        selectType(type);
-    }
-
-    function navigateEnergyTabs(goRight) {
-        const activeGroup = $('.energy-group.active');
-        const tabs = activeGroup.find('.energy-tab');
-        const currentIndex = tabs.index($('.energy-tab.active'));
-
-        let newIndex;
-        if (goRight) {
-            newIndex = (currentIndex + 1) % tabs.length;
-        } else {
-            newIndex = currentIndex - 1 < 0 ? tabs.length - 1 : currentIndex - 1;
-        }
-
-        tabs.removeClass('active');
-        tabs.eq(newIndex).addClass('active');
-    }
-
-    // ================================
-    // CHARGEMENT DES FORMULAIRES
-    // ================================
 
     function loadFormulaire(type) {
         const typeConfig = config.types[type];
@@ -160,36 +216,32 @@ jQuery(document).ready(function ($) {
         updateFormulaireHeader(typeConfig);
 
         // Afficher le container de formulaire
-        $('#formulaire-container').fadeIn(400);
+        $('.formulaire-container').fadeIn(500);
 
         // Charger le contenu du formulaire
         if (formulaireLoaded[type]) {
-            // Si déjà chargé, réutiliser
             showCachedFormulaire(type);
         } else {
-            // Charger via AJAX
             loadFormulaireAjax(type);
         }
 
         // Smooth scroll vers le formulaire
         setTimeout(() => {
             $('html, body').animate({
-                scrollTop: $('#formulaire-container').offset().top - 50
-            }, 500);
-        }, 400);
+                scrollTop: $('.formulaire-container').offset().top - 50
+            }, 600);
+        }, 500);
     }
 
     function updateFormulaireHeader(typeConfig) {
-        $('.formulaire-icon').text(typeConfig.icon);
-        $('#formulaire-title-text').text(typeConfig.title);
-        $('#formulaire-subtitle-text').text(typeConfig.subtitle);
+        $('.formulaire-icon-moderne').text(typeConfig.icon);
+        $('.formulaire-title-moderne').text(typeConfig.title);
+        $('.formulaire-subtitle-moderne').text(typeConfig.subtitle);
     }
 
     function loadFormulaireAjax(type) {
-        // Afficher l'état de chargement
         showLoadingState();
 
-        // Charger le formulaire via AJAX
         $.ajax({
             url: config.ajaxUrl,
             type: 'POST',
@@ -201,97 +253,107 @@ jQuery(document).ready(function ($) {
             success: function (response) {
                 if (response.success) {
                     displayFormulaire(type, response.data);
-
-                    // Mettre en cache
                     formulaireLoaded[type] = response.data;
                 } else {
-                    showErrorState('Erreur lors du chargement du formulaire');
+                    showErrorState('Erreur lors du chargement: ' + (response.data || 'Erreur inconnue'));
                 }
             },
             error: function (xhr, status, error) {
                 console.error('❌ Erreur AJAX:', error);
-
-                // Fallback: charger le formulaire directement
-                loadFormulaireFallback(type);
+                showErrorState('Erreur de connexion au serveur');
             }
         });
     }
 
-    function loadFormulaireFallback(type) {
-        // Fallback: charger le template directement via fetch
-        const templateUrl = config.pluginUrl + 'formulaires/' + type.replace('-', '-') + '/' + type + '.php';
-
-        fetch(templateUrl)
-            .then(response => response.text())
-            .then(html => {
-                displayFormulaire(type, { html: html });
-                formulaireLoaded[type] = { html: html };
-            })
-            .catch(error => {
-                console.error('❌ Erreur fallback:', error);
-                showErrorState('Impossible de charger le formulaire');
-            });
-    }
-
     function displayFormulaire(type, data) {
-        // Injecter le HTML du formulaire
-        $('#formulaire-content').html(data.html || data);
-
-        // Charger les ressources spécifiques (CSS/JS)
+        $('.formulaire-content').html(data.html || data);
         loadFormulaireAssets(type);
-
-        // Initialiser le formulaire
         initializeFormulaire(type);
-
-        console.log('✅ Formulaire', type, 'chargé et initialisé');
+        console.log('✅ Formulaire', type, 'chargé');
     }
 
     function showCachedFormulaire(type) {
         const cachedData = formulaireLoaded[type];
-        $('#formulaire-content').html(cachedData.html || cachedData);
-
-        // Réinitialiser le formulaire
+        $('.formulaire-content').html(cachedData.html || cachedData);
         initializeFormulaire(type);
-
         console.log('📋 Formulaire', type, 'restauré depuis le cache');
     }
 
     function loadFormulaireAssets(type) {
         const baseUrl = config.pluginUrl + 'formulaires/' + type + '/';
 
-        // Charger le CSS spécifique
-        if (!$('link[href="' + baseUrl + type + '.css"]').length) {
+        // Charger CSS s'il n'est pas déjà présent
+        if (!$('link[href*="' + type + '.css"]').length) {
             $('<link>')
                 .attr('rel', 'stylesheet')
                 .attr('href', baseUrl + type + '.css?v=' + Date.now())
                 .appendTo('head');
         }
 
-        // Charger le JS spécifique
-        if (!$('script[src="' + baseUrl + type + '.js"]').length) {
-            $('<script>')
-                .attr('src', baseUrl + type + '.js?v=' + Date.now())
-                .appendTo('body');
+        // Charger JS s'il n'est pas déjà présent
+        if (!$('script[src*="' + type + '.js"]').length) {
+            $.getScript(baseUrl + type + '.js?v=' + Date.now())
+                .done(function () {
+                    console.log('✅ Script', type, 'chargé');
+                })
+                .fail(function () {
+                    console.warn('⚠️ Impossible de charger le script', type);
+                });
         }
     }
 
     function initializeFormulaire(type) {
-        // Injecter la configuration spécifique au type
         const typeConfig = config.types[type];
 
-        // Créer ou mettre à jour l'élément de configuration
-        let configElement = $('#simulateur-config');
+        // Injecter la configuration spécifique
+        let configElement = $('.formulaire-content #simulateur-config');
         if (configElement.length === 0) {
             configElement = $('<script>')
                 .attr('type', 'application/json')
                 .attr('id', 'simulateur-config')
-                .appendTo('#formulaire-content');
+                .appendTo('.formulaire-content');
         }
 
         configElement.text(JSON.stringify(typeConfig.data, null, 2));
 
-        // Déclencher un événement personnalisé pour signaler que le formulaire est prêt
+        // Déclencher un événement pour signaler que le formulaire est prêt
         $(document).trigger('htic:formulaire:ready', { type: type, config: typeConfig });
+    }
+
+    // ================================
+    // GESTION DES ÉTATS
+    // ================================
+
+    function showLoadingState() {
+        $('.formulaire-content').html(`
+            <div class="loading-moderne">
+                <div class="loading-spinner-moderne"></div>
+                <p>Chargement de votre simulateur personnalisé...</p>
+            </div>
+        `);
+    }
+
+    function showErrorState(message) {
+        $('.formulaire-content').html(`
+            <div class="error-moderne">
+                <div class="error-icon">⚠️</div>
+                <h3>Erreur de chargement</h3>
+                <p>${message}</p>
+                <div class="error-actions">
+                    <button type="button" class="btn-retry">
+                        🔄 Réessayer
+                    </button>
+                    <button type="button" class="btn-back-to-selector">
+                        ← Retour au menu
+                    </button>
+                </div>
+            </div>
+        `);
+
+        // Gestionnaires pour les boutons d'erreur
+        $('.btn-retry').on('click', function () {
+            loadFormulaireAjax(currentType);
+        });
     }
 
     // ================================
@@ -299,221 +361,545 @@ jQuery(document).ready(function ($) {
     // ================================
 
     function setupFormulaireMethods() {
-        // Bouton retour à la sélection
-        $(document).on('click', '#back-to-selection', function () {
-            returnToSelection();
+        // Bouton retour vers le sélecteur
+        $(document).on('click', '.btn-back-to-selector', function () {
+            returnToSelector();
         });
 
-        // Écouter les événements de changement de formulaire
-        $(document).on('htic:formulaire:change', function (e, data) {
-            if (data.type && data.type !== currentType) {
-                selectType(data.type);
-            }
-        });
-
-        // Gestion de l'historique du navigateur
+        // Gestion de l'historique navigateur
         $(window).on('popstate', function (e) {
-            if (e.originalEvent.state && e.originalEvent.state.hticType) {
-                selectType(e.originalEvent.state.hticType);
+            if (e.originalEvent.state && e.originalEvent.state.simulateurType) {
+                const type = e.originalEvent.state.simulateurType;
+                setTypeFromString(type);
+                loadFormulaire(type);
             } else {
-                returnToSelection();
+                returnToSelector();
             }
         });
     }
 
-    function returnToSelection() {
-        // Masquer le formulaire et revenir à la sélection
-        $('#formulaire-container').fadeOut(300, function () {
-            $('#type-selector').fadeIn(400);
+    function returnToSelector() {
+        $('.formulaire-container').fadeOut(400, function () {
+            $('.simulateur-selector-moderne').fadeIn(500);
         });
 
-        // Smooth scroll vers la sélection
+        // Smooth scroll vers le sélecteur
         setTimeout(() => {
             $('html, body').animate({
-                scrollTop: $('#type-selector').offset().top - 50
-            }, 500);
-        }, 300);
-
-        currentType = '';
+                scrollTop: $('.simulateur-selector-moderne').offset().top - 100
+            }, 600);
+        }, 400);
 
         // Mettre à jour l'historique
         if (history.pushState) {
             history.pushState(null, '', window.location.pathname);
         }
 
-        console.log('🔙 Retour à la sélection');
+        console.log('🔙 Retour au sélecteur');
+    }
+
+    function setTypeFromString(type) {
+        // Parser le type pour mettre à jour les sélections
+        if (type.includes('residentiel')) {
+            selectedProfile = 'particulier';
+        } else if (type.includes('professionnel')) {
+            selectedProfile = 'professionnel';
+        }
+
+        if (type.includes('elec')) {
+            selectedEnergy = 'elec';
+        } else if (type.includes('gaz')) {
+            selectedEnergy = 'gaz';
+        }
+
+        currentType = type;
+
+        // Mettre à jour l'interface
+        selectProfile(selectedProfile);
+        selectEnergy(selectedEnergy);
+
+        // Aller directement à l'étape 3
+        goToStep(3);
     }
 
     // ================================
-    // ÉTATS DE CHARGEMENT ET D'ERREUR
+    // UTILITAIRES
     // ================================
 
-    function showLoadingState() {
-        $('#formulaire-content').html(`
-            <div class="loading-formulaire">
-                <div class="loading-spinner"></div>
-                <p>Chargement du formulaire...</p>
+    function showNotification(message, type = 'info', duration = 4000) {
+        // Supprimer les anciens messages
+        $('.notification-moderne').remove();
+
+        const notificationClass = `notification-moderne notification-${type}`;
+        const $notification = $(`
+            <div class="${notificationClass}">
+                <span class="notification-icon">
+                    ${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : type === 'error' ? '❌' : 'ℹ️'}
+                </span>
+                <span class="notification-text">${message}</span>
             </div>
         `);
+
+        // Ajouter le message au container principal
+        $('.htic-simulateur-unifie').prepend($notification);
+
+        // Animation d'entrée
+        $notification.hide().slideDown(400);
+
+        // Suppression automatique
+        if (duration > 0) {
+            setTimeout(() => {
+                $notification.slideUp(400, () => $notification.remove());
+            }, duration);
+        }
     }
-
-    function showErrorState(message) {
-        $('#formulaire-content').html(`
-            <div class="error-formulaire">
-                <div class="error-icon">⚠️</div>
-                <h3>Erreur de chargement</h3>
-                <p>${message}</p>
-                <button type="button" class="btn btn-primary" id="retry-load">
-                    Réessayer
-                </button>
-                <button type="button" class="btn btn-secondary" id="back-to-selection-error">
-                    Retour à la sélection
-                </button>
-            </div>
-        `);
-
-        // Gérer les boutons d'erreur
-        $('#retry-load').on('click', function () {
-            if (currentType) {
-                loadFormulaireAjax(currentType);
-            }
-        });
-
-        $('#back-to-selection-error').on('click', function () {
-            returnToSelection();
-        });
-    }
-
-    // ================================
-    // MÉTHODES UTILITAIRES
-    // ================================
 
     function updateURL(type) {
-        // Mettre à jour l'URL sans recharger la page
         if (history.pushState) {
             const url = new URL(window.location);
             url.searchParams.set('simulateur', type);
-            history.pushState({ hticType: type }, '', url);
+            history.pushState({ simulateurType: type }, '', url);
         }
     }
 
-    function getTypeFromURL() {
-        // Récupérer le type depuis l'URL
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('simulateur');
+    // ================================
+    // ANIMATIONS ET EFFETS
+    // ================================
+
+    function addNotificationStyles() {
+        if (!$('#notification-styles').length) {
+            $(`
+                <style id="notification-styles">
+                .notification-moderne {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    padding: 1rem 1.5rem;
+                    border-radius: 12px;
+                    margin-bottom: 1rem;
+                    font-weight: 500;
+                    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+                }
+                
+                .notification-info {
+                    background: #eff6ff;
+                    color: #1d4ed8;
+                    border-left: 4px solid #3b82f6;
+                }
+                
+                .notification-success {
+                    background: #f0fdf4;
+                    color: #16a34a;
+                    border-left: 4px solid #22c55e;
+                }
+                
+                .notification-warning {
+                    background: #fffbeb;
+                    color: #d97706;
+                    border-left: 4px solid #f59e0b;
+                }
+                
+                .notification-error {
+                    background: #fef2f2;
+                    color: #dc2626;
+                    border-left: 4px solid #ef4444;
+                }
+                
+                .error-moderne {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 4rem 2rem;
+                    text-align: center;
+                }
+                
+                .error-moderne .error-icon {
+                    font-size: 4rem;
+                    margin-bottom: 1rem;
+                    color: #ef4444;
+                }
+                
+                .error-moderne h3 {
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    color: #1f2937;
+                    margin: 0 0 1rem 0;
+                }
+                
+                .error-moderne p {
+                    color: #6b7280;
+                    margin: 0 0 2rem 0;
+                    font-size: 1.1rem;
+                }
+                
+                .error-actions {
+                    display: flex;
+                    gap: 1rem;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                }
+                
+                .error-actions button {
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 8px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    border: none;
+                    transition: all 0.2s ease;
+                }
+                
+                .btn-retry {
+                    background: #3b82f6;
+                    color: white;
+                }
+                
+                .btn-retry:hover {
+                    background: #2563eb;
+                    transform: translateY(-1px);
+                }
+                </style>
+            `).appendTo('head');
+        }
     }
 
     // ================================
-    // ÉVÉNEMENTS GLOBAUX
+    // INITIALISATION AVANCÉE
     // ================================
+
+    // Détecter le type depuis l'URL au chargement
+    $(window).on('load', function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlType = urlParams.get('simulateur');
+
+        if (urlType && config.types && config.types[urlType]) {
+            setTimeout(() => {
+                setTypeFromString(urlType);
+                startSimulation();
+            }, 1000);
+        }
+    });
 
     // Gestion du redimensionnement
-    $(window).on('resize', function () {
+    $(window).on('resize', debounce(function () {
         // Ajustements responsive si nécessaire
-    });
+        updateResponsiveElements();
+    }, 250));
 
-    // Initialisation basée sur l'URL
-    $(window).on('load', function () {
-        const urlType = getTypeFromURL();
-        if (urlType && config.types[urlType] && !config.defaultType) {
-            selectTypeDirectly(urlType);
+    function updateResponsiveElements() {
+        // Ajustements pour mobile/tablet
+        if ($(window).width() < 768) {
+            // Logique spécifique mobile
         }
-    });
+    }
 
-    // Gestion des erreurs globales
-    $(document).ajaxError(function (event, xhr, settings, thrownError) {
-        if (settings.data && settings.data.indexOf('htic_load_formulaire') !== -1) {
-            console.error('❌ Erreur AJAX formulaire:', thrownError);
+    // Fonction utilitaire debounce
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // ================================
+    // EFFETS VISUELS AVANCÉS
+    // ================================
+
+    function initVisualEffects() {
+        // Animation des éléments flottants
+        animateFloatingElements();
+
+        // Effet parallax léger sur le hero
+        setupParallaxEffect();
+
+        // Animation au scroll
+        setupScrollAnimations();
+    }
+
+    function animateFloatingElements() {
+        $('.element').each(function (index) {
+            const $element = $(this);
+            const delay = index * 1500;
+
+            setInterval(() => {
+                $element.addClass('pulse-effect');
+                setTimeout(() => {
+                    $element.removeClass('pulse-effect');
+                }, 1000);
+            }, 6000 + delay);
+        });
+    }
+
+    function setupParallaxEffect() {
+        $(window).on('scroll', throttle(function () {
+            const scrolled = $(window).scrollTop();
+            const parallax = scrolled * 0.3;
+
+            $('.floating-elements').css('transform', `translateY(${parallax}px)`);
+        }, 16));
+    }
+
+    function setupScrollAnimations() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        });
+
+        // Observer les éléments à animer
+        $('.profile-card, .energy-card, .help-card').each(function () {
+            observer.observe(this);
+        });
+    }
+
+    // Fonction utilitaire throttle
+    function throttle(func, limit) {
+        let inThrottle;
+        return function () {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    }
+
+    // ================================
+    // ACCESSIBILITÉ
+    // ================================
+
+    function setupAccessibility() {
+        // Navigation au clavier
+        setupKeyboardNavigation();
+
+        // Annonces pour lecteurs d'écran
+        setupScreenReaderAnnouncements();
+
+        // Focus management
+        setupFocusManagement();
+    }
+
+    function setupKeyboardNavigation() {
+        $(document).on('keydown', function (e) {
+            // Navigation avec les flèches
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                handleArrowNavigation(e);
+            }
+
+            // Enter/Space pour sélectionner
+            if (e.key === 'Enter' || e.key === ' ') {
+                handleSelectionKeys(e);
+            }
+
+            // Échap pour revenir en arrière
+            if (e.key === 'Escape') {
+                handleEscapeKey(e);
+            }
+        });
+    }
+
+    function handleArrowNavigation(e) {
+        const $focused = $(document.activeElement);
+
+        if ($focused.hasClass('profile-card')) {
+            e.preventDefault();
+            const $cards = $('.profile-card');
+            const currentIndex = $cards.index($focused);
+            const nextIndex = e.key === 'ArrowRight' ?
+                (currentIndex + 1) % $cards.length :
+                (currentIndex - 1 + $cards.length) % $cards.length;
+
+            $cards.eq(nextIndex).focus();
         }
-    });
+
+        if ($focused.hasClass('energy-card')) {
+            e.preventDefault();
+            const $cards = $('.energy-card');
+            const currentIndex = $cards.index($focused);
+            const nextIndex = e.key === 'ArrowRight' ?
+                (currentIndex + 1) % $cards.length :
+                (currentIndex - 1 + $cards.length) % $cards.length;
+
+            $cards.eq(nextIndex).focus();
+        }
+    }
+
+    function handleSelectionKeys(e) {
+        const $focused = $(document.activeElement);
+
+        if ($focused.hasClass('profile-card')) {
+            e.preventDefault();
+            $focused.click();
+        }
+
+        if ($focused.hasClass('energy-card')) {
+            e.preventDefault();
+            $focused.click();
+        }
+
+        if ($focused.hasClass('btn-next') || $focused.hasClass('btn-start-simulation')) {
+            e.preventDefault();
+            $focused.click();
+        }
+    }
+
+    function handleEscapeKey(e) {
+        if ($('.formulaire-container').is(':visible')) {
+            e.preventDefault();
+            returnToSelector();
+        }
+    }
+
+    function setupScreenReaderAnnouncements() {
+        // Créer une zone d'annonces cachée
+        if (!$('#sr-announcements').length) {
+            $('<div id="sr-announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>')
+                .appendTo('body');
+        }
+    }
+
+    function announceToScreenReader(message) {
+        $('#sr-announcements').text(message);
+
+        // Nettoyer après un délai
+        setTimeout(() => {
+            $('#sr-announcements').empty();
+        }, 1000);
+    }
+
+    function setupFocusManagement() {
+        // Rendre les cartes focusables
+        $('.profile-card, .energy-card').attr('tabindex', '0');
+
+        // Ajouter des labels ARIA
+        $('.profile-card').attr('role', 'button').attr('aria-pressed', 'false');
+        $('.energy-card').attr('role', 'button').attr('aria-pressed', 'false');
+
+        // Mettre à jour les états ARIA lors des sélections
+        $('.profile-card').on('click', function () {
+            $('.profile-card').attr('aria-pressed', 'false');
+            $(this).attr('aria-pressed', 'true');
+
+            const profileText = $(this).find('h3').text();
+            announceToScreenReader(`${profileText} sélectionné`);
+        });
+
+        $('.energy-card').on('click', function () {
+            $('.energy-card').attr('aria-pressed', 'false');
+            $(this).attr('aria-pressed', 'true');
+
+            const energyText = $(this).find('h3').text();
+            announceToScreenReader(`${energyText} sélectionné`);
+        });
+    }
+
+    // ================================
+    // INITIALISATION FINALE
+    // ================================
+
+    // Ajouter les styles de notification
+    addNotificationStyles();
+
+    // Initialiser les effets visuels
+    initVisualEffects();
+
+    // Initialiser l'accessibilité
+    setupAccessibility();
 
     // ================================
     // API PUBLIQUE
     // ================================
 
-    // Exposer des méthodes publiques
-    window.HticSimulateurUnifie = {
-        selectType: selectType,
-        returnToSelection: returnToSelection,
+    window.HticSimulateurModerne = {
+        // Méthodes publiques
+        selectProfile: selectProfile,
+        selectEnergy: selectEnergy,
+        goToStep: goToStep,
+        startSimulation: startSimulation,
+        returnToSelector: returnToSelector,
+
+        // Getters
+        getCurrentStep: () => currentStep,
         getCurrentType: () => currentType,
-        getCurrentCategory: () => currentCategory,
+        getSelectedProfile: () => selectedProfile,
+        getSelectedEnergy: () => selectedEnergy,
         getConfig: () => config,
+
+        // Utilitaires
+        showNotification: showNotification,
         reloadFormulaire: (type) => {
-            formulaireLoaded[type] = null;
+            formulaireLoaded[type || currentType] = null;
             loadFormulaire(type || currentType);
         }
     };
 
-    // Événement personnalisé pour signaler que le simulateur est prêt
+    // Ajouter des styles CSS supplémentaires
+    $(`
+        <style>
+        .pulse-effect {
+            animation: pulse 1s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .animate-in {
+            animation: slideInUp 0.6s ease-out;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        .profile-card:focus,
+        .energy-card:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+        </style>
+    `).appendTo('head');
+
+    console.log('✅ Simulateur moderne prêt - API exposée');
+
+    // Déclencher un événement personnalisé
     $(document).trigger('htic:simulateur:ready', {
-        currentType: currentType,
-        currentCategory: currentCategory
+        currentStep: currentStep,
+        selectedProfile: selectedProfile,
+        selectedEnergy: selectedEnergy,
+        currentType: currentType
     });
-
-    console.log('✅ Simulateur unifié prêt !');
 });
-
-// ================================
-// STYLES CSS POUR LES ÉTATS D'ERREUR
-// ================================
-
-// Injecter les styles pour les états d'erreur
-const errorStyles = `
-<style>
-.error-formulaire {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    text-align: center;
-}
-
-.error-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-}
-
-.error-formulaire h3 {
-    margin: 0 0 1rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--gray-800);
-}
-
-.error-formulaire p {
-    margin: 0 0 2rem 0;
-    color: var(--gray-600);
-    font-size: 1.1rem;
-}
-
-.error-formulaire .btn {
-    margin: 0 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-}
-
-.error-formulaire .btn-primary {
-    background: var(--primary);
-    color: white;
-}
-
-.error-formulaire .btn-secondary {
-    background: var(--gray-500);
-    color: white;
-}
-
-.error-formulaire .btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-}
-</style>
-`;
-
-if (!document.querySelector('#htic-error-styles')) {
-    $('head').append(errorStyles.replace('<style>', '<style id="htic-error-styles">'));
-}

@@ -1,7 +1,7 @@
 <?php
 /**
- * Template du simulateur unifié avec sélection par onglets
- * Fichier: templates/simulateur-unifie.php
+ * Template du simulateur unifié - Design moderne et professionnel
+ * Fichier: templates/simulateur-unifie.php - Version 3.0
  */
 
 // Sécurité
@@ -11,171 +11,292 @@ if (!defined('ABSPATH')) {
 
 // Récupérer les paramètres du shortcode
 $type_defaut = isset($atts['type']) ? $atts['type'] : '';
-$theme = isset($atts['theme']) ? $atts['theme'] : 'default';
+$theme = isset($atts['theme']) ? $atts['theme'] : 'moderne';
 ?>
 
-<div class="htic-simulateur-unifie" data-theme="<?php echo esc_attr($theme); ?>">
+<div class="htic-simulateur-unifie htic-simulateur-moderne" data-theme="<?php echo esc_attr($theme); ?>">
     
-    <!-- En-tête principal -->
-    <div class="simulateur-main-header">
-        <h1>🏡 Simulateur de Consommation Énergétique</h1>
-        <p>Estimez votre consommation électrique ou gaz en quelques clics</p>
+    <!-- Hero Section -->
+    <div class="simulateur-hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-icon">⚡</span>
+                <span class="badge-text">Simulation énergétique</span>
+            </div>
+            <h1 class="hero-title">
+                Estimez votre consommation 
+                <span class="gradient-text">en 3 minutes</span>
+            </h1>
+            <p class="hero-subtitle">
+                Obtenez une estimation précise de votre consommation énergétique et découvrez les meilleures offres adaptées à vos besoins.
+            </p>
+        </div>
     </div>
     
-    <!-- Sélecteur de type -->
-    <div class="type-selector-container" id="type-selector">
+    <!-- Sélecteur principal -->
+    <div class="simulateur-selector-moderne" id="simulateur-selector">
         
-        <!-- Navigation principale -->
-        <div class="main-tabs">
-            <button class="main-tab active" data-category="particulier">
-                <div class="tab-icon">🏠</div>
-                <div class="tab-text">
-                    <strong>Particuliers</strong>
-                    <span>Logement résidentiel</span>
-                </div>
-            </button>
-            
-            <button class="main-tab" data-category="professionnel">
-                <div class="tab-icon">🏢</div>
-                <div class="tab-text">
-                    <strong>Professionnels</strong>
-                    <span>Entreprise, commerce</span>
-                </div>
-            </button>
+        <!-- Étapes de progression -->
+        <div class="progress-indicator">
+            <div class="step-indicator active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-label">Profil</div>
+            </div>
+            <div class="progress-line"></div>
+            <div class="step-indicator" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-label">Énergie</div>
+            </div>
+            <div class="progress-line"></div>
+            <div class="step-indicator" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-label">Simulation</div>
+            </div>
         </div>
         
-        <!-- Sous-navigation énergies -->
-        <div class="energy-tabs">
+        <!-- Container de sélection -->
+        <div class="selection-container">
             
-            <!-- Onglets Particuliers -->
-            <div class="energy-group active" data-category="particulier">
-                <div class="energy-tab active" data-type="elec-residentiel">
-                    <div class="energy-icon">⚡</div>
-                    <div class="energy-content">
-                        <h3>Électricité</h3>
-                        <p>Simulation complète de votre consommation électrique</p>
-                        <ul class="features-list">
-                            <li>Chauffage électrique</li>
-                            <li>Eau chaude</li>
-                            <li>Équipements spéciaux</li>
-                            <li>Comparaison des tarifs</li>
-                        </ul>
-                        <div class="start-button">
-                            <span class="btn-text">Commencer</span>
-                            <span class="btn-arrow">→</span>
+            <!-- Étape 1: Sélection du profil -->
+            <div class="selection-step active" data-step="1">
+                <div class="step-header">
+                    <h2>Quel est votre profil ?</h2>
+                    <p>Sélectionnez le type qui correspond à votre situation</p>
+                </div>
+                
+                <div class="profile-cards">
+                    <div class="profile-card active" data-profile="particulier">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                    <polyline points="9,22 9,12 15,12 15,22"/>
+                                </svg>
+                            </div>
+                            <div class="card-check">✓</div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Particulier</h3>
+                            <p>Maison, appartement, logement résidentiel</p>
+                            <ul class="card-features">
+                                <li>Consommation domestique</li>
+                                <li>Tarifs résidentiels</li>
+                                <li>Options heures creuses</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-card" data-profile="professionnel">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 21h18"/>
+                                    <path d="M5 21V7l8-4v18"/>
+                                    <path d="M19 21V11l-6-4"/>
+                                </svg>
+                            </div>
+                            <div class="card-check">✓</div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Professionnel</h3>
+                            <p>Entreprise, commerce, bureau, industrie</p>
+                            <ul class="card-features">
+                                <li>Consommation professionnelle</li>
+                                <li>Tarifs entreprise</li>
+                                <li>Solutions sur mesure</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
                 
-                <div class="energy-tab" data-type="gaz-residentiel">
-                    <div class="energy-icon">🔥</div>
-                    <div class="energy-content">
-                        <h3>Gaz naturel</h3>
-                        <p>Estimation de votre consommation de gaz</p>
-                        <ul class="features-list">
-                            <li>Chauffage au gaz</li>
-                            <li>Eau chaude sanitaire</li>
-                            <li>Cuisson</li>
-                            <li>Tarifs réglementés</li>
-                        </ul>
-                        <div class="start-button">
-                            <span class="btn-text">Commencer</span>
-                            <span class="btn-arrow">→</span>
-                        </div>
-                    </div>
+                <div class="step-actions">
+                    <button class="btn-next" disabled>
+                        <span>Continuer</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
-            <!-- Onglets Professionnels -->
-            <div class="energy-group" data-category="professionnel">
-                <div class="energy-tab active" data-type="elec-professionnel">
-                    <div class="energy-icon">⚡</div>
-                    <div class="energy-content">
-                        <h3>Électricité Pro</h3>
-                        <p>Simulation pour votre activité professionnelle</p>
-                        <ul class="features-list">
-                            <li>Bureau, commerce</li>
-                            <li>Restaurant, artisanat</li>
-                            <li>Industrie légère</li>
-                            <li>Tarifs professionnels</li>
-                        </ul>
-                        <div class="start-button">
-                            <span class="btn-text">Commencer</span>
-                            <span class="btn-arrow">→</span>
+            <!-- Étape 2: Sélection de l'énergie -->
+            <div class="selection-step" data-step="2">
+                <div class="step-header">
+                    <h2>Quel type d'énergie ?</h2>
+                    <p>Choisissez l'énergie pour laquelle vous souhaitez une estimation</p>
+                </div>
+                
+                <div class="energy-cards">
+                    <div class="energy-card active" data-energy="elec">
+                        <div class="card-visual">
+                            <div class="visual-icon">⚡</div>
+                            <div class="visual-bg"></div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Électricité</h3>
+                            <p>Simulation complète de votre consommation électrique</p>
+                            <div class="card-tags">
+                                <span class="tag">Chauffage</span>
+                                <span class="tag">Eau chaude</span>
+                                <span class="tag">Équipements</span>
+                            </div>
+                        </div>
+                        <div class="card-check">✓</div>
+                    </div>
+                    
+                    <div class="energy-card" data-energy="gaz">
+                        <div class="card-visual">
+                            <div class="visual-icon">🔥</div>
+                            <div class="visual-bg"></div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Gaz</h3>
+                            <p>Estimation de votre consommation de gaz</p>
+                            <div class="card-tags">
+                                <span class="tag">Chauffage</span>
+                                <span class="tag">Eau chaude</span>
+                                <span class="tag">Cuisson</span>
+                            </div>
+                        </div>
+                        <div class="card-check">✓</div>
+                    </div>
+                </div>
+                
+                <div class="step-actions">
+                    <button class="btn-back">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        <span>Retour</span>
+                    </button>
+                    <button class="btn-next" disabled>
+                        <span>Continuer</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Étape 3: Récapitulatif et lancement -->
+            <div class="selection-step" data-step="3">
+                <div class="step-header">
+                    <h2>Récapitulatif de votre sélection</h2>
+                    <p>Vérifiez vos choix avant de commencer la simulation</p>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="summary-visual">
+                        <div class="summary-icon" id="summary-icon">⚡</div>
+                        <div class="summary-badge" id="summary-badge">Particulier</div>
+                    </div>
+                    <div class="summary-content">
+                        <h3 id="summary-title">Simulateur Électricité Résidentiel</h3>
+                        <p id="summary-description">Estimation personnalisée pour votre logement</p>
+                        
+                        <div class="summary-features">
+                            <div class="feature-row">
+                                <span class="feature-icon">🎯</span>
+                                <span>Estimation précise basée sur vos données</span>
+                            </div>
+                            <div class="feature-row">
+                                <span class="feature-icon">💰</span>
+                                <span>Comparaison des différents tarifs</span>
+                            </div>
+                            <div class="feature-row">
+                                <span class="feature-icon">📊</span>
+                                <span>Répartition détaillée par usage</span>
+                            </div>
+                            <div class="feature-row">
+                                <span class="feature-icon">💡</span>
+                                <span>Conseils pour optimiser</span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="energy-tab" data-type="gaz-professionnel">
-                    <div class="energy-icon">🔥</div>
-                    <div class="energy-content">
-                        <h3>Gaz Pro</h3>
-                        <p>Estimation gaz pour votre entreprise</p>
-                        <ul class="features-list">
-                            <li>Chauffage locaux</li>
-                            <li>Process industriels</li>
-                            <li>Restauration</li>
-                            <li>Tarifs négociés</li>
-                        </ul>
-                        <div class="start-button">
-                            <span class="btn-text">Commencer</span>
-                            <span class="btn-arrow">→</span>
-                        </div>
-                    </div>
+                <div class="step-actions">
+                    <button class="btn-back">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        <span>Retour</span>
+                    </button>
+                    <button class="btn-start-simulation">
+                        <span class="btn-icon">🚀</span>
+                        <span>Commencer la simulation</span>
+                    </button>
                 </div>
             </div>
         </div>
         
-        <!-- Aide à la sélection -->
-        <div class="selection-help">
-            <div class="help-icon">💡</div>
-            <div class="help-content">
-                <h4>Besoin d'aide pour choisir ?</h4>
-                <p><strong>Particuliers :</strong> Pour votre domicile (maison, appartement)</p>
-                <p><strong>Professionnels :</strong> Pour votre entreprise, commerce, bureau</p>
+        <!-- Aide et informations -->
+        <div class="help-section">
+            <div class="help-card">
+                <div class="help-icon">💡</div>
+                <div class="help-content">
+                    <h4>Besoin d'aide ?</h4>
+                    <p>Notre simulateur vous guide étape par étape pour obtenir une estimation précise et personnalisée.</p>
+                </div>
+            </div>
+            
+            <div class="trust-indicators">
+                <div class="trust-item">
+                    <span class="trust-icon">🛡️</span>
+                    <span>Données sécurisées</span>
+                </div>
+                <div class="trust-item">
+                    <span class="trust-icon">⚡</span>
+                    <span>Calcul instantané</span>
+                </div>
+                <div class="trust-item">
+                    <span class="trust-icon">📱</span>
+                    <span>100% gratuit</span>
+                </div>
             </div>
         </div>
     </div>
     
     <!-- Container pour les formulaires -->
-    <div class="formulaire-container" id="formulaire-container" style="display: none;">
-        
-        <!-- En-tête du formulaire sélectionné -->
-        <div class="formulaire-header">
-            <button class="back-to-selection" id="back-to-selection">
-                ← Changer de simulateur
+    <div class="formulaire-container" style="display: none;">
+        <div class="formulaire-header-moderne">
+            <button class="btn-back-to-selector">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                <span>Changer de simulateur</span>
             </button>
-            <div class="formulaire-title">
-                <div class="formulaire-icon"></div>
-                <div class="formulaire-text">
-                    <h2 id="formulaire-title-text"></h2>
-                    <p id="formulaire-subtitle-text"></p>
+            
+            <div class="formulaire-info">
+                <div class="formulaire-icon-moderne">⚡</div>
+                <div class="formulaire-text-moderne">
+                    <h2 class="formulaire-title-moderne">Simulateur Électricité Résidentiel</h2>
+                    <p class="formulaire-subtitle-moderne">Estimation personnalisée pour votre logement</p>
                 </div>
             </div>
         </div>
         
-        <!-- Zone de chargement dynamique -->
-        <div class="formulaire-content" id="formulaire-content">
-            <div class="loading-formulaire">
-                <div class="loading-spinner"></div>
-                <p>Chargement du formulaire...</p>
+        <div class="formulaire-content">
+            <div class="loading-moderne">
+                <div class="loading-spinner-moderne"></div>
+                <p>Chargement de votre simulateur personnalisé...</p>
             </div>
         </div>
     </div>
     
-    <!-- Scripts de configuration -->
+    <!-- Configuration JSON -->
     <script type="application/json" id="simulateur-config-global">
         {
             "types": {
                 "elec-residentiel": {
                     "title": "Simulateur Électricité Résidentiel",
-                    "subtitle": "Estimez votre consommation électrique résidentielle",
+                    "subtitle": "Estimation personnalisée pour votre logement",
                     "icon": "⚡",
                     "data": <?php echo json_encode(get_option('htic_simulateur_elec_residentiel_data', array())); ?>
                 },
                 "gaz-residentiel": {
                     "title": "Simulateur Gaz Résidentiel", 
-                    "subtitle": "Estimez votre consommation de gaz naturel",
+                    "subtitle": "Estimation de votre consommation de gaz naturel",
                     "icon": "🔥",
                     "data": <?php echo json_encode(get_option('htic_simulateur_gaz_residentiel_data', array())); ?>
                 },

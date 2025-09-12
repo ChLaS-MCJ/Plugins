@@ -207,17 +207,17 @@ class HticCalculateurElecResidentiel {
         // ==========================================
         
         // 1. CHAUFFAGE
-        $chauffageDetails = $this->calculateChauffageDetaille($data);
+        $chauffageDetails = $this->calculateChauffage($data);
         $chauffageKwh = $chauffageDetails['total'];
         $this->logDebug("🔥 Chauffage calculé: {$chauffageKwh} kWh/an");
         
         // 2. EAU CHAUDE
-        $eauChaudeDetails = $this->calculateEauChaudeDetaille($data);
+        $eauChaudeDetails = $this->calculateEauChaude($data);
         $eauChaudeKwh = $eauChaudeDetails['total'];
         $this->logDebug("💧 Eau chaude calculée: {$eauChaudeKwh} kWh/an");
         
         // 3. ÉLECTROMÉNAGERS
-        $electromenagersDetails = $this->calculateElectromenagetDetaille($data);
+        $electromenagersDetails = $this->calculateElectromenager($data);
         $electromenagersKwh = $electromenagersDetails['total'];
         $this->logDebug("🏠 Électroménagers calculés: {$electromenagersKwh} kWh/an");
         
@@ -300,290 +300,253 @@ class HticCalculateurElecResidentiel {
     // CALCULS DÉTAILLÉS PAR POSTE
     // ==========================================
     
-    /**
-     * Calcul détaillé du chauffage
-     */
-    private function calculateChauffageDetaille($data) {
-        $typeChauffage = $data['type_chauffage'];
-        $surface = (int)$data['surface'];
-        $isolation = $data['isolation'] ?? '';
-        $typeLogement = $data['type_logement'];
+    private function calculateChauffage() {
+        $this->logDebug("=== CALCUL CHAUFFAGE DÉTAILLÉ ===");
         
-        $this->logDebug("🔥 CALCUL CHAUFFAGE: {$typeChauffage}, isolation: {$isolation}");
+        $userData = $this->resultats['data_utilisateur'];
+        $typeChauffage = isset($userData['type_chauffage']) ? $userData['type_chauffage'] : '';
+        $typeLogement = isset($userData['type_logement']) ? $userData['type_logement'] : 'maison';
+        $surface = floatval($userData['surface']);
+        $isolation = isset($userData['isolation']) ? $userData['isolation'] : '';
         
-        // Si pas de chauffage électrique
-        if ($typeChauffage === 'autre') {
-            return array(
+        // Vérifier si c'est du chauffage électrique
+        $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
+        
+        if (!in_array($typeChauffage, $chauffagesElectriques)) {
+            $this->logDebug("Pas de chauffage électrique ({$typeChauffage})");
+            
+            // CORRECTION : Stocker explicitement dans les résultats détaillés
+            $this->resultats['details_calcul']['chauffage'] = array(
                 'total' => 0,
-                'methode' => 'Chauffage non électrique',
                 'type_chauffage' => $typeChauffage,
-                'consommation_m2' => 0,
-                'surface_chauffee' => 0,
-                'coefficient_logement' => 0,
-                'coefficient_isolation' => 0,
-                'calcul' => '0 kWh/an - Chauffage non électrique sélectionné',
-                'explication' => 'Aucune consommation électrique car le chauffage principal n\'est pas électrique'
+                'methode' => 'Pas de chauffage électrique',
+                'calcul' => 'Chauffage non électrique - consommation électrique: 0 kWh/an',
+                'explication' => 'Le chauffage principal n\'est pas électrique'
             );
+            return;
         }
         
-        // Récupération des données de config selon logement et chauffage
-        $configPrefix = $typeLogement . '_' . $typeChauffage . '_';
-        $isolationSuffix = $this->getIsolationConfigSuffix($isolation);
-        
-        $consommationM2 = $this->getConfigValue($configPrefix . $isolationSuffix, $this->getDefaultChauffage($typeChauffage, $isolation));
-        
-        // Coefficient logement (appartement généralement moins consommateur)
-        $coefficientLogement = $typeLogement === 'appartement' ? 0.95 : 1.0;
-        
-        // Calcul final
-        $consommationTotale = $surface * $consommationM2 * $coefficientLogement;
-        
-        $this->logDebug("Chauffage - Surface: {$surface}m², Conso/m²: {$consommationM2}, Coeff: {$coefficientLogement}");
-        
-        return array(
-            'total' => $consommationTotale,
-            'methode' => 'Surface × Consommation/m² × Coefficient logement',
-            'type_chauffage' => $typeChauffage,
-            'isolation' => $isolation,
-            'consommation_m2' => $consommationM2,
-            'surface_chauffee' => $surface,
-            'coefficient_logement' => $coefficientLogement,
-            'coefficient_isolation' => $this->getIsolationCoefficient($isolation),
-            'calcul' => "{$surface} m² × {$consommationM2} kWh/m²/an × {$coefficientLogement} = " . round($consommationTotale) . " kWh/an",
-            'explication' => "Consommation basée sur votre type de chauffage ({$typeChauffage}), l'isolation ({$isolation}) et la surface à chauffer"
+        // Mapping des isolations
+        $isolationMapping = array(
+            'avant_1980' => 'mauvaise',
+            '1980_2000' => 'moyenne', 
+            'apres_2000' => 'bonne',
+            'renovation' => 'tres_bonne'
         );
-    }
-    
-    /**
-     * Calcul détaillé de l'eau chaude
-     */
-    private function calculateEauChaudeDetaille($data) {
-        $this->logDebug("💧 CALCUL EAU CHAUDE");
         
-        if ($data['eau_chaude'] !== 'oui') {
-            return array(
+        $isolationNormalisee = isset($isolationMapping[$isolation]) ? $isolationMapping[$isolation] : 'moyenne';
+        
+        // Construire la clé de configuration
+        $config_key = $typeLogement . '_' . $typeChauffage . '_' . $isolationNormalisee;
+        
+        // Récupérer la consommation par m² depuis la configuration
+        $conso_par_m2 = isset($this->configData[$config_key]) ? $this->configData[$config_key] : 0;
+        
+        if ($conso_par_m2 > 0) {
+            $consommation = $surface * $conso_par_m2;
+            
+            $this->logDebug("Type chauffage: {$typeChauffage}");
+            $this->logDebug("Clé de config: {$config_key}");
+            $this->logDebug("Consommation par m²: {$conso_par_m2} kWh/m²/an");
+            $this->logDebug("Consommation chauffage: {$consommation} kWh/an");
+            
+            // CORRECTION : Stocker dans les résultats détaillés 
+            $this->resultats['details_calcul']['chauffage'] = array(
+                'total' => $consommation,
+                'consommation_m2' => $conso_par_m2,
+                'surface' => $surface,
+                'type_chauffage' => $typeChauffage,
+                'type_logement' => $typeLogement,
+                'isolation' => $isolation,
+                'config_key' => $config_key,
+                'methode' => 'Surface × Consommation chauffage par m²',
+                'calcul' => "{$surface} m² × {$conso_par_m2} kWh/m²/an = {$consommation} kWh/an",
+                'explication' => "Chauffage {$typeChauffage} en {$typeLogement} avec isolation {$isolation}"
+            );
+        } else {
+            $this->logDebug("ERREUR: Configuration manquante pour {$config_key}");
+            
+            $this->resultats['details_calcul']['chauffage'] = array(
                 'total' => 0,
-                'methode' => 'Eau chaude non électrique',
-                'type_production' => $data['eau_chaude'],
-                'base_kwh' => 0,
-                'coefficient' => 0,
-                'nb_personnes' => (int)$data['nb_personnes'],
-                'calcul' => '0 kWh/an - Eau chaude non électrique sélectionnée',
-                'explication' => 'Aucune consommation électrique car l\'eau chaude n\'est pas produite électriquement'
+                'erreur' => "Configuration manquante pour {$config_key}",
+                'methode' => 'Erreur de configuration',
+                'calcul' => 'Impossible de calculer - configuration manquante',
+                'explication' => "Données de chauffage manquantes pour ce type de configuration"
             );
         }
-        
-        $nbPersonnes = (int)$data['nb_personnes'];
-        $baseKwh = $this->getConfigValue('chauffe_eau', 900); // kWh pour 1 personne
-        $coefficient = $this->getCoefficientEauChaude($nbPersonnes);
-        
-        $total = $baseKwh * $coefficient;
-        
-        $this->logDebug("Eau chaude - Base: {$baseKwh} kWh, Coeff personnes: {$coefficient}");
-        
-        return array(
-            'total' => $total,
-            'methode' => 'Base eau chaude × Coefficient personnes',
-            'base_kwh' => $baseKwh,
-            'coefficient' => $coefficient,
-            'nb_personnes' => $nbPersonnes,
-            'calcul' => "{$baseKwh} kWh/an × {$coefficient} = " . round($total) . " kWh/an",
-            'explication' => "Consommation basée sur {$nbPersonnes} personne(s) avec un coefficient de {$coefficient}"
-        );
     }
-    
-    /**
-     * Calcul détaillé des électroménagers
-     */
-    private function calculateElectromenagetDetaille($data) {
-        $electromenagers = $data['electromenagers'] ?? array();
-        $nbPersonnes = (int)$data['nb_personnes'];
-        $typeCuisson = $data['type_cuisson'] ?? '';
+
+    // 2. PROBLÈME EAU CHAUDE NULL
+    // Dans calculateEauChaudeDetaille(), même correction :
+
+    private function calculateEauChaude() {
+        $this->logDebug("=== CALCUL EAU CHAUDE DÉTAILLÉ ===");
         
-        $this->logDebug("🏠 CALCUL ÉLECTROMÉNAGERS: " . count($electromenagers) . " équipements sélectionnés");
-        $this->logDebug("👥 NOMBRE DE PERSONNES: " . $nbPersonnes);
-        $this->logDebug("🍳 TYPE DE CUISSON: " . $typeCuisson);
+        $userData = $this->resultats['data_utilisateur'];
+        $eauChaude = isset($userData['eau_chaude']) ? $userData['eau_chaude'] : 'non';
+        $nbPersonnes = intval($userData['nb_personnes']);
+        if ($nbPersonnes > 6) $nbPersonnes = 6;
         
-        // DEBUG: Vérifier les données du back disponibles
-        $this->logDebug("🗄️ DONNÉES BACK DISPONIBLES: " . count($this->configData) . " paramètres");
-        
-        $details = array();
-        $total = 0;
-        
-        // Consommations de base des équipements - CORRESPONDANCE EXACTE EXCEL E51-E57
-        $equipementsList = array(
-            'lave_linge' => 'Lave-linge',           // E51
-            'four' => 'Four électrique',           // E52  
-            'seche_linge' => 'Sèche-linge',        // E53
-            'lave_vaisselle' => 'Lave-vaisselle',  // E54
-            'cave_a_vin' => 'Cave à vin',          // E55
-            'refrigerateur' => 'Réfrigérateur',    // E56
-            'congelateur' => 'Congélateur'         // E57
-        );
-        
-        $this->logDebug("📋 ÉQUIPEMENTS SÉLECTIONNÉS: " . implode(', ', $electromenagers));
-        
-        // ========================================
-        // CALCUL DES ÉQUIPEMENTS ÉLECTROMÉNAGERS SÉLECTIONNÉS (E51-E57)
-        // ========================================
-        foreach ($electromenagers as $equipement) {
-            if (isset($equipementsList[$equipement])) {
+        if ($eauChaude === 'oui') {
+            // Récupération des valeurs depuis la configuration
+            $conso_base = isset($this->configData['chauffe_eau']) ? $this->configData['chauffe_eau'] : 0;
+            
+            if ($conso_base === 0) {
+                $this->logDebug("ERREUR: Consommation de base chauffe-eau non trouvée");
                 
-                // ✅ RÉCUPÉRATION DIRECTE DEPUIS LE BACK - SANS FALLBACK
-                if (!isset($this->configData[$equipement])) {
-                    $this->logDebug("❌ ERREUR: {$equipement} non trouvé dans configData");
-                    $this->logDebug("🔍 Clés disponibles: " . implode(', ', array_keys($this->configData)));
-                    continue; // Passer à l'équipement suivant
-                }
-                
-                $baseKwh = $this->configData[$equipement];
-                $this->logDebug("📊 {$equipement}: {$baseKwh} kWh (depuis back)");
-                
-                // Récupérer le coefficient selon le nombre de personnes
-                $coefficient = $this->getCoefficientEquipement($equipement, $nbPersonnes);
-                
-                // Calculer la consommation finale
-                $consommation = $baseKwh * $coefficient;
-                
-                // Stocker les détails du calcul
-                $details[$equipement] = array(
-                    'nom' => $equipementsList[$equipement],
-                    'base_kwh' => $baseKwh,
-                    'coefficient' => $coefficient,
-                    'final_kwh' => $consommation,
-                    'formule' => "{$baseKwh} kWh × {$coefficient} = {$consommation} kWh",
-                    'position_excel' => 'E5' . (array_search($equipement, array_keys($equipementsList)) + 1),
-                    'source' => 'configData'
+                $this->resultats['details_calcul']['eau_chaude'] = array(
+                    'total' => 0,
+                    'erreur' => 'Configuration chauffe-eau manquante',
+                    'methode' => 'Erreur de configuration',
+                    'calcul' => 'Configuration manquante pour chauffe-eau',
+                    'explication' => 'Données de consommation eau chaude non configurées'
                 );
-                
-                $total += $consommation;
-                
-                $this->logDebug("✅ {$equipementsList[$equipement]}: {$baseKwh} kWh × {$coefficient} = {$consommation} kWh");
-                
-            } else {
-                $this->logDebug("⚠️ Équipement non reconnu: {$equipement}");
+                return;
             }
-        }
-        
-        // ========================================
-        // GESTION DES PLAQUES DE CUISSON (E58/E59)
-        // ========================================
-        $cléPlaque = null;
-        $nomPlaque = null;
-        $positionExcel = null;
-
-        // Mapping correct des values du formulaire vers les clés du back
-        if ($typeCuisson === 'induction') {
-            $cléPlaque = 'plaque_induction';
-            $nomPlaque = 'Plaque induction';
-            $positionExcel = 'E58';
-        } elseif ($typeCuisson === 'vitroceramique') {
-            $cléPlaque = 'plaque_vitroceramique';
-            $nomPlaque = 'Plaque vitrocéramique';
-            $positionExcel = 'E59';
-        } else {
-            $this->logDebug("🚫 Plaque de cuisson: non électrique (type: {$typeCuisson})");
-        }
-
-        if ($cléPlaque) {
-        
-        // ✅ RÉCUPÉRATION DIRECTE DEPUIS LE BACK - SANS FALLBACK
-        if (!isset($this->configData[$cléPlaque])) {
-            $this->logDebug("❌ ERREUR: {$cléPlaque} non trouvé dans configData");
-            $this->logDebug("🔍 Recherche de clés similaires...");
-            foreach (array_keys($this->configData) as $key) {
-                if (strpos($key, 'plaque') !== false) {
-                    $this->logDebug("- Trouvé: {$key} = " . $this->configData[$key]);
-                }
-            }
-        } else {
-            $baseKwhPlaque = $this->configData[$cléPlaque];
-            $this->logDebug("📊 {$cléPlaque}: {$baseKwhPlaque} kWh (depuis back)");
             
-            // Récupérer le coefficient pour les plaques de cuisson
-            $coefficientPlaque = $this->getCoefficientEquipement('plaque_cuisson', $nbPersonnes);
+            // Coefficient selon nombre de personnes
+            $coeff_key = 'coeff_chauffe_eau_' . $nbPersonnes;
+            $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
             
-            // Calculer la consommation finale
-            $consommationPlaque = $baseKwhPlaque * $coefficientPlaque;
+            $consommation = $conso_base * $coefficient;
             
-            $details['plaque_cuisson'] = array(
-                'nom' => $nomPlaque,
-                'base_kwh' => $baseKwhPlaque,
-                'coefficient' => $coefficientPlaque,
-                'final_kwh' => $consommationPlaque,
-                'formule' => "{$baseKwhPlaque} kWh × {$coefficientPlaque} = {$consommationPlaque} kWh",
-                'type' => $typeCuisson,
-                'position_excel' => $positionExcel,
-                'source' => 'configData'
+            $this->logDebug("Consommation eau chaude: {$consommation} kWh/an");
+            
+            // CORRECTION : Stocker dans les résultats détaillés
+            $this->resultats['details_calcul']['eau_chaude'] = array(
+                'total' => $consommation,
+                'base_kwh' => $conso_base,
+                'coefficient' => $coefficient,
+                'nb_personnes' => $nbPersonnes,
+                'coeff_key' => $coeff_key,
+                'methode' => 'Base chauffe-eau × Coefficient personnes',
+                'calcul' => "{$conso_base} kWh/an × {$coefficient} = {$consommation} kWh/an",
+                'explication' => "Eau chaude électrique pour {$nbPersonnes} personne(s)"
             );
             
-            $total += $consommationPlaque;
+        } else {
+            $this->logDebug("Pas d'eau chaude électrique");
             
-            $this->logDebug("✅ {$nomPlaque}: {$baseKwhPlaque} kWh × {$coefficientPlaque} = {$consommationPlaque} kWh");
+            $this->resultats['details_calcul']['eau_chaude'] = array(
+                'total' => 0,
+                'methode' => 'Pas d\'eau chaude électrique',
+                'calcul' => 'Eau chaude non électrique - consommation: 0 kWh/an',
+                'explication' => 'Production d\'eau chaude par autre énergie (gaz, solaire, etc.)'
+            );
         }
     }
-    
-    // ========================================
-    // FORFAIT PETITS ÉLECTROMÉNAGERS (I88) - TOUJOURS INCLUS
-    // ========================================
-    
-    // ✅ RÉCUPÉRATION DIRECTE DEPUIS LE BACK
-    if (!isset($this->configData['forfait_petits_electromenagers'])) {
-        $this->logDebug("❌ ERREUR: forfait_petits_electromenagers non trouvé dans configData");
-        $forfaitPetits = 0; // Pas de valeur par défaut
-    } else {
-        $forfaitPetits = $this->configData['forfait_petits_electromenagers'];
-        $this->logDebug("📊 forfait_petits_electromenagers: {$forfaitPetits} kWh (depuis back)");
+
+    // 3. PROBLÈME ÉLECTROMÉNAGERS NULL
+    // Dans calculerElectromenagers(), vérifiez que vous stockez bien les résultats :
+
+    private function calculateElectromenager() {
+        $this->logDebug("=== CALCUL ÉLECTROMÉNAGERS ===");
+        
+        $userData = $this->resultats['data_utilisateur'];
+        $electromenagers = isset($userData['electromenagers']) && is_array($userData['electromenagers']) ? $userData['electromenagers'] : array();
+        $nbPersonnes = intval($userData['nb_personnes']);
+        if ($nbPersonnes > 6) $nbPersonnes = 6;
+        
+        $consommation_totale = 0;
+        $details_calcul = array();
+        
+        // === ÉLECTROMÉNAGERS SÉLECTIONNÉS ===
+        $electromenagers_disponibles = array(
+            'lave_linge', 'four', 'seche_linge', 'lave_vaisselle', 
+            'cave_a_vin', 'refrigerateur', 'congelateur'
+        );
+        
+        foreach ($electromenagers as $equipement) {
+            if (in_array($equipement, $electromenagers_disponibles)) {
+                $this->calculerEquipement($equipement, $nbPersonnes, $consommation_totale, $details_calcul);
+            }
+        }
+        
+        // === PLAQUE DE CUISSON ===
+        $type_cuisson = isset($userData['type_cuisson']) ? $userData['type_cuisson'] : '';
+        
+        if ($type_cuisson === 'induction') {
+            $this->calculerEquipement('plaque_induction', $nbPersonnes, $consommation_totale, $details_calcul);
+        } elseif ($type_cuisson === 'vitroceramique') {
+            $this->calculerEquipement('plaque_vitroceramique', $nbPersonnes, $consommation_totale, $details_calcul);
+        }
+        
+        // === FORFAIT PETITS ÉLECTROMÉNAGERS ===
+        $forfait = isset($this->configData['forfait_petits_electromenagers']) ? $this->configData['forfait_petits_electromenagers'] : 0;
+        if ($forfait > 0) {
+            $consommation_totale += $forfait;
+            $details_calcul['forfait_petits_electromenagers'] = array(
+                'consommation' => $forfait,
+                'label' => 'Forfait autres équipements'
+            );
+        }
+        
+        $this->logDebug("Total électroménagers: {$consommation_totale} kWh/an");
+        
+        // CORRECTION : Stocker dans les résultats détaillés
+        $this->resultats['details_calcul']['electromenagers'] = array(
+            'total' => $consommation_totale,
+            'repartition' => $details_calcul,
+            'nb_personnes' => $nbPersonnes,
+            'electromenagers_selectionnes' => $electromenagers,
+            'type_cuisson' => $type_cuisson,
+            'nb_equipements' => count($electromenagers),
+            'methode' => 'Somme des équipements sélectionnés × Coefficient personnes',
+            'explication' => 'Consommations ajustées selon le nombre de personnes et équipements sélectionnés'
+        );
     }
+
+/**
+ * Calcule la consommation d'un équipement spécifique
+ */
+private function calculerEquipement($equipement, $nbPersonnes, &$consommation_totale, &$puissance_totale, &$details_calcul) {
+    // Consommation de base
+    $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 0;
     
-    $details['forfait_petits'] = array(
-        'nom' => 'Forfait petits électroménagers',
-        'base_kwh' => $forfaitPetits,
-        'coefficient' => 1,
-        'final_kwh' => $forfaitPetits,
-        'formule' => "{$forfaitPetits} kWh (forfait fixe)",
-        'position_excel' => 'I88',
-        'source' => 'configData'
+    // Coefficient selon nombre de personnes
+    $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
+    $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
+    
+    $consommation = $conso_base * $coefficient;
+    
+    // Puissance avec simultanéité
+    $puissance_base = isset($this->configData[$equipement . '_puissance']) ? $this->configData[$equipement . '_puissance'] : 0;
+    $simultaneite = isset($this->configData[$equipement . '_simultaneite']) ? ($this->configData[$equipement . '_simultaneite'] / 100) : 0.5;
+    $puissance = ($puissance_base * $simultaneite) / 1000; // en kW
+    
+    $consommation_totale += $consommation;
+    $puissance_totale += $puissance;
+    
+    // Stocker les détails pour l'affichage
+    $details_calcul[$equipement] = array(
+        'consommation' => $consommation,
+        'puissance' => $puissance,
+        'label' => $this->getEquipementLabel($equipement),
+        'coefficient' => $coefficient
     );
     
-    $total += $forfaitPetits;
+    $this->logDebug("{$equipement}: {$conso_base} × {$coefficient} = {$consommation} kWh/an, {$puissance} kW");
+}
+
+/**
+ * Retourne le label d'affichage d'un équipement
+ */
+private function getEquipementLabel($equipement) {
+    $labels = array(
+        'lave_linge' => 'Lave-linge',
+        'four' => 'Four',
+        'seche_linge' => 'Sèche-linge',
+        'lave_vaisselle' => 'Lave-vaisselle',
+        'cave_a_vin' => 'Cave à vin',
+        'refrigerateur' => 'Réfrigérateur',
+        'congelateur' => 'Congélateur',
+        'plaque_induction' => 'Plaque à induction',
+        'plaque_vitroceramique' => 'Plaque vitrocéramique',
+        'tv_pc_box' => 'TV/PC/Box'
+    );
     
-    $this->logDebug("✅ Forfait petits électroménagers: {$forfaitPetits} kWh");
-    
-    // ========================================
-    // RÉSUMÉ FINAL
-    // ========================================
-    $this->logDebug("📊 TOTAL ÉLECTROMÉNAGERS: {$total} kWh/an");
-    $this->logDebug("📈 FORMULE EXCEL REPRODUITE: H52 = SOMME(E51:E59) + I88");
-    
-    // Compter le nombre d'équipements réellement calculés
-    $nbEquipementsCalculés = count($electromenagers);
-        if ($cléPlaque && isset($this->configData[$cléPlaque])) {
-            $nbEquipementsCalculés++; // +1 pour la plaque si trouvée
-        }
-        
-        return array(
-            'total' => $total,
-            'details' => $details,
-            'nb_equipements_selectionnes' => count($electromenagers),
-            'nb_equipements_calcules' => $nbEquipementsCalculés,
-            'forfait_inclus' => $forfaitPetits,
-            'type_cuisson' => $typeCuisson,
-            'plaque_calculee' => ($cléPlaque && isset($this->configData[$cléPlaque])),
-            'methode' => 'SOMME(E51:E59) + I88',
-            'formule_excel' => 'H52 = SOMME(E51:E59) + I88',
-            'explication' => 'Reproduction exacte du calcul Excel: équipements sélectionnés × coefficients + plaque selon type de cuisson + forfait petits électroménagers',
-            'valeurs_source' => 'Back-end WordPress uniquement',
-            'debug_info' => array(
-                'electromenagers_recus' => $electromenagers,
-                'nb_personnes' => $nbPersonnes,
-                'type_cuisson' => $typeCuisson,
-                'plaque_utilisee' => $cléPlaque,
-                'equipements_reconnus' => array_intersect($electromenagers, array_keys($equipementsList)),
-                'config_keys_disponibles' => array_keys($this->configData)
-            )
-        );
-    }
+    return isset($labels[$equipement]) ? $labels[$equipement] : ucfirst(str_replace('_', ' ', $equipement));
+}
     
     /**
      * Calcul détaillé de l'éclairage  

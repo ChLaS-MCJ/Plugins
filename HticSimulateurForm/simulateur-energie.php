@@ -571,30 +571,164 @@ private function getUserIP() {
             'hc_abo_30' => 39.94, 'hc_hp_30' => 0.27, 'hc_hc_30' => 0.2068,
             'hc_abo_36' => 46.24, 'hc_hp_36' => 0.27, 'hc_hc_36' => 0.2068,
             
-            // Autres données...
+            // Équipements et consommations
             'chauffe_eau' => 900,
+            'chauffe_eau_puissance' => 2400,
+            'chauffe_eau_simultaneite' => 30,
+            
             'lave_linge' => 100,
+            'lave_linge_puissance' => 2000,
+            'lave_linge_simultaneite' => 50,
+            
             'four' => 125,
+            'four_puissance' => 2000,
+            'four_simultaneite' => 50,
+            
             'seche_linge' => 175,
+            'seche_linge_puissance' => 2500,
+            'seche_linge_simultaneite' => 50,
+            
             'lave_vaisselle' => 100,
-            'cave_vin' => 150,
+            'lave_vaisselle_puissance' => 1800,
+            'lave_vaisselle_simultaneite' => 50,
+            
+            'cave_a_vin' => 150,
+            'cave_a_vin_puissance' => 1000,
+            'cave_a_vin_simultaneite' => 50,
+            
             'refrigerateur' => 125,
+            'refrigerateur_puissance' => 150,
+            'refrigerateur_simultaneite' => 80,
+            
             'congelateur' => 125,
-            'plaque_induction' => 250,
-            'plaque_vitroceramique' => 180,
+            'congelateur_puissance' => 200,
+            'congelateur_simultaneite' => 80,
+            
+            'plaque_induction' => 180,
+            'plaque_induction_puissance' => 3500,
+            'plaque_induction_simultaneite' => 30,
+
+            'plaque_vitroceramique' => 250,
+            'plaque_vitroceramique_puissance' => 3000,
+            'plaque_vitroceramique_simultaneite' => 30,
+            
             'tv_pc_box' => 300,
+            'tv_pc_box_puissance' => 500,
+            'tv_pc_box_simultaneite' => 80,
+            
             'piscine' => 1400,
+            'piscine_puissance' => 2500,
+            'piscine_simultaneite' => 80,
+            
             'piscine_chauffee' => 4000,
+            
             'spa_jacuzzi' => 2000,
+            'spa_jacuzzi_puissance' => 2000,
+            'spa_jacuzzi_simultaneite' => 50,
+            
             'aquarium' => 240,
+            'aquarium_puissance' => 100,
+            'aquarium_simultaneite' => 80,
+            
             'voiture_electrique' => 1500,
+            'voiture_electrique_puissance' => 7000,
+            'voiture_electrique_simultaneite' => 30,
+            
             'climatiseur_mobile' => 150,
+            'climatiseur_mobile_puissance' => 3000,
+            'climatiseur_mobile_simultaneite' => 50,
+            
+            'chauffage_m2_puissance' => 50,
+            'chauffage_m2_simultaneite' => 80,
+            
             'eclairage' => 750,
+            'eclairage_puissance' => 500,
+            'eclairage_simultaneite' => 80,
+            
             'forfait_petits_electromenagers' => 150,
             
             // Répartitions
             'repartition_hp' => 60,
-            'repartition_hc' => 40
+            'repartition_hc' => 40,
+            
+            // Coefficients par nombre de personnes
+            'coeff_chauffe_eau_1' => 1, 'coeff_chauffe_eau_2' => 2, 'coeff_chauffe_eau_3' => 2.8, 'coeff_chauffe_eau_4' => 3.7, 'coeff_chauffe_eau_5' => 3.9, 'coeff_chauffe_eau_6' => 5.5,
+            
+            'coeff_lave_linge_1' => 1, 'coeff_lave_linge_2' => 1.4, 'coeff_lave_linge_3' => 1.8, 'coeff_lave_linge_4' => 2.2, 'coeff_lave_linge_5' => 2.6, 'coeff_lave_linge_6' => 3,
+            
+            'coeff_four_1' => 1, 'coeff_four_2' => 1.4, 'coeff_four_3' => 1.8, 'coeff_four_4' => 2.2, 'coeff_four_5' => 2.6, 'coeff_four_6' => 3,
+            
+            'coeff_seche_linge_1' => 1, 'coeff_seche_linge_2' => 1.6, 'coeff_seche_linge_3' => 2.2, 'coeff_seche_linge_4' => 2.8, 'coeff_seche_linge_5' => 3.4, 'coeff_seche_linge_6' => 4,
+            
+            'coeff_lave_vaisselle_1' => 1, 'coeff_lave_vaisselle_2' => 1.4, 'coeff_lave_vaisselle_3' => 1.8, 'coeff_lave_vaisselle_4' => 2.2, 'coeff_lave_vaisselle_5' => 2.6, 'coeff_lave_vaisselle_6' => 3,
+            
+            'coeff_cave_a_vin_1' => 1, 'coeff_cave_a_vin_2' => 1, 'coeff_cave_a_vin_3' => 1, 'coeff_cave_a_vin_4' => 1, 'coeff_cave_a_vin_5' => 1, 'coeff_cave_a_vin_6' => 1,
+            
+            'coeff_refrigerateur_1' => 1, 'coeff_refrigerateur_2' => 1.4, 'coeff_refrigerateur_3' => 1.8, 'coeff_refrigerateur_4' => 2.2, 'coeff_refrigerateur_5' => 2.6, 'coeff_refrigerateur_6' => 3,
+            
+            'coeff_congelateur_1' => 1, 'coeff_congelateur_2' => 1.4, 'coeff_congelateur_3' => 1.8, 'coeff_congelateur_4' => 2.2, 'coeff_congelateur_5' => 2.6, 'coeff_congelateur_6' => 3,
+            
+            'coeff_plaque_induction_1' => 1, 'coeff_plaque_induction_2' => 1.4, 'coeff_plaque_induction_3' => 1.8, 'coeff_plaque_induction_4' => 2, 'coeff_plaque_induction_5' => 2.2, 'coeff_plaque_induction_6' => 2.4,
+
+            'coeff_plaque_vitroceramique_1' => 1, 'coeff_plaque_vitroceramique_2' => 1.4, 'coeff_plaque_vitroceramique_3' => 1.8, 'coeff_plaque_vitroceramique_4' => 2, 'coeff_plaque_vitroceramique_5' => 2.2, 'coeff_plaque_vitroceramique_6' => 2.4,
+            
+            'coeff_tv_pc_box_1' => 1, 'coeff_tv_pc_box_2' => 1, 'coeff_tv_pc_box_3' => 1, 'coeff_tv_pc_box_4' => 1, 'coeff_tv_pc_box_5' => 1, 'coeff_tv_pc_box_6' => 1,
+            
+            'coeff_piscine_1' => 1, 'coeff_piscine_2' => 1, 'coeff_piscine_3' => 1, 'coeff_piscine_4' => 1, 'coeff_piscine_5' => 1, 'coeff_piscine_6' => 1,
+            
+            'coeff_spa_jacuzzi_1' => 1, 'coeff_spa_jacuzzi_2' => 1, 'coeff_spa_jacuzzi_3' => 1, 'coeff_spa_jacuzzi_4' => 1, 'coeff_spa_jacuzzi_5' => 1, 'coeff_spa_jacuzzi_6' => 1,
+            
+            'coeff_aquarium_1' => 1, 'coeff_aquarium_2' => 1, 'coeff_aquarium_3' => 1, 'coeff_aquarium_4' => 1, 'coeff_aquarium_5' => 1, 'coeff_aquarium_6' => 1,
+            
+            'coeff_voiture_electrique_1' => 1, 'coeff_voiture_electrique_2' => 1, 'coeff_voiture_electrique_3' => 1, 'coeff_voiture_electrique_4' => 1, 'coeff_voiture_electrique_5' => 1, 'coeff_voiture_electrique_6' => 1,
+            
+            'coeff_climatiseur_mobile_1' => 1, 'coeff_climatiseur_mobile_2' => 1, 'coeff_climatiseur_mobile_3' => 1, 'coeff_climatiseur_mobile_4' => 1, 'coeff_climatiseur_mobile_5' => 1, 'coeff_climatiseur_mobile_6' => 1,
+            
+            // Chauffage par m² - Maison
+            'maison_convecteurs_mauvaise' => 215,
+            'maison_convecteurs_moyenne' => 150,
+            'maison_convecteurs_bonne' => 75,
+            'maison_convecteurs_tres_bonne' => 37.5,
+            
+            'maison_inertie_mauvaise' => 185,
+            'maison_inertie_moyenne' => 125,
+            'maison_inertie_bonne' => 65,
+            'maison_inertie_tres_bonne' => 30,
+            
+            'maison_clim_reversible_mauvaise' => 100,
+            'maison_clim_reversible_moyenne' => 70,
+            'maison_clim_reversible_bonne' => 45,
+            'maison_clim_reversible_tres_bonne' => 17.5,
+            
+            'maison_pac_mauvaise' => 80,
+            'maison_pac_moyenne' => 52.5,
+            'maison_pac_bonne' => 35,
+            'maison_pac_tres_bonne' => 12.5,
+            
+            // Chauffage par m² - Appartement
+            'appartement_convecteurs_mauvaise' => 204.25,
+            'appartement_convecteurs_moyenne' => 142.5,
+            'appartement_convecteurs_bonne' => 71.25,
+            'appartement_convecteurs_tres_bonne' => 35.63,
+            
+            'appartement_inertie_mauvaise' => 175.75,
+            'appartement_inertie_moyenne' => 118.75,
+            'appartement_inertie_bonne' => 61.75,
+            'appartement_inertie_tres_bonne' => 28.5,
+            
+            'appartement_clim_reversible_mauvaise' => 95,
+            'appartement_clim_reversible_moyenne' => 66.5,
+            'appartement_clim_reversible_bonne' => 42.75,
+            'appartement_clim_reversible_tres_bonne' => 16.63,
+            
+            'appartement_pac_mauvaise' => 76,
+            'appartement_pac_moyenne' => 49.88,
+            'appartement_pac_bonne' => 33.25,
+            'appartement_pac_tres_bonne' => 11.88,
+            
+            // Éclairage par m²
+            'eclairage_led_m2' => 5,
+            'eclairage_incandescent_m2' => 15
         );
     }
     

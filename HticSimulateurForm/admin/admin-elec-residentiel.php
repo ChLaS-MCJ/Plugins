@@ -420,7 +420,7 @@ if (empty($elec_residentiel)) {
                     <td>Plaque induction</td>
                     <td>
                         <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_induction]" 
-                                value="<?php echo esc_attr($elec_residentiel['plaque_induction'] ?? 250); ?>" 
+                                value="<?php echo esc_attr($elec_residentiel['plaque_induction'] ?? 180); ?>" 
                                 style="width: 80px;" />
                     </td>
                     <td>
@@ -438,7 +438,7 @@ if (empty($elec_residentiel)) {
                     <td>Plaque vitrocéramique</td>
                     <td>
                         <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_vitroceramique]" 
-                                value="<?php echo esc_attr($elec_residentiel['plaque_vitroceramique'] ?? 180); ?>" 
+                                value="<?php echo esc_attr($elec_residentiel['plaque_vitroceramique'] ?? 250); ?>" 
                                 style="width: 80px;" />
                     </td>
                     <td>
@@ -1145,38 +1145,71 @@ if (empty($elec_residentiel)) {
                     </td>
                 </tr>
                 <tr>
-                    <td><strong>Plaque de cuisson</strong></td>
-                    <td>
-                        <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_cuisson_1]" 
-                                value="<?php echo esc_attr($elec_residentiel['coeff_plaque_cuisson_1'] ?? 1); ?>" 
-                                style="width: 90px;" />
-                    </td>
-                    <td>
-                        <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_cuisson_2]" 
-                                value="<?php echo esc_attr($elec_residentiel['coeff_plaque_cuisson_2'] ?? 1.4); ?>" 
-                                style="width: 90px;" />
-                    </td>
-                    <td>
-                        <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_cuisson_3]" 
-                                value="<?php echo esc_attr($elec_residentiel['coeff_plaque_cuisson_3'] ?? 1.8); ?>" 
-                                style="width: 90px;" />
-                    </td>
-                    <td>
-                        <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_cuisson_4]" 
-                                value="<?php echo esc_attr($elec_residentiel['coeff_plaque_cuisson_4'] ?? 2); ?>" 
-                                style="width: 90px;" />
-                    </td>
-                    <td>
-                        <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_cuisson_5]" 
-                                value="<?php echo esc_attr($elec_residentiel['coeff_plaque_cuisson_5'] ?? 2.2); ?>" 
-                                style="width: 90px;" />
-                    </td>
-                    <td>
-                        <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_cuisson_6]" 
-                                value="<?php echo esc_attr($elec_residentiel['coeff_plaque_cuisson_6'] ?? 2.4); ?>" 
-                                style="width: 90px;" />
-                    </td>
-                </tr>
+                <td><strong>Plaque induction</strong></td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_induction_1]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_induction_1'] ?? 1); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_induction_2]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_induction_2'] ?? 1.4); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_induction_3]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_induction_3'] ?? 1.8); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_induction_4]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_induction_4'] ?? 2); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_induction_5]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_induction_5'] ?? 2.2); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_induction_6]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_induction_6'] ?? 2.4); ?>" 
+                            style="width: 90px;" />
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Plaque vitrocéramique</strong></td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_vitroceramique_1]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_vitroceramique_1'] ?? 1); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_vitroceramique_2]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_vitroceramique_2'] ?? 1.4); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_vitroceramique_3]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_vitroceramique_3'] ?? 1.8); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_vitroceramique_4]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_vitroceramique_4'] ?? 2); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_vitroceramique_5]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_vitroceramique_5'] ?? 2.2); ?>" 
+                            style="width: 90px;" />
+                </td>
+                <td>
+                    <input type="number" step="0.1" name="htic_simulateur_elec_residentiel_data[coeff_plaque_vitroceramique_6]" 
+                            value="<?php echo esc_attr($elec_residentiel['coeff_plaque_vitroceramique_6'] ?? 2.4); ?>" 
+                            style="width: 90px;" />
+                </td>
+            </tr>
                 <tr>
                     <td><strong>TV/PC/Box</strong></td>
                     <td>

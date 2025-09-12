@@ -25,43 +25,47 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
     <!-- Simulations rapides -->
     <div class="simulations-rapides">
         <h3>🚀 Simulations rapides</h3>
-        <p>Obtenez une estimation immédiate avec nos profils types :</p>
+        <p>Choisissez un profil type pour une estimation immédiate :</p>
         
-        <div class="profils-rapides">
-            <button type="button" class="profil-rapide-card" data-profil="petit-logement">
+        <div class="profils-grid">
+            <!-- Profils existants -->
+            <div class="profil-rapide-card" data-profil="petit-logement">
+                <div class="profil-icon">🏢</div>
+                <h4>Studio économique</h4>
+                <p>Studio 35m² • 1 personne • Chauffage gaz • Éclairage ancien</p>
+            </div>
+            
+            <div class="profil-rapide-card" data-profil="logement-moyen">
                 <div class="profil-icon">🏠</div>
-                <div class="profil-content">
-                    <h4>Petit logement</h4>
-                    <span>Appartement 50m² • 1-2 personnes • Chauffage électrique</span>
-                    <small>Estimation : ~4500 kWh/an</small>
-                </div>
-            </button>
+                <h4>Maison familiale</h4>
+                <p>Maison 120m² • 5 personnes • Convecteurs • Aquarium + Clim</p>
+            </div>
             
-            <button type="button" class="profil-rapide-card" data-profil="logement-moyen">
-                <div class="profil-icon">🏘️</div>
-                <div class="profil-content">
-                    <h4>Logement moyen</h4>
-                    <span>Maison 100m² • 3-4 personnes • Tout électrique</span>
-                    <small>Estimation : ~12000 kWh/an</small>
-                </div>
-            </button>
+            <div class="profil-rapide-card" data-profil="grand-logement">
+                <div class="profil-icon">🏰</div>
+                <h4>Villa tout confort</h4>
+                <p>Villa 200m² • 6 personnes • Clim réversible • Piscine chauffée + Spa + VE</p>
+            </div>
             
-            <button type="button" class="profil-rapide-card" data-profil="grand-logement">
-                <div class="profil-icon">🏡</div>
-                <div class="profil-content">
-                    <h4>Grand logement</h4>
-                    <span>Maison 150m² • 4-5 personnes • Tout électrique + Piscine</span>
-                    <small>Estimation : ~18000 kWh/an</small>
-                </div>
-            </button>
+            <!-- NOUVEAUX PROFILS À AJOUTER -->
+            <div class="profil-rapide-card" data-profil="appartement-moderne">
+                <div class="profil-icon">🌿</div>
+                <h4>Appartement écolo</h4>
+                <p>Appart 75m² • 3 personnes • PAC • Voiture électrique</p>
+            </div>
+            
+            <div class="profil-rapide-card" data-profil="maison-rurale">
+                <div class="profil-icon">🌾</div>
+                <h4>Maison campagne</h4>
+                <p>Maison 180m² • 4 personnes • Radiateurs inertie • Piscine simple</p>
+            </div>
+            
+            <div class="profil-rapide-card" data-profil="loft-urbain">
+                <div class="profil-icon">🏙️</div>
+                <h4>Loft urbain</h4>
+                <p>Loft 90m² • 2 personnes • Chauffage collectif • Spa + Clim</p>
+            </div>
         </div>
-        
-        <div class="ou-separator">
-            <span>OU</span>
-        </div>
-        
-        <h4>📝 Simulation personnalisée</h4>
-        <p>Remplissez le formulaire ci-dessous pour une estimation précise selon vos équipements</p>
     </div>
     
     <!-- Indicateur de progression -->
@@ -573,26 +577,16 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                         </label>
                         
                         <label class="checkbox-card">
-                            <input type="checkbox" name="equipements_speciaux[]" value="aquarium_petit">
+                            <input type="checkbox" name="equipements_speciaux[]" value="aquarium">
                             <div class="checkbox-content">
                                 <div class="checkbox-icon">🐠</div>
                                 <div class="checkbox-text">
-                                    <strong>Petit aquarium</strong>
+                                    <strong>Aquarium</strong>
                                     <span>Éclairage et filtration</span>
                                 </div>
                             </div>
                         </label>
                         
-                        <label class="checkbox-card">
-                            <input type="checkbox" name="equipements_speciaux[]" value="aquarium_grand">
-                            <div class="checkbox-content">
-                                <div class="checkbox-icon">🐟</div>
-                                <div class="checkbox-text">
-                                    <strong>Grand aquarium</strong>
-                                    <span>Système complet</span>
-                                </div>
-                            </div>
-                        </label>
                         
                         <label class="checkbox-card">
                             <input type="checkbox" name="equipements_speciaux[]" value="climatiseur_mobile">

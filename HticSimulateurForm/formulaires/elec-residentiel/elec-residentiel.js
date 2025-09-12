@@ -48,60 +48,115 @@ jQuery(document).ready(function ($) {
     function getProfilData(profil) {
         const profils = {
             'petit-logement': {
-                // Données utilisateur COMPLÈTES
+                // Studio étudiant/jeune actif
                 type_logement: 'appartement',
-                surface: '50',
-                nb_personnes: '2',
-                isolation: '1980_2000',
-                type_chauffage: 'convecteurs',
-                type_cuisson: 'plaque_vitroceramique',
-                electromenagers: ['lave_linge', 'refrigerateur', 'four'],
-                eau_chaude: 'oui',
-                type_eclairage: 'led',
+                surface: '35',
+                nb_personnes: '1',
+                isolation: 'avant_1980',
+                type_chauffage: 'gaz', // Pas de chauffage élec
+                type_cuisson: 'gaz', // Cuisson gaz
+                electromenagers: ['refrigerateur'], // Minimal
+                eau_chaude: 'non', // Eau chaude au gaz
+                type_eclairage: 'incandescent', // Vieux éclairage
                 piscine: 'non',
                 equipements_speciaux: [],
-                preference_tarif: 'indifferent',
+                preference_tarif: 'base',
                 // Métadonnées
-                nom: 'Petit logement',
-                description: 'Appartement 50m² • 1-2 personnes • Chauffage électrique'
+                nom: 'Studio économique',
+                description: 'Studio 35m² • 1 personne • Chauffage gaz • Éclairage ancien'
             },
 
             'logement-moyen': {
-                // Données utilisateur COMPLÈTES
+                // Famille avec enfants
                 type_logement: 'maison',
-                surface: '100',
-                nb_personnes: '4',
-                isolation: 'apres_2000',
-                type_chauffage: 'inertie',
-                type_cuisson: 'plaque_induction',
+                surface: '120',
+                nb_personnes: '5',
+                isolation: '1980_2000',
+                type_chauffage: 'convecteurs', // Vieux convecteurs
+                type_cuisson: 'plaque_vitroceramique',
                 electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur'],
                 eau_chaude: 'oui',
                 type_eclairage: 'led',
                 piscine: 'non',
-                equipements_speciaux: [],
+                equipements_speciaux: ['aquarium', 'climatiseur_mobile'],
                 preference_tarif: 'hc',
                 // Métadonnées
-                nom: 'Logement moyen',
-                description: 'Maison 100m² • 3-4 personnes • Tout électrique'
+                nom: 'Maison familiale',
+                description: 'Maison 120m² • 5 personnes • Convecteurs • Aquarium + Clim'
             },
 
             'grand-logement': {
-                // Données utilisateur COMPLÈTES
+                // Villa moderne tout équipée
                 type_logement: 'maison',
-                surface: '150',
-                nb_personnes: '5',
+                surface: '200',
+                nb_personnes: '6',
                 isolation: 'renovation',
-                type_chauffage: 'pac',
+                type_chauffage: 'clim_reversible', // Clim réversible
                 type_cuisson: 'plaque_induction',
                 electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur', 'cave_a_vin'],
                 eau_chaude: 'oui',
                 type_eclairage: 'led',
-                piscine: 'simple',
-                equipements_speciaux: ['spa_jacuzzi', 'voiture_electrique'],
+                piscine: 'chauffee', // Piscine chauffée
+                equipements_speciaux: ['spa_jacuzzi', 'voiture_electrique', 'aquarium'],
                 preference_tarif: 'hc',
                 // Métadonnées
-                nom: 'Grand logement',
-                description: 'Maison 150m² • 4-5 personnes • Tout électrique + Piscine'
+                nom: 'Villa tout confort',
+                description: 'Villa 200m² • 6 personnes • Clim réversible • Piscine chauffée + Spa + VE'
+            },
+
+            // Profil supplémentaire pour tests
+            'appartement-moderne': {
+                type_logement: 'appartement',
+                surface: '75',
+                nb_personnes: '3',
+                isolation: 'apres_2000',
+                type_chauffage: 'pac', // Pompe à chaleur
+                type_cuisson: 'plaque_induction',
+                electromenagers: ['lave_linge', 'refrigerateur', 'lave_vaisselle', 'four'],
+                eau_chaude: 'oui',
+                type_eclairage: 'led',
+                piscine: 'non',
+                equipements_speciaux: ['voiture_electrique'],
+                preference_tarif: 'tempo',
+                // Métadonnées
+                nom: 'Appartement écolo',
+                description: 'Appart 75m² • 3 personnes • PAC • Voiture électrique'
+            },
+
+            'maison-rurale': {
+                type_logement: 'maison',
+                surface: '180',
+                nb_personnes: '4',
+                isolation: '1980_2000',
+                type_chauffage: 'inertie',
+                type_cuisson: 'gaz',
+                electromenagers: ['lave_linge', 'refrigerateur', 'congelateur', 'four'],
+                eau_chaude: 'oui',
+                type_eclairage: 'incandescent',
+                piscine: 'simple', // Piscine non chauffée
+                equipements_speciaux: [],
+                preference_tarif: 'base',
+                // Métadonnées
+                nom: 'Maison campagne',
+                description: 'Maison 180m² • 4 personnes • Radiateurs inertie • Piscine simple'
+            },
+
+            'loft-urbain': {
+                type_logement: 'appartement',
+                surface: '90',
+                nb_personnes: '2',
+                isolation: 'renovation',
+                type_chauffage: 'autre', // Chauffage central
+                type_cuisson: 'plaque_induction',
+                electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'cave_a_vin'],
+                eau_chaude: 'non', // Eau chaude collective
+                type_eclairage: 'led',
+                piscine: 'non',
+                equipements_speciaux: ['spa_jacuzzi', 'climatiseur_mobile'],
+                preference_tarif: 'indifferent',
+                // Métadonnées
+                nom: 'Loft urbain',
+                description: 'Loft 90m² • 2 personnes • Chauffage collectif • Spa + Clim'
             }
         };
 
@@ -293,36 +348,40 @@ jQuery(document).ready(function ($) {
             <div class="repartition-conso">
                 <h3>📊 Répartition de la consommation</h3>
                 <div class="repartition-details">
-                    ${(repartition.chauffage || 0) > 0 ? `
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #ef4444;"></span>
-                        <span>Chauffage : ${(repartition.chauffage || 0).toLocaleString()} kWh/an</span>
-                    </div>` : ''}
-                    ${(repartition.eau_chaude || 0) > 0 ? `
+                        <span>Chauffage : ${(repartition.chauffage || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.chauffage || 0).toFixed(2)} kW</span>
+                    </div>
+                    
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #3b82f6;"></span>
-                        <span>Eau chaude : ${(repartition.eau_chaude || 0).toLocaleString()} kWh/an</span>
-                    </div>` : ''}
-                    ${(repartition.electromenagers || 0) > 0 ? `
+                        <span>Eau chaude : ${(repartition.eau_chaude || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.eau_chaude || 0).toFixed(2)} kW</span>
+                    </div>
+                    
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #10b981;"></span>
-                        <span>Électroménagers : ${(repartition.electromenagers || 0).toLocaleString()} kWh/an</span>
-                    </div>` : ''}
-                    ${(repartition.multimedia || 0) > 0 ? `
+                        <span>Électroménagers : ${(repartition.electromenagers || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.electromenagers || 0).toFixed(2)} kW</span>
+                    </div>
+                    
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #8b5cf6;"></span>
-                        <span>Multimédia : ${(repartition.multimedia || 0).toLocaleString()} kWh/an</span>
-                    </div>` : ''}
-                    ${(repartition.eclairage || 0) > 0 ? `
+                        <span>Multimédia : ${(repartition.multimedia || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.multimedia || 0).toFixed(2)} kW</span>
+                    </div>
+                    
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #f59e0b;"></span>
-                        <span>Éclairage : ${(repartition.eclairage || 0).toLocaleString()} kWh/an</span>
-                    </div>` : ''}
-                    ${repartition.equipements_speciaux && Object.values(repartition.equipements_speciaux).some(v => v > 0) ? `
+                        <span>Éclairage : ${(repartition.eclairage || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.eclairage || 0).toFixed(2)} kW</span>
+                    </div>
+                    
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #06b6d4;"></span>
-                        <span>Équipements spéciaux : ${Object.values(repartition.equipements_speciaux).reduce((a, b) => (a || 0) + (b || 0), 0).toLocaleString()} kWh/an</span>
-                    </div>` : ''}
+                        <span>Équipements spéciaux : ${Object.values(repartition.equipements_speciaux || {}).reduce((a, b) => (a || 0) + (b || 0), 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.equipements_speciaux || 0).toFixed(2)} kW</span>
+                    </div>
+                    
+                    <div class="repartition-item" style="margin-top: 10px; padding-top: 10px; border-top: 2px solid #e5e7eb; font-weight: bold;">
+                        <span class="repartition-color" style="background: #1f2937;"></span>
+                        <span>TOTAL : ${results.consommation_annuelle.toLocaleString()} kWh/an • ${(results.puissances_retenues?.total || 0).toFixed(2)} kW</span>
+                    </div>
                 </div>
             </div>
             

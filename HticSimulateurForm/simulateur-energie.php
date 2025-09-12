@@ -728,7 +728,10 @@ private function getUserIP() {
             
             // Éclairage par m²
             'eclairage_led_m2' => 5,
-            'eclairage_incandescent_m2' => 15
+            'eclairage_incandescent_m2' => 15,
+
+            'coefficient_maison' => 1,
+            'coefficient_appartement' => 0.95
         );
     }
     

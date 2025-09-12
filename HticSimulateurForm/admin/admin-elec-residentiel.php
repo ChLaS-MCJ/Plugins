@@ -365,18 +365,18 @@ if (empty($elec_residentiel)) {
                 <tr>
                     <td>Cave à vin</td>
                     <td>
-                        <input type="number" name="htic_simulateur_elec_residentiel_data[cave_vin]" 
-                                value="<?php echo esc_attr($elec_residentiel['cave_vin'] ?? 150); ?>" 
+                        <input type="number" name="htic_simulateur_elec_residentiel_data[cave_a_vin]" 
+                                value="<?php echo esc_attr($elec_residentiel['cave_a_vin'] ?? 150); ?>" 
                                 style="width: 80px;" />
                     </td>
                     <td>
-                        <input type="number" name="htic_simulateur_elec_residentiel_data[cave_vin_puissance]" 
-                                value="<?php echo esc_attr($elec_residentiel['cave_vin_puissance'] ?? 1000); ?>" 
+                        <input type="number" name="htic_simulateur_elec_residentiel_data[cave_a_vin_puissance]" 
+                                value="<?php echo esc_attr($elec_residentiel['cave_a_vin_puissance'] ?? 1000); ?>" 
                                 style="width: 80px;" />
                     </td>
                     <td>
                         <input type="number" name="htic_simulateur_elec_residentiel_data[cave_vin_simultaneite]" 
-                                value="<?php echo esc_attr($elec_residentiel['cave_vin_simultaneite'] ?? 50); ?>" 
+                                value="<?php echo esc_attr($elec_residentiel['cave_a_vin_simultaneite'] ?? 50); ?>" 
                                 style="width: 60px;" /> %
                     </td>
                 </tr>
@@ -1457,6 +1457,30 @@ if (empty($elec_residentiel)) {
                     </td>
                 </tr>
             </tbody>
+        </table>
+
+        <h4>Coefficients de type de logement</h4>
+        <table class="form-table">
+            <tr>
+                <th scope="row">Coefficient Maison</th>
+                <td>
+                    <input type="number" step="0.01" 
+                        name="htic_simulateur_elec_residentiel_data[coefficient_maison]" 
+                        value="<?php echo esc_attr($elec_residentiel['coefficient_maison'] ?? 1); ?>" 
+                        style="width: 100px;" />
+                    <span class="description">Multiplicateur pour les maisons (défaut: 1)</span>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">Coefficient Appartement</th>
+                <td>
+                    <input type="number" step="0.01" 
+                        name="htic_simulateur_elec_residentiel_data[coefficient_appartement]" 
+                        value="<?php echo esc_attr($elec_residentiel['coefficient_appartement'] ?? 0.95); ?>" 
+                        style="width: 100px;" />
+                    <span class="description">Multiplicateur pour les appartements (défaut: 0.95)</span>
+                </td>
+            </tr>
         </table>
     </div>
     

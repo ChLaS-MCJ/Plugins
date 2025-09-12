@@ -221,11 +221,6 @@ class HticCalculateurElecResidentiel {
         $electromenagersKwh = $electromenagersDetails['total'];
         $this->logDebug("🏠 Électroménagers calculés: {$electromenagersKwh} kWh/an");
         
-        // 4. CUISSON
-        $cuissonDetails = $this->calculateCuissonDetaille($data);
-        $cuissonKwh = $cuissonDetails['total'];
-        $this->logDebug("🍳 Cuisson calculée: {$cuissonKwh} kWh/an");
-        
         // 5. ÉCLAIRAGE
         $eclairageDetails = $this->calculateEclairageDetaille($data);
         $eclairageKwh = $eclairageDetails['total'];
@@ -405,94 +400,150 @@ class HticCalculateurElecResidentiel {
     private function calculateElectromenagetDetaille($data) {
         $electromenagers = $data['electromenagers'] ?? array();
         $nbPersonnes = (int)$data['nb_personnes'];
+        $typeCuisson = $data['type_cuisson'] ?? '';
         
         $this->logDebug("🏠 CALCUL ÉLECTROMÉNAGERS: " . count($electromenagers) . " équipements sélectionnés");
+        $this->logDebug("👥 NOMBRE DE PERSONNES: " . $nbPersonnes);
+        $this->logDebug("🍳 TYPE DE CUISSON: " . $typeCuisson);
         
         $details = array();
         $total = 0;
         
-        // Consommations de base des équipements
+        // Consommations de base des équipements - CORRESPONDANCE EXACTE EXCEL E51-E57
         $equipementsList = array(
-            'lave_linge' => 'Lave-linge',
-            'seche_linge' => 'Sèche-linge', 
-            'refrigerateur' => 'Réfrigérateur',
-            'congelateur' => 'Congélateur',
-            'lave_vaisselle' => 'Lave-vaisselle',
-            'four' => 'Four électrique',
-            'cave_a_vin' => 'Cave à vin'
+            'lave_linge' => 'Lave-linge',           // E51
+            'four' => 'Four électrique',           // E52  
+            'seche_linge' => 'Sèche-linge',        // E53
+            'lave_vaisselle' => 'Lave-vaisselle',  // E54
+            'cave_a_vin' => 'Cave à vin',          // E55
+            'refrigerateur' => 'Réfrigérateur',    // E56
+            'congelateur' => 'Congélateur'         // E57
+            // E58/E59 = plaques de cuisson - gérées séparément ci-dessous
         );
         
+        $this->logDebug("📋 ÉQUIPEMENTS SÉLECTIONNÉS: " . implode(', ', $electromenagers));
+        
+        // ========================================
+        // CALCUL DES ÉQUIPEMENTS ÉLECTROMÉNAGERS SÉLECTIONNÉS (E51-E57)
+        // ========================================
         foreach ($electromenagers as $equipement) {
             if (isset($equipementsList[$equipement])) {
+                // Récupérer la consommation de base depuis la config
                 $baseKwh = $this->getConfigValue($equipement, $this->getDefaultElectro($equipement));
+                
+                // Récupérer le coefficient selon le nombre de personnes
                 $coefficient = $this->getCoefficientEquipement($equipement, $nbPersonnes);
+                
+                // Calculer la consommation finale
                 $consommation = $baseKwh * $coefficient;
                 
+                // Stocker les détails du calcul
                 $details[$equipement] = array(
                     'nom' => $equipementsList[$equipement],
                     'base_kwh' => $baseKwh,
                     'coefficient' => $coefficient,
-                    'final_kwh' => $consommation
+                    'final_kwh' => $consommation,
+                    'formule' => "{$baseKwh} kWh × {$coefficient} = {$consommation} kWh",
+                    'position_excel' => 'E5' . (array_search($equipement, array_keys($equipementsList)) + 1)
                 );
                 
                 $total += $consommation;
                 
-                $this->logDebug("- {$equipementsList[$equipement]}: {$baseKwh} × {$coefficient} = {$consommation} kWh");
+                $this->logDebug("✅ {$equipementsList[$equipement]}: {$baseKwh} kWh × {$coefficient} = {$consommation} kWh");
+            } else {
+                $this->logDebug("⚠️ Équipement non reconnu: {$equipement}");
             }
         }
         
-        // Ajouter le forfait petits électroménagers (toujours inclus)
+        // ========================================
+        // GESTION DES PLAQUES DE CUISSON (E58/E59)
+        // ========================================
+        $cléPlaque = null;
+        $nomPlaque = null;
+        
+        if ($typeCuisson === 'induction') {
+            $cléPlaque = 'plaque_induction';
+            $nomPlaque = 'Plaque induction';
+            $positionExcel = 'E58';
+        } elseif ($typeCuisson === 'vitroceramique') {
+            $cléPlaque = 'plaque_vitroceramique';
+            $nomPlaque = 'Plaque vitrocéramique';
+            $positionExcel = 'E59';
+        } else {
+            $this->logDebug("🚫 Plaque de cuisson: non électrique (type: {$typeCuisson})");
+        }
+        
+        if ($cléPlaque) {
+            // Récupérer la consommation de base selon le type de plaque
+            $baseKwhPlaque = $this->getConfigValue($cléPlaque, $this->getDefaultElectro($cléPlaque));
+            
+            // Récupérer le coefficient pour les plaques de cuisson
+            $coefficientPlaque = $this->getCoefficientEquipement('plaque_cuisson', $nbPersonnes);
+            
+            // Calculer la consommation finale
+            $consommationPlaque = $baseKwhPlaque * $coefficientPlaque;
+            
+            $details['plaque_cuisson'] = array(
+                'nom' => $nomPlaque,
+                'base_kwh' => $baseKwhPlaque,
+                'coefficient' => $coefficientPlaque,
+                'final_kwh' => $consommationPlaque,
+                'formule' => "{$baseKwhPlaque} kWh × {$coefficientPlaque} = {$consommationPlaque} kWh",
+                'type' => $typeCuisson,
+                'position_excel' => $positionExcel
+            );
+            
+            $total += $consommationPlaque;
+            
+            $this->logDebug("✅ {$nomPlaque}: {$baseKwhPlaque} kWh × {$coefficientPlaque} = {$consommationPlaque} kWh");
+        }
+        
+        // ========================================
+        // FORFAIT PETITS ÉLECTROMÉNAGERS (I88) - TOUJOURS INCLUS
+        // ========================================
         $forfaitPetits = $this->getConfigValue('forfait_petits_electromenagers', 150);
+        
         $details['forfait_petits'] = array(
             'nom' => 'Forfait petits électroménagers',
             'base_kwh' => $forfaitPetits,
             'coefficient' => 1,
-            'final_kwh' => $forfaitPetits
+            'final_kwh' => $forfaitPetits,
+            'formule' => "{$forfaitPetits} kWh (forfait fixe)",
+            'position_excel' => 'I88'
         );
+        
         $total += $forfaitPetits;
+        
+        $this->logDebug("✅ Forfait petits électroménagers: {$forfaitPetits} kWh");
+        
+        // ========================================
+        // RÉSUMÉ FINAL
+        // ========================================
+        $this->logDebug("📊 TOTAL ÉLECTROMÉNAGERS: {$total} kWh/an");
+        $this->logDebug("📈 FORMULE EXCEL REPRODUITE: H52 = SOMME(E51:E59) + I88");
+        
+        // Compter le nombre d'équipements réellement calculés
+        $nbEquipementsCalculés = count($electromenagers);
+        if ($cléPlaque) $nbEquipementsCalculés++; // +1 pour la plaque
         
         return array(
             'total' => $total,
             'details' => $details,
-            'nb_equipements' => count($electromenagers),
+            'nb_equipements_selectionnes' => count($electromenagers),
+            'nb_equipements_calcules' => $nbEquipementsCalculés,
             'forfait_inclus' => $forfaitPetits,
-            'methode' => 'Somme des équipements sélectionnés × Coefficient personnes + Forfait petits électroménagers',
-            'explication' => 'Chaque électroménager est ajusté selon le nombre de personnes. Un forfait couvre les petits appareils.'
-        );
-    }
-    
-    /**
-     * Calcul détaillé de la cuisson
-     */
-    private function calculateCuissonDetaille($data) {
-        $typeCuisson = $data['type_cuisson'] ?? '';
-        $nbPersonnes = (int)$data['nb_personnes'];
-        
-        $this->logDebug("🍳 CALCUL CUISSON: {$typeCuisson}");
-        
-        if ($typeCuisson === 'autre') {
-            return array(
-                'total' => 0,
-                'methode' => 'Cuisson non électrique',
-                'type_cuisson' => $typeCuisson,
-                'calcul' => '0 kWh/an - Cuisson non électrique',
-                'explication' => 'Cuisson au gaz ou mixte, pas de consommation électrique pour la cuisson'
-            );
-        }
-        
-        $baseKwh = $this->getConfigValue('plaque_cuisson', 215);
-        $coefficient = $this->getCoefficientEquipement('plaque_cuisson', $nbPersonnes);
-        $total = $baseKwh * $coefficient;
-        
-        return array(
-            'total' => $total,
-            'base_kwh' => $baseKwh,
-            'coefficient' => $coefficient,
-            'nb_personnes' => $nbPersonnes,
             'type_cuisson' => $typeCuisson,
-            'methode' => 'Base cuisson × Coefficient personnes',
-            'calcul' => "{$baseKwh} kWh/an × {$coefficient} = " . round($total) . " kWh/an",
-            'explication' => "Consommation des plaques de cuisson {$typeCuisson} ajustée pour {$nbPersonnes} personne(s)"
+            'plaque_calculee' => $cléPlaque ? true : false,
+            'methode' => 'SOMME(E51:E59) + I88',
+            'formule_excel' => 'H52 = SOMME(E51:E59) + I88',
+            'explication' => 'Reproduction exacte du calcul Excel: équipements sélectionnés × coefficients + plaque selon type de cuisson + forfait petits électroménagers',
+            'debug_info' => array(
+                'electromenagers_recus' => $electromenagers,
+                'nb_personnes' => $nbPersonnes,
+                'type_cuisson' => $typeCuisson,
+                'plaque_utilisee' => $cléPlaque,
+                'equipements_reconnus' => array_intersect($electromenagers, array_keys($equipementsList))
+            )
         );
     }
     

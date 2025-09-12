@@ -309,11 +309,6 @@ jQuery(document).ready(function ($) {
                         <span class="repartition-color" style="background: #10b981;"></span>
                         <span>Électroménagers : ${(repartition.electromenagers || 0).toLocaleString()} kWh/an</span>
                     </div>` : ''}
-                    ${(repartition.cuisson || 0) > 0 ? `
-                    <div class="repartition-item">
-                        <span class="repartition-color" style="background: #f97316;"></span>
-                        <span>Cuisson : ${(repartition.cuisson || 0).toLocaleString()} kWh/an</span>
-                    </div>` : ''}
                     ${(repartition.multimedia || 0) > 0 ? `
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #8b5cf6;"></span>
@@ -381,16 +376,6 @@ jQuery(document).ready(function ($) {
                             `• ${item.nom} : ${Math.round(item.final_kwh || 0)} kWh`
                         ).join('<br>') : 'Détails non disponibles'
                     }
-                    </small>
-                </div>
-                ` : ''}
-                
-                ${results.details_calcul.cuisson && results.repartition.cuisson > 0 ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #f97316;">
-                    <h6>🍳 Cuisson : ${Math.round(results.repartition.cuisson || 0)} kWh/an</h6>
-                    <small style="color: #666;">
-                        • Type : ${results.details_calcul.cuisson.type_cuisson || 'N/A'}<br>
-                        • <strong>Calcul :</strong> ${results.details_calcul.cuisson.calcul || 'N/A'}
                     </small>
                 </div>
                 ` : ''}
@@ -1004,7 +989,6 @@ jQuery(document).ready(function ($) {
         const chauffage = parseInt(repartition.chauffage) || 0;
         const eauChaude = parseInt(repartition.eau_chaude) || 0;
         const electromenagers = parseInt(repartition.electromenagers) || 0;
-        const cuisson = parseInt(repartition.cuisson) || 0;
         const eclairage = parseInt(repartition.eclairage) || 0;
         const multimedia = parseInt(repartition.multimedia) || 0;
         const equipementsSpeciaux = parseInt(repartition.equipements_speciaux) || 0;
@@ -1066,11 +1050,6 @@ jQuery(document).ready(function ($) {
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #10b981;"></span>
                         <span>Électroménager : ${electromenagers.toLocaleString()} kWh</span>
-                    </div>` : ''}
-                    ${cuisson > 0 ? `
-                    <div class="repartition-item">
-                        <span class="repartition-color" style="background: #f97316;"></span>
-                        <span>Cuisson : ${cuisson.toLocaleString()} kWh</span>
                     </div>` : ''}
                     ${eclairage > 0 ? `
                     <div class="repartition-item">
@@ -1168,19 +1147,6 @@ jQuery(document).ready(function ($) {
                         ${Object.entries(results.details_calcul.electromenagers.details).map(([key, item]) => `
                             <li>${item.nom} : ${Math.round(item.base_kwh)} kWh × ${item.coefficient} = ${Math.round(item.final_kwh)} kWh/an</li>
                         `).join('')}
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <!-- CUISSON -->
-                ${results.details_calcul.cuisson ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                    <h6>🍳 Cuisson (${results.repartition.cuisson} kWh/an)</h6>
-                    <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                        <li>Type : ${results.details_calcul.cuisson.type_cuisson || 'N/A'}</li>
-                        <li>Base : ${results.details_calcul.cuisson.base_kwh || 0} kWh/an</li>
-                        <li>Coefficient : ${results.details_calcul.cuisson.coefficient || 1}</li>
-                        <li><strong>Calcul :</strong> ${results.details_calcul.cuisson.calcul || 'N/A'}</li>
                     </ul>
                 </div>
                 ` : ''}

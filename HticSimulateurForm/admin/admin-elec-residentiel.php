@@ -417,20 +417,38 @@ if (empty($elec_residentiel)) {
                     </td>
                 </tr>
                 <tr>
-                    <td>Plaque de cuisson</td>
+                    <td>Plaque induction</td>
                     <td>
-                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_cuisson]" 
-                                value="<?php echo esc_attr($elec_residentiel['plaque_cuisson'] ?? 215); ?>" 
+                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_induction]" 
+                                value="<?php echo esc_attr($elec_residentiel['plaque_induction'] ?? 250); ?>" 
                                 style="width: 80px;" />
                     </td>
                     <td>
-                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_cuisson_puissance]" 
-                                value="<?php echo esc_attr($elec_residentiel['plaque_cuisson_puissance'] ?? 3000); ?>" 
+                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_induction_puissance]" 
+                                value="<?php echo esc_attr($elec_residentiel['plaque_induction_puissance'] ?? 3500); ?>" 
                                 style="width: 80px;" />
                     </td>
                     <td>
-                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_cuisson_simultaneite]" 
-                                value="<?php echo esc_attr($elec_residentiel['plaque_cuisson_simultaneite'] ?? 30); ?>" 
+                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_induction_simultaneite]" 
+                                value="<?php echo esc_attr($elec_residentiel['plaque_induction_simultaneite'] ?? 30); ?>" 
+                                style="width: 60px;" /> %
+                    </td>
+                </tr>
+                <tr>
+                    <td>Plaque vitrocéramique</td>
+                    <td>
+                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_vitroceramique]" 
+                                value="<?php echo esc_attr($elec_residentiel['plaque_vitroceramique'] ?? 180); ?>" 
+                                style="width: 80px;" />
+                    </td>
+                    <td>
+                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_vitroceramique_puissance]" 
+                                value="<?php echo esc_attr($elec_residentiel['plaque_vitroceramique_puissance'] ?? 3000); ?>" 
+                                style="width: 80px;" />
+                    </td>
+                    <td>
+                        <input type="number" name="htic_simulateur_elec_residentiel_data[plaque_vitroceramique_simultaneite]" 
+                                value="<?php echo esc_attr($elec_residentiel['plaque_vitroceramique_simultaneite'] ?? 30); ?>" 
                                 style="width: 60px;" /> %
                     </td>
                 </tr>

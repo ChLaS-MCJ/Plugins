@@ -1,6 +1,6 @@
 <?php
 /**
- * Template du formulaire Électricité Résidentiel - CORRIGÉ
+ * Template du formulaire Électricité Résidentiel - VERSION CORRIGÉE COMPLÈTE
  * Fichier: formulaires/elec-residentiel/elec-residentiel.php
  */
 
@@ -223,86 +223,68 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 2: Chauffage électrique - CORRIGÉE -->
+        <!-- ÉTAPE 2: Mode de chauffage principal - STRUCTURE SIMPLIFIÉE -->
         <div class="form-step" data-step="2">
             <div class="step-header">
-                <h2>🔥 Chauffage électrique</h2>
-                <p>Avez-vous un système de chauffage électrique ?</p>
+                <h2>🔥 Mode de chauffage principal</h2>
+                <p>Sélectionnez votre système de chauffage principal</p>
             </div>
             
             <div class="form-grid">
-                <!-- Choix chauffage électrique ou pas -->
                 <div class="form-group full-width">
-                    <label class="form-label">Chauffage électrique principal</label>
+                    <label class="form-label">Type de chauffage principal</label>
                     <div class="radio-group">
                         <label class="radio-card">
-                            <input type="radio" name="chauffage_electrique" value="oui" required>
-                            <div class="radio-content">
-                                <div class="radio-icon">⚡</div>
-                                <div class="radio-text">
-                                    <strong>Oui, chauffage électrique</strong>
-                                    <span>Radiateurs, pompe à chaleur électrique</span>
-                                </div>
-                            </div>
-                        </label>
-                        
-                        <label class="radio-card">
-                            <input type="radio" name="chauffage_electrique" value="non" required>
-                            <div class="radio-content">
-                                <div class="radio-icon">🚫</div>
-                                <div class="radio-text">
-                                    <strong>Non, autre énergie</strong>
-                                    <span>Gaz, fioul, bois, solaire...</span>
-                                </div>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-                
-                <!-- Détails du chauffage électrique (masqué par défaut) -->
-                <div class="form-group full-width" id="chauffage-details" style="display: none;">
-                    <label class="form-label">Type de chauffage électrique</label>
-                    <div class="radio-group horizontal">
-                        <label class="radio-card">
-                            <input type="radio" name="type_chauffage_elec" value="convecteurs">
+                            <input type="radio" name="type_chauffage" value="convecteurs" required>
                             <div class="radio-content">
                                 <div class="radio-icon">🔥</div>
                                 <div class="radio-text">
-                                    <strong>Convecteurs</strong>
+                                    <strong>Convecteurs électriques</strong>
                                     <span>Radiateurs électriques classiques</span>
                                 </div>
                             </div>
                         </label>
                         
                         <label class="radio-card">
-                            <input type="radio" name="type_chauffage_elec" value="inertie">
+                            <input type="radio" name="type_chauffage" value="inertie" required>
                             <div class="radio-content">
                                 <div class="radio-icon">🌡️</div>
                                 <div class="radio-text">
-                                    <strong>Inertie</strong>
+                                    <strong>Radiateurs à inertie</strong>
                                     <span>Chaleur douce et diffuse</span>
                                 </div>
                             </div>
                         </label>
                         
                         <label class="radio-card">
-                            <input type="radio" name="type_chauffage_elec" value="clim_reversible">
+                            <input type="radio" name="type_chauffage" value="clim_reversible" required>
                             <div class="radio-content">
                                 <div class="radio-icon">❄️</div>
                                 <div class="radio-text">
-                                    <strong>Clim réversible</strong>
+                                    <strong>Climatisation réversible</strong>
                                     <span>Pompe à chaleur air/air</span>
                                 </div>
                             </div>
                         </label>
                         
                         <label class="radio-card">
-                            <input type="radio" name="type_chauffage_elec" value="pac">
+                            <input type="radio" name="type_chauffage" value="pac" required>
                             <div class="radio-content">
                                 <div class="radio-icon">💨</div>
                                 <div class="radio-text">
-                                    <strong>PAC</strong>
-                                    <span>Pompe à chaleur performante</span>
+                                    <strong>Pompe à chaleur (PAC)</strong>
+                                    <span>Système de chauffage performant</span>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="radio-card">
+                            <input type="radio" name="type_chauffage" value="autre" required>
+                            <div class="radio-content">
+                                <div class="radio-icon">🚫</div>
+                                <div class="radio-text">
+                                    <strong>Autre mode de chauffage</strong>
+                                    <span>Gaz, fioul, bois...</span>
                                 </div>
                             </div>
                         </label>
@@ -311,17 +293,17 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 3: Électroménagers et cuisson - CORRIGÉE -->
+        <!-- ÉTAPE 3: Électroménagers -->
         <div class="form-step" data-step="3">
             <div class="step-header">
-                <h2>🍳 Électroménagers et cuisson</h2>
+                <h2>🍳 Électroménagers</h2>
                 <p>Sélectionnez vos équipements électroménagers</p>
             </div>
             
             <div class="form-grid">
-                <!-- Électroménagers -->
+                <!-- Électroménagers de base (pré-cochés) -->
                 <div class="form-group full-width">
-                    <label class="form-label">Électroménagers disponibles</label>
+                    <label class="form-label">Électroménagers de base</label>
                     <div class="checkbox-group horizontal">
                         <label class="checkbox-card">
                             <input type="checkbox" name="electromenagers[]" value="lave_linge" checked>
@@ -351,7 +333,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                                 <div class="checkbox-icon">🧊</div>
                                 <div class="checkbox-text">
                                     <strong>Réfrigérateur</strong>
-                                    <span>Frigo principal</span>
+                                    <span>Réfrigérateur / congélateur</span>
                                 </div>
                             </div>
                         </label>
@@ -379,7 +361,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                         </label>
                         
                         <label class="checkbox-card">
-                            <input type="checkbox" name="electromenagers[]" value="congelateur">
+                            <input type="checkbox" name="electromenagers[]" value="congelateur" checked>
                             <div class="checkbox-content">
                                 <div class="checkbox-icon">❄️</div>
                                 <div class="checkbox-text">
@@ -390,7 +372,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                         </label>
                         
                         <label class="checkbox-card">
-                            <input type="checkbox" name="electromenagers[]" value="cave_vin">
+                            <input type="checkbox" name="electromenagers[]" value="cave_a_vin">
                             <div class="checkbox-content">
                                 <div class="checkbox-icon">🍷</div>
                                 <div class="checkbox-text">
@@ -402,27 +384,38 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                     </div>
                 </div>
                 
-                <!-- Cuisson électrique - NOUVEAU NOM DE CHAMP -->
+                <!-- Cuisson / Plaques (choix unique) -->
                 <div class="form-group full-width">
-                    <label class="form-label">Cuisson électrique</label>
+                    <label class="form-label">Cuisson / Plaques</label>
                     <div class="radio-group">
                         <label class="radio-card">
-                            <input type="radio" name="cuisson_electrique" value="oui" required>
+                            <input type="radio" name="type_cuisson" value="induction" required>
                             <div class="radio-content">
                                 <div class="radio-icon">⚡</div>
                                 <div class="radio-text">
-                                    <strong>Cuisson électrique</strong>
-                                    <span>Plaque induction, vitrocéramique</span>
+                                    <strong>Plaque cuisson induction</strong>
+                                    <span>Cuisson par induction électromagnétique</span>
                                 </div>
                             </div>
                         </label>
                         
                         <label class="radio-card">
-                            <input type="radio" name="cuisson_electrique" value="non" required>
+                            <input type="radio" name="type_cuisson" value="vitroceramique" required>
                             <div class="radio-content">
                                 <div class="radio-icon">🔥</div>
                                 <div class="radio-text">
-                                    <strong>Cuisson gaz ou autre</strong>
+                                    <strong>Plaque cuisson vitrocéramique</strong>
+                                    <span>Plaques électriques en vitrocéramique</span>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="radio-card">
+                            <input type="radio" name="type_cuisson" value="autre" required>
+                            <div class="radio-content">
+                                <div class="radio-icon">🔥</div>
+                                <div class="radio-text">
+                                    <strong>Autre</strong>
                                     <span>Gaz, mixte...</span>
                                 </div>
                             </div>
@@ -432,7 +425,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 4: Eau chaude - INCHANGÉE -->
+        <!-- ÉTAPE 4: Eau chaude -->
         <div class="form-step" data-step="4">
             <div class="step-header">
                 <h2>💧 Eau chaude sanitaire</h2>
@@ -469,7 +462,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 5: Éclairage - INCHANGÉE -->
+        <!-- ÉTAPE 5: Éclairage -->
         <div class="form-step" data-step="5">
             <div class="step-header">
                 <h2>💡 Éclairage</h2>
@@ -506,15 +499,15 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 6: Équipements spéciaux et options - INCHANGÉE -->
+        <!-- ÉTAPE 6: Équipements spéciaux -->
         <div class="form-step" data-step="6">
             <div class="step-header">
-                <h2>⚡ Équipements spéciaux et options</h2>
+                <h2>⚡ Équipements spéciaux</h2>
                 <p>Avez-vous des équipements spéciaux consommateurs d'électricité ?</p>
             </div>
             
             <div class="form-grid">
-                <!-- Piscine -->
+                <!-- Piscine (choix unique) -->
                 <div class="form-group full-width">
                     <label class="form-label">Piscine</label>
                     <div class="radio-group">
@@ -553,9 +546,9 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                     </div>
                 </div>
                 
-                <!-- Autres équipements spéciaux -->
+                <!-- Autres équipements -->
                 <div class="form-group full-width">
-                    <label class="form-label">Autres équipements spéciaux (optionnel)</label>
+                    <label class="form-label">Autres équipements spéciaux</label>
                     <div class="checkbox-group horizontal">
                         <label class="checkbox-card">
                             <input type="checkbox" name="equipements_speciaux[]" value="spa_jacuzzi">
@@ -613,15 +606,52 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                         </label>
                     </div>
                 </div>
+                
+                <!-- Préférence tarifaire -->
+                <div class="form-group full-width">
+                    <label class="form-label">Préférence tarifaire (optionnel)</label>
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="preference_tarif" value="base">
+                            <div class="radio-content">
+                                <div class="radio-icon">📊</div>
+                                <div class="radio-text">
+                                    <strong>Tarif BASE</strong>
+                                    <span>Tarif unique toute la journée</span>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="radio-card">
+                            <input type="radio" name="preference_tarif" value="hc">
+                            <div class="radio-content">
+                                <div class="radio-icon">🌙</div>
+                                <div class="radio-text">
+                                    <strong>Heures Creuses</strong>
+                                    <span>Tarif réduit la nuit</span>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="radio-card">
+                            <input type="radio" name="preference_tarif" value="indifferent">
+                            <div class="radio-content">
+                                <div class="radio-icon">🔍</div>
+                                <div class="radio-text">
+                                    <strong>Indifférent</strong>
+                                    <span>Comparaison automatique</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
 
-                <!-- Info automatique -->
-                <div class="info-box">
-                    <div class="info-icon">ℹ️</div>
-                    <div class="info-content">
-                        <h4>Inclus automatiquement dans le calcul</h4>
-                        <p><strong>Multimédia :</strong> Télévision, ordinateur, box internet<br>
-                        <strong>Éclairage :</strong> Calculé selon votre surface et type d'ampoules<br>
-                        <strong>Petits équipements :</strong> Forfait électroménager diverses</p>
+                    <!-- Info automatique -->
+                    <div class="info-box">
+                        <div class="info-icon">ℹ️</div>
+                        <div class="info-content">
+                            <h4>Inclus automatiquement dans le calcul</h4>
+                            <p><strong>Multimédia :</strong> Télévision, ordinateur, box internet </p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -25,10 +25,7 @@ class HticSimulateurEnergieAdmin {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         add_action('wp_ajax_save_simulateur_data', array($this, 'save_simulateur_data'));
         
-        // NOUVEAU : Handlers pour le calcul
-        add_action('wp_ajax_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
-        add_action('wp_ajax_nopriv_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
-        
+
         // Hooks d'activation/désactivation
         register_activation_hook(__FILE__, array($this, 'activate'));
         register_deactivation_hook(__FILE__, array($this, 'deactivate'));
@@ -43,6 +40,9 @@ class HticSimulateurEnergieAdmin {
         // AJAX handlers existants
         add_action('wp_ajax_htic_load_formulaire', array($this, 'ajax_load_formulaire'));
         add_action('wp_ajax_nopriv_htic_load_formulaire', array($this, 'ajax_load_formulaire'));
+
+        add_action('wp_ajax_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
+        add_action('wp_ajax_nopriv_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
     }
         
     public function activate() {

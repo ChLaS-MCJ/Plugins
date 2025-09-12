@@ -274,105 +274,205 @@ class HticSimulateurEnergieAdmin {
     
     public function ajax_calculate_estimation() {
         // Vérification de sécurité
-        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate') && 
-            !wp_verify_nonce($_POST['nonce'], 'htic_simulateur_nonce')) {
+        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
             wp_send_json_error('Nonce invalide');
             return;
         }
         
+        ob_start();
+    
         $type = sanitize_text_field($_POST['type']);
         $userData = $_POST['user_data'];
         $configData = $_POST['config_data'];
         
-        // Nettoyer les données utilisateur
-        $cleanUserData = array();
-        foreach ($userData as $key => $value) {
-            if (is_array($value)) {
-                $cleanUserData[sanitize_key($key)] = array_map('sanitize_text_field', $value);
-            } else {
-                $cleanUserData[sanitize_key($key)] = sanitize_text_field($value);
-            }
+        // Log pour debug (dans les logs serveur uniquement)
+        error_log('🔍 HTIC AJAX CALCUL - Type: ' . $type);
+        error_log('🔍 Nombre de champs utilisateur: ' . count($userData));
+        
+        // Vérifier que le type est valide
+        $types_valides = array(
+            'elec-residentiel',
+            'gaz-residentiel', 
+            'elec-professionnel',
+            'gaz-professionnel'
+        );
+        
+        if (!in_array($type, $types_valides)) {
+            wp_send_json_error('Type de calculateur invalide: ' . $type);
+            return;
         }
-
-        // Charger le calculateur
-        require_once HTIC_SIMULATEUR_PATH . 'includes/calculateur-elec-residentiel.php';
+        
+        // Charger le calculateur approprié
+        $calculatorFile = HTIC_SIMULATEUR_PATH . 'includes/calculateur-' . str_replace('-', '-', $type) . '.php';
+        
+        if (!file_exists($calculatorFile)) {
+            wp_send_json_error('Calculateur non trouvé pour le type: ' . $type);
+            return;
+        }
+        
+        // Inclure le fichier calculateur
+        require_once $calculatorFile;
         
         try {
-            $result = htic_calculateur_elec_residentiel($cleanUserData, $configData);
+            // Appeler le calculateur approprié
+            $results = null;
             
-            if ($result['success']) {
-                wp_send_json_success($result['data']);
-            } else {
-                wp_send_json_error($result['data']);
+             switch ($type) {
+                case 'elec-residentiel':
+                    if (empty($configData)) {
+                        $configData = get_option('htic_simulateur_elec_residentiel_data', array());
+                    }
+                    // PASSER debugMode = false pour éviter les sorties HTML
+                    $results = htic_calculateur_elec_residentiel($userData, $configData);
+                    break;
+                    
+                case 'gaz-residentiel':
+                    if (empty($configData)) {
+                        $configData = get_option('htic_simulateur_gaz_residentiel_data', array());
+                    }
+                    // Créer la fonction équivalente pour le gaz
+                    $results = htic_calculateur_gaz_residentiel($userData, $configData);
+                    break;
+                    
+                case 'elec-professionnel':
+                    if (empty($configData)) {
+                        $configData = get_option('htic_simulateur_elec_professionnel_data', array());
+                    }
+                    $results = htic_calculateur_elec_professionnel($userData, $configData);
+                    break;
+                    
+                case 'gaz-professionnel':
+                    if (empty($configData)) {
+                        $configData = get_option('htic_simulateur_gaz_professionnel_data', array());
+                    }
+                    $results = htic_calculateur_gaz_professionnel($userData, $configData);
+                    break;
+            }
+
+            $unwanted_output = ob_get_clean();
+            if (!empty($unwanted_output)) {
+                error_log('🧹 HTIC - Sortie nettoyée: ' . substr($unwanted_output, 0, 200) . '...');
             }
             
+            if ($results && $results['success']) {
+                error_log('✅ HTIC CALCUL RÉUSSI - Consommation: ' . $results['data']['consommation_annuelle'] . ' kWh/an');
+                $this->saveCalculationLog($type, $userData, $results['data']);
+                wp_send_json_success($results['data']);
+            } else {
+                $error = $results['error'] ?? 'Erreur inconnue lors du calcul';
+                error_log('❌ HTIC CALCUL ÉCHOUÉ: ' . $error);
+                wp_send_json_error($error);
+            }
+            
+            
         } catch (Exception $e) {
-            error_log("[HTIC AJAX] Erreur calcul: " . $e->getMessage());
-            wp_send_json_error('Erreur lors du calcul: ' . $e->getMessage());
+            ob_end_clean();
+            error_log('💥 HTIC EXCEPTION: ' . $e->getMessage());
+            wp_send_json_error('Erreur technique: ' . $e->getMessage());
         }
+}
+
+private function saveCalculationLog($type, $userData, $results) {
+    global $wpdb;
+    
+    $table_name = $wpdb->prefix . 'htic_simulateur_logs';
+    
+    // Vérifier que la table existe
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+        return; // Table n'existe pas, ignorer
     }
+    
+    $logData = array(
+        'user_data' => $userData,
+        'results' => $results,
+        'timestamp' => current_time('mysql'),
+        'user_ip' => $this->getUserIP()
+    );
+    
+    $wpdb->insert(
+        $table_name,
+        array(
+            'type' => $type,
+            'user_ip' => $this->getUserIP(),
+            'data' => json_encode($logData),
+            'timestamp' => current_time('mysql')
+        ),
+        array('%s', '%s', '%s', '%s')
+    );
+}
+
+private function getUserIP() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return $_SERVER['HTTP_X_FORWARDED_FOR'];
+    } else {
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+}
             
     // ================================
     // GESTION DES RESSOURCES
     // ================================
     
     private function enqueue_formulaire_assets($type) {
-        $formulaire_path = HTIC_SIMULATEUR_PATH . 'formulaires/' . $type . '/';
-        $formulaire_url = HTIC_SIMULATEUR_URL . 'formulaires/' . $type . '/';
-        
-        // Enqueue CSS commun
-        if (file_exists(HTIC_SIMULATEUR_PATH . 'includes/common.css')) {
-            wp_enqueue_style(
-                'htic-simulateur-common', 
-                HTIC_SIMULATEUR_URL . 'includes/common.css', 
-                array(), 
-                HTIC_SIMULATEUR_VERSION
-            );
-        }
-        
-        // Enqueue CSS spécifique
-        if (file_exists($formulaire_path . $type . '.css')) {
-            wp_enqueue_style(
-                'htic-simulateur-' . $type, 
-                $formulaire_url . $type . '.css', 
-                array('htic-simulateur-common'), 
-                HTIC_SIMULATEUR_VERSION
-            );
-        }
-        
-        // Enqueue JS commun
-        if (file_exists(HTIC_SIMULATEUR_PATH . 'includes/common.js')) {
-            wp_enqueue_script(
-                'htic-simulateur-common-js', 
-                HTIC_SIMULATEUR_URL . 'includes/common.js', 
-                array('jquery'), 
-                HTIC_SIMULATEUR_VERSION, 
-                true
-            );
-        }
-        
-        // Enqueue JS spécifique
-       if (file_exists($formulaire_path . $type . '.js')) {
-            wp_enqueue_script(
-                'htic-simulateur-' . $type . '-js', 
-                $formulaire_url . $type . '.js', 
-                array('jquery'), 
-                HTIC_SIMULATEUR_VERSION, 
-                true
-            );
-            
-            // LOCALISATION CORRIGÉE
-            wp_localize_script(
-                'htic-simulateur-' . $type . '-js', 
-                'hticSimulateur', 
-                array(
-                    'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'nonce' => wp_create_nonce('htic_simulateur_calculate'),
-                    'type' => $type
-                )
-            );
-        }
+    $formulaire_path = HTIC_SIMULATEUR_PATH . 'formulaires/' . $type . '/';
+    $formulaire_url = HTIC_SIMULATEUR_URL . 'formulaires/' . $type . '/';
+    
+    // Enqueue CSS commun
+    if (file_exists(HTIC_SIMULATEUR_PATH . 'includes/common.css')) {
+        wp_enqueue_style(
+            'htic-simulateur-common', 
+            HTIC_SIMULATEUR_URL . 'includes/common.css', 
+            array(), 
+            HTIC_SIMULATEUR_VERSION
+        );
     }
+    
+    // Enqueue CSS spécifique
+    if (file_exists($formulaire_path . $type . '.css')) {
+        wp_enqueue_style(
+            'htic-simulateur-' . $type, 
+            $formulaire_url . $type . '.css', 
+            array('htic-simulateur-common'), 
+            HTIC_SIMULATEUR_VERSION
+        );
+    }
+    
+    // Enqueue JS commun
+    if (file_exists(HTIC_SIMULATEUR_PATH . 'includes/common.js')) {
+        wp_enqueue_script(
+            'htic-simulateur-common-js', 
+            HTIC_SIMULATEUR_URL . 'includes/common.js', 
+            array('jquery'), 
+            HTIC_SIMULATEUR_VERSION, 
+            true
+        );
+    }
+    
+    // Enqueue JS spécifique
+    if (file_exists($formulaire_path . $type . '.js')) {
+        wp_enqueue_script(
+            'htic-simulateur-' . $type . '-js', 
+            $formulaire_url . $type . '.js', 
+            array('jquery', 'htic-simulateur-common-js'), 
+            HTIC_SIMULATEUR_VERSION, 
+            true
+        );
+        
+        // IMPORTANT: Localisation avec le bon nonce pour le calcul
+        wp_localize_script(
+            'htic-simulateur-' . $type . '-js', 
+            'hticSimulateur', 
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('htic_simulateur_calculate'), // Bon nonce
+                'type' => $type,
+                'restUrl' => rest_url('htic-simulateur/v1/')
+            )
+        );
+    }
+}
     
     // ================================
     // ADMIN INTERFACE

@@ -48,57 +48,57 @@ jQuery(document).ready(function ($) {
     function getProfilData(profil) {
         const profils = {
             'petit-logement': {
-                // Données utilisateur
+                // Données utilisateur COMPLÈTES
                 type_logement: 'appartement',
                 surface: '50',
                 nb_personnes: '2',
                 isolation: '1980_2000',
-                chauffage_electrique: 'oui',
-                type_chauffage_elec: 'convecteurs',
+                type_chauffage: 'convecteurs', // ← AJOUTÉ
+                type_cuisson: 'induction',     // ← AJOUTÉ  
                 electromenagers: ['lave_linge', 'refrigerateur', 'four'],
-                cuisson_electrique: 'oui',
                 eau_chaude: 'oui',
                 type_eclairage: 'led',
                 piscine: 'non',
                 equipements_speciaux: [],
+                preference_tarif: 'indifferent', // ← AJOUTÉ
                 // Métadonnées
                 nom: 'Petit logement',
                 description: 'Appartement 50m² • 1-2 personnes • Chauffage électrique'
             },
 
             'logement-moyen': {
-                // Données utilisateur
+                // Données utilisateur COMPLÈTES
                 type_logement: 'maison',
                 surface: '100',
                 nb_personnes: '4',
                 isolation: 'apres_2000',
-                chauffage_electrique: 'oui',
-                type_chauffage_elec: 'inertie',
+                type_chauffage: 'inertie',     // ← AJOUTÉ
+                type_cuisson: 'induction',     // ← AJOUTÉ
                 electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur'],
-                cuisson_electrique: 'oui',
                 eau_chaude: 'oui',
                 type_eclairage: 'led',
                 piscine: 'non',
                 equipements_speciaux: [],
+                preference_tarif: 'hc',        // ← AJOUTÉ
                 // Métadonnées
                 nom: 'Logement moyen',
                 description: 'Maison 100m² • 3-4 personnes • Tout électrique'
             },
 
             'grand-logement': {
-                // Données utilisateur
+                // Données utilisateur COMPLÈTES
                 type_logement: 'maison',
                 surface: '150',
                 nb_personnes: '5',
                 isolation: 'renovation',
-                chauffage_electrique: 'oui',
-                type_chauffage_elec: 'pac',
-                electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur', 'cave_vin'],
-                cuisson_electrique: 'oui',
+                type_chauffage: 'pac',         // ← AJOUTÉ
+                type_cuisson: 'induction',     // ← AJOUTÉ
+                electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur', 'cave_a_vin'],
                 eau_chaude: 'oui',
                 type_eclairage: 'led',
                 piscine: 'simple',
                 equipements_speciaux: ['spa_jacuzzi', 'voiture_electrique'],
+                preference_tarif: 'hc',        // ← AJOUTÉ
                 // Métadonnées
                 nom: 'Grand logement',
                 description: 'Maison 150m² • 4-5 personnes • Tout électrique + Piscine'
@@ -862,124 +862,510 @@ jQuery(document).ready(function ($) {
     // ===============================
 
     function displayResults(results) {
-        console.log('🎯 Affichage des résultats:', results);
-
-        // Vérifier que nous avons les données nécessaires
-        if (!results.totaux || !results.consommations || !results.tarifs) {
-            displayError('Données de résultats incomplètes');
-            return;
-        }
+        console.log('🔍 RÉSULTATS DÉTAILLÉS REÇUS:', results);
 
         const resultsHtml = `
-            <div class="results-summary">
-                <!-- Résultat principal -->
-                <div class="result-card main-result">
-                    <div class="result-icon">⚡</div>
-                    <h3>Votre consommation estimée</h3>
-                    <div class="big-number">${Math.round(results.totaux.consommation_totale).toLocaleString()} <span>kWh/an</span></div>
-                    <p>Puissance recommandée : <strong>${results.totaux.puissance_recommandee} kVA</strong></p>
-                </div>
-                
-                <!-- Comparaison des tarifs -->
-                <div class="tarifs-comparison">
-                    <h3>💰 Comparaison des tarifs</h3>
-                    <div class="tarifs-grid">
-                        <div class="tarif-card ${results.tarifs.recommande === 'base' ? 'recommended' : ''}">
-                            <h4>Tarif BASE</h4>
-                            <div class="tarif-prix">${Math.round(results.tarifs.base.total_annuel)}€<span>/an</span></div>
-                            <div class="tarif-mensuel">${Math.round(results.tarifs.base.total_mensuel)}€/mois</div>
-                            ${results.tarifs.recommande === 'base' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
-                        </div>
-                        <div class="tarif-card ${results.tarifs.recommande === 'hc' ? 'recommended' : ''}">
-                            <h4>Heures Creuses</h4>
-                            <div class="tarif-prix">${Math.round(results.tarifs.hc.total_annuel)}€<span>/an</span></div>
-                            <div class="tarif-mensuel">${Math.round(results.tarifs.hc.total_mensuel)}€/mois</div>
-                            ${results.tarifs.recommande === 'hc' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
-                        </div>
+        <div class="results-summary">
+            <!-- Résultat principal -->
+            <div class="result-card main-result">
+                <div class="result-icon">⚡</div>
+                <h3>Votre consommation estimée</h3>
+                <div class="big-number">${results.consommation_annuelle.toLocaleString()} <span>kWh/an</span></div>
+                <p>Puissance recommandée : <strong>${results.puissance_recommandee} kVA</strong></p>
+            </div>
+            
+            <!-- Comparaison des tarifs -->
+            <div class="tarifs-comparison">
+                <h3>💰 Comparaison des tarifs</h3>
+                <div class="tarifs-grid">
+                    <div class="tarif-card">
+                        <h4>Tarif BASE</h4>
+                        <div class="tarif-prix">${results.tarifs.base.total_annuel}€<span>/an</span></div>
+                        <div class="tarif-mensuel">${results.tarifs.base.total_mensuel}€/mois</div>
                     </div>
-                    <div class="economies">
-                        <p>💡 <strong>Économies potentielles :</strong> ${Math.round(results.tarifs.economies)}€/an en choisissant le meilleur tarif !</p>
+                    <div class="tarif-card recommended">
+                        <h4>Heures Creuses</h4>
+                        <div class="tarif-prix">${results.tarifs.hc.total_annuel}€<span>/an</span></div>
+                        <div class="tarif-mensuel">${results.tarifs.hc.total_mensuel}€/mois</div>
+                        <span class="recommended-badge">⭐ Recommandé</span>
                     </div>
                 </div>
-                
-                <!-- Répartition de la consommation -->
-                <div class="repartition-conso">
-                    <h3>📊 Répartition de votre consommation</h3>
-                    <div class="repartition-details">
-                        ${results.consommations.chauffage > 0 ? `
-                        <div class="repartition-item">
-                            <span class="repartition-color" style="background: #ef4444;"></span>
-                            <span>Chauffage : ${Math.round(results.consommations.chauffage).toLocaleString()} kWh/an</span>
-                        </div>` : ''}
-                        ${results.consommations.chauffe_eau > 0 ? `
-                        <div class="repartition-item">
-                            <span class="repartition-color" style="background: #3b82f6;"></span>
-                            <span>Chauffe-eau : ${Math.round(results.consommations.chauffe_eau).toLocaleString()} kWh/an</span>
-                        </div>` : ''}
-                        <div class="repartition-item">
-                            <span class="repartition-color" style="background: #10b981;"></span>
-                            <span>Électroménagers : ${Math.round(results.consommations.electromenagers).toLocaleString()} kWh/an</span>
-                        </div>
-                        <div class="repartition-item">
-                            <span class="repartition-color" style="background: #8b5cf6;"></span>
-                            <span>Multimédia : ${Math.round(results.consommations.multimedia).toLocaleString()} kWh/an</span>
-                        </div>
-                        <div class="repartition-item">
-                            <span class="repartition-color" style="background: #f59e0b;"></span>
-                            <span>Éclairage : ${Math.round(results.consommations.eclairage).toLocaleString()} kWh/an</span>
-                        </div>
-                        ${results.consommations.equipements_supplementaires > 0 ? `
-                        <div class="repartition-item">
-                            <span class="repartition-color" style="background: #06b6d4;"></span>
-                            <span>Équipements spéciaux : ${Math.round(results.consommations.equipements_supplementaires).toLocaleString()} kWh/an</span>
-                        </div>` : ''}
-                    </div>
-                </div>
-                
-                <!-- Recommandations -->
-                ${results.recommandations && results.recommandations.length > 0 ? `
-                <div class="recommandations-section">
-                    <h3>💡 Nos recommandations</h3>
-                    <div class="recommandations-list">
-                        ${results.recommandations.map(rec => `<div class="recommandation-item">${rec}</div>`).join('')}
-                    </div>
-                </div>` : ''}
-                
-                <!-- Récapitulatif -->
-                <div class="recap-section">
-                    <h3>📋 Récapitulatif de vos informations</h3>
-                    <div class="recap-grid">
-                        <div class="recap-item">
-                            <strong>Type de logement :</strong> ${getLogementLabel(results.data_utilisateur.type_logement)}
-                        </div>
-                        <div class="recap-item">
-                            <strong>Surface :</strong> ${results.data_utilisateur.surface} m²
-                        </div>
-                        <div class="recap-item">
-                            <strong>Nombre de personnes :</strong> ${results.data_utilisateur.nb_personnes}
-                        </div>
-                        <div class="recap-item">
-                            <strong>Isolation :</strong> ${getIsolationLabel(results.data_utilisateur.isolation)}
-                        </div>
-                        <div class="recap-item">
-                            <strong>Chauffage électrique :</strong> ${results.data_utilisateur.chauffage_electrique === 'oui' ? 'Oui' : 'Non'}
-                        </div>
-                        <div class="recap-item">
-                            <strong>Eau chaude :</strong> ${results.data_utilisateur.eau_chaude === 'oui' ? 'Électrique' : 'Autre énergie'}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Actions -->
-                <div class="results-actions">
-                    <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimer</button>
-                    <button class="btn btn-secondary" onclick="downloadPDF()">📄 PDF</button>
+                <div class="economies">
+                    <p>💡 <strong>Économies potentielles :</strong> jusqu'à ${Math.abs(results.tarifs.base.total_annuel - results.tarifs.hc.total_annuel)}€/an en choisissant le bon tarif !</p>
                 </div>
             </div>
-        `;
+            
+            <!-- RÉPARTITION DÉTAILLÉE AVEC CALCULS -->
+            <div class="repartition-detaillee">
+                <h3>🧮 Détail complet des calculs de consommation</h3>
+                
+                ${generateDetailedConsumptionHTML(results)}
+            </div>
+            
+            <!-- Récapitulatif complet -->
+            ${generateCompleteRecapHTML(results.recap, results.details_calcul)}
+            
+            <!-- Actions -->
+            <div class="results-actions">
+                <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimer les résultats</button>
+                <button class="btn btn-secondary" onclick="downloadPDF()">📄 Télécharger PDF</button>
+                <button class="btn btn-outline" onclick="showDebugInfo()">🔧 Voir détails techniques</button>
+            </div>
+        </div>
+    `;
 
         $('#results-container').html(resultsHtml);
         $('.results-summary').hide().fadeIn(600);
+    }
+
+    function generateDetailedConsumptionHTML(results) {
+        const details = results.details_calcul || {};
+        const repartition = results.repartition || {};
+
+        let html = '<div class="consumption-breakdown">';
+
+        // 1. CHAUFFAGE (même si 0)
+        html += generateConsumptionCategory(
+            'chauffage',
+            '🔥 Chauffage électrique',
+            repartition.chauffage || 0,
+            details.chauffage || {}
+        );
+
+        // 2. EAU CHAUDE
+        html += generateConsumptionCategory(
+            'eau_chaude',
+            '💧 Chauffe-eau électrique',
+            repartition.eau_chaude || 0,
+            details.eau_chaude || {}
+        );
+
+        // 3. ÉLECTROMÉNAGERS
+        html += generateConsumptionCategory(
+            'electromenagers',
+            '🏠 Électroménagers',
+            repartition.electromenagers || 0,
+            details.electromenagers || {}
+        );
+
+        // 4. CUISSON
+        html += generateConsumptionCategory(
+            'cuisson',
+            '🍳 Cuisson électrique',
+            repartition.cuisson || 0,
+            details.cuisson || {}
+        );
+
+        // 5. ÉCLAIRAGE  
+        html += generateConsumptionCategory(
+            'eclairage',
+            '💡 Éclairage',
+            repartition.eclairage || 0,
+            details.eclairage || {}
+        );
+
+        // 6. MULTIMÉDIA
+        html += generateConsumptionCategory(
+            'multimedia',
+            '📺 TV/PC/Box',
+            repartition.multimedia || repartition.tv_pc_box || 0,
+            details.multimedia || details.tv_pc_box || {}
+        );
+
+        // 7. ÉQUIPEMENTS SPÉCIAUX
+        html += generateSpecialEquipmentHTML(results);
+
+        // 8. TOTAL
+        html += `
+        <div class="consumption-item total-item">
+            <div class="consumption-header">
+                <div class="consumption-title">
+                    <span class="consumption-icon">⚡</span>
+                    <h4>TOTAL GÉNÉRAL</h4>
+                </div>
+                <div class="consumption-value total-value">
+                    ${results.consommation_annuelle.toLocaleString()} kWh/an
+                </div>
+            </div>
+        </div>
+    `;
+
+        html += '</div>';
+        return html;
+    }
+
+    // Génération d'une catégorie de consommation
+    function generateConsumptionCategory(key, title, totalKwh, details) {
+        const isZero = totalKwh === 0;
+
+        let html = `
+        <div class="consumption-item ${isZero ? 'zero-consumption' : ''}">
+            <div class="consumption-header" onclick="toggleConsumptionDetails('${key}')">
+                <div class="consumption-title">
+                    <span class="consumption-icon">${getConsumptionIcon(key)}</span>
+                    <h4>${title}</h4>
+                    ${isZero ? '<span class="zero-badge">Non utilisé</span>' : ''}
+                </div>
+                <div class="consumption-value">
+                    ${totalKwh.toLocaleString()} kWh/an
+                    <span class="toggle-icon">▼</span>
+                </div>
+            </div>
+            <div class="consumption-details" id="details-${key}">
+                ${generateCategoryDetails(key, details, totalKwh)}
+            </div>
+        </div>
+    `;
+
+        return html;
+    }
+
+    // Génération des détails d'une catégorie
+    function generateCategoryDetails(category, details, total) {
+        if (!details || Object.keys(details).length === 0) {
+            return `
+            <div class="detail-row">
+                <span class="detail-label">Calcul</span>
+                <span class="detail-calculation">Non calculé ou inclus dans autre poste</span>
+            </div>
+        `;
+        }
+
+        let html = '';
+
+        // Afficher chaque élément de calcul
+        Object.entries(details).forEach(([key, data]) => {
+            if (typeof data === 'object' && data !== null) {
+                html += `
+                <div class="detail-row">
+                    <span class="detail-label">${formatDetailLabel(key)}</span>
+                    <span class="detail-calculation">
+                        ${data.base_kwh || 0} kWh × ${data.coefficient || 1} (coeff.) = ${data.final_kwh || 0} kWh/an
+                    </span>
+                </div>
+            `;
+            } else {
+                html += `
+                <div class="detail-row">
+                    <span class="detail-label">${formatDetailLabel(key)}</span>
+                    <span class="detail-value">${data}</span>
+                </div>
+            `;
+            }
+        });
+
+        // Sous-total si pertinent
+        if (total > 0) {
+            html += `
+            <div class="detail-row subtotal-row">
+                <span class="detail-label"><strong>Sous-total ${category}</strong></span>
+                <span class="detail-value"><strong>${total.toLocaleString()} kWh/an</strong></span>
+            </div>
+        `;
+        }
+
+        return html;
+    }
+
+    // Génération HTML pour équipements spéciaux
+    function generateSpecialEquipmentHTML(results) {
+        const special = results.repartition.equipements_speciaux || {};
+        const details = results.details_calcul.equipements_speciaux || {};
+
+        let totalSpecial = 0;
+        Object.values(special).forEach(val => totalSpecial += (typeof val === 'number' ? val : 0));
+
+        let html = `
+        <div class="consumption-item ${totalSpecial === 0 ? 'zero-consumption' : ''}">
+            <div class="consumption-header" onclick="toggleConsumptionDetails('equipements_speciaux')">
+                <div class="consumption-title">
+                    <span class="consumption-icon">🔌</span>
+                    <h4>Équipements spéciaux</h4>
+                    ${totalSpecial === 0 ? '<span class="zero-badge">Aucun</span>' : ''}
+                </div>
+                <div class="consumption-value">
+                    ${totalSpecial.toLocaleString()} kWh/an
+                    <span class="toggle-icon">▼</span>
+                </div>
+            </div>
+            <div class="consumption-details" id="details-equipements_speciaux">
+    `;
+
+        // Piscine
+        const piscineKwh = special.piscine || 0;
+        html += `
+        <div class="detail-row">
+            <span class="detail-label">🏊 Piscine</span>
+            <span class="detail-calculation">${piscineKwh.toLocaleString()} kWh/an</span>
+        </div>
+    `;
+
+        // Spa/Jacuzzi
+        const spaKwh = special.spa_jacuzzi || 0;
+        html += `
+        <div class="detail-row">
+            <span class="detail-label">🛁 Spa/Jacuzzi</span>
+            <span class="detail-calculation">${spaKwh.toLocaleString()} kWh/an</span>
+        </div>
+    `;
+
+        // Voiture électrique
+        const voitureKwh = special.voiture_electrique || 0;
+        html += `
+        <div class="detail-row">
+            <span class="detail-label">🚗 Voiture électrique</span>
+            <span class="detail-calculation">${voitureKwh.toLocaleString()} kWh/an</span>
+        </div>
+    `;
+
+        // Aquarium
+        const aquariumKwh = special.aquarium || 0;
+        html += `
+        <div class="detail-row">
+            <span class="detail-label">🐠 Aquarium</span>
+            <span class="detail-calculation">${aquariumKwh.toLocaleString()} kWh/an</span>
+        </div>
+    `;
+
+        // Climatiseur mobile
+        const climKwh = special.climatiseur_mobile || 0;
+        html += `
+        <div class="detail-row">
+            <span class="detail-label">🌬️ Climatiseur mobile</span>
+            <span class="detail-calculation">${climKwh.toLocaleString()} kWh/an</span>
+        </div>
+    `;
+
+        if (totalSpecial > 0) {
+            html += `
+            <div class="detail-row subtotal-row">
+                <span class="detail-label"><strong>Sous-total équipements</strong></span>
+                <span class="detail-value"><strong>${totalSpecial.toLocaleString()} kWh/an</strong></span>
+            </div>
+        `;
+        }
+
+        html += '</div></div>';
+
+        return html;
+    }
+
+    // Génération du récapitulatif complet
+    function generateCompleteRecapHTML(recap, detailsCalcul) {
+        return `
+        <div class="recap-complet">
+            <h3>📋 Récapitulatif complet et paramètres utilisés</h3>
+            
+            <!-- Informations logement -->
+            <div class="recap-section">
+                <h4>🏠 Votre logement</h4>
+                <div class="recap-grid">
+                    <div class="recap-item">
+                        <span class="recap-label">Type de logement :</span>
+                        <span class="recap-value">${getLogementLabel(recap.type_logement)}</span>
+                    </div>
+                    <div class="recap-item">
+                        <span class="recap-label">Surface habitable :</span>
+                        <span class="recap-value">${recap.surface} m²</span>
+                    </div>
+                    <div class="recap-item">
+                        <span class="recap-label">Nombre de personnes :</span>
+                        <span class="recap-value">${recap.nb_personnes} personne${recap.nb_personnes > 1 ? 's' : ''}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chauffage -->
+            <div class="recap-section">
+                <h4>🔥 Chauffage et isolation</h4>
+                <div class="recap-grid">
+                    <div class="recap-item">
+                        <span class="recap-label">Mode de chauffage :</span>
+                        <span class="recap-value">${getHeatingLabel(recap.type_chauffage)}</span>
+                    </div>
+                    ${recap.isolation ? `
+                    <div class="recap-item">
+                        <span class="recap-label">Isolation :</span>
+                        <span class="recap-value">${getIsolationLabel(recap.isolation)}</span>
+                    </div>
+                    ` : ''}
+                    ${detailsCalcul?.chauffage?.consommation_m2 ? `
+                    <div class="recap-item">
+                        <span class="recap-label">Consommation chauffage :</span>
+                        <span class="recap-value">${detailsCalcul.chauffage.consommation_m2} kWh/m²/an</span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            <!-- Équipements -->
+            <div class="recap-section">
+                <h4>🔌 Vos équipements</h4>
+                <div class="recap-grid">
+                    <div class="recap-item">
+                        <span class="recap-label">Eau chaude :</span>
+                        <span class="recap-value">${recap.eau_chaude === 'oui' ? '💧 Électrique' : '🚫 Autre énergie'}</span>
+                    </div>
+                    <div class="recap-item">
+                        <span class="recap-label">Cuisson :</span>
+                        <span class="recap-value">${getCuissonLabel(recap.type_cuisson)}</span>
+                    </div>
+                    <div class="recap-item">
+                        <span class="recap-label">Éclairage :</span>
+                        <span class="recap-value">${getEclairageLabel(recap.type_eclairage)}</span>
+                    </div>
+                    <div class="recap-item">
+                        <span class="recap-label">Piscine :</span>
+                        <span class="recap-value">${getPiscineLabel(recap.piscine)}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Électroménagers sélectionnés -->
+            ${recap.electromenagers && recap.electromenagers.length > 0 ? `
+            <div class="recap-section">
+                <h4>🏠 Électroménagers sélectionnés</h4>
+                <div class="electromenagers-list">
+                    ${recap.electromenagers.map(eq => `
+                        <span class="electromenager-tag">${getElectroLabel(eq)}</span>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Équipements spéciaux -->
+            ${recap.equipements_speciaux && recap.equipements_speciaux.length > 0 ? `
+            <div class="recap-section">
+                <h4>⚡ Équipements spéciaux</h4>
+                <div class="equipements-list">
+                    ${recap.equipements_speciaux.map(eq => `
+                        <span class="equipement-tag">${getEquipementLabel(eq)}</span>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Coefficients appliqués -->
+            ${detailsCalcul?.coefficients ? `
+            <div class="recap-section">
+                <h4>🧮 Coefficients appliqués</h4>
+                <div class="recap-grid">
+                    <div class="recap-item">
+                        <span class="recap-label">Coefficient logement :</span>
+                        <span class="recap-value">${detailsCalcul.coefficients.logement || 1}</span>
+                    </div>
+                    <div class="recap-item">
+                        <span class="recap-label">Coefficient personnes :</span>
+                        <span class="recap-value">${detailsCalcul.coefficients.personnes || 1}</span>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+        </div>
+    `;
+    }
+
+    // Fonctions utilitaires de formatage
+    function getConsumptionIcon(category) {
+        const icons = {
+            'chauffage': '🔥',
+            'eau_chaude': '💧',
+            'electromenagers': '🏠',
+            'cuisson': '🍳',
+            'eclairage': '💡',
+            'multimedia': '📺',
+            'equipements_speciaux': '🔌'
+        };
+        return icons[category] || '⚡';
+    }
+
+    function formatDetailLabel(key) {
+        const labels = {
+            'base_kwh': 'Consommation de base',
+            'coefficient': 'Coefficient multiplicateur',
+            'final_kwh': 'Consommation finale',
+            'nb_personnes': 'Nombre de personnes',
+            'surface': 'Surface',
+            'type_logement': 'Type de logement'
+        };
+        return labels[key] || key.replace('_', ' ');
+    }
+
+    // Nouvelles fonctions de label
+    function getIsolationLabel(isolation) {
+        const labels = {
+            'avant_1980': '❌ Faible (avant 1980)',
+            '1980_2000': '⚠️ Moyenne (1980-2000)',
+            'apres_2000': '✅ Bonne (après 2000)',
+            'renovation': '⭐ Excellente (rénovée)'
+        };
+        return labels[isolation] || isolation;
+    }
+
+    function getCuissonLabel(cuisson) {
+        const labels = {
+            'induction': '⚡ Induction électrique',
+            'vitroceramique': '🔥 Vitrocéramique',
+            'autre': '🚫 Autre (gaz, mixte...)'
+        };
+        return labels[cuisson] || cuisson;
+    }
+
+    function getEclairageLabel(eclairage) {
+        const labels = {
+            'led': '💡 LED (basse consommation)',
+            'incandescence_halogene': '🔆 Incandescence/Halogène'
+        };
+        return labels[eclairage] || eclairage;
+    }
+
+    function getPiscineLabel(piscine) {
+        const labels = {
+            'simple': '🏊 Piscine simple',
+            'chauffee': '🌊 Piscine chauffée',
+            'non': '🚫 Pas de piscine'
+        };
+        return labels[piscine] || piscine;
+    }
+
+    function getElectroLabel(electro) {
+        const labels = {
+            'lave_linge': '👕 Lave-linge',
+            'seche_linge': '🌪️ Sèche-linge',
+            'refrigerateur': '🧊 Réfrigérateur',
+            'congelateur': '❄️ Congélateur',
+            'lave_vaisselle': '🍽️ Lave-vaisselle',
+            'four': '🔥 Four électrique',
+            'cave_a_vin': '🍷 Cave à vin'
+        };
+        return labels[electro] || electro;
+    }
+
+    function getEquipementLabel(equipement) {
+        const labels = {
+            'spa_jacuzzi': '🛁 Spa/Jacuzzi',
+            'voiture_electrique': '🚗 Voiture électrique',
+            'aquarium_petit': '🐠 Petit aquarium',
+            'aquarium_grand': '🐟 Grand aquarium',
+            'climatiseur_mobile': '🌬️ Climatiseur mobile'
+        };
+        return labels[equipement] || equipement;
+    }
+
+    // Fonction pour toggle les détails
+    function toggleConsumptionDetails(categoryId) {
+        const details = $(`#details-${categoryId}`);
+        const icon = details.siblings('.consumption-header').find('.toggle-icon');
+
+        details.slideToggle(300);
+        icon.text(details.is(':visible') ? '▲' : '▼');
+    }
+
+    // Fonction pour afficher les infos de debug
+    function showDebugInfo() {
+        const debugData = window.hticSimulateurDebug ? window.hticSimulateurDebug.formData() : 'Debug non disponible';
+
+        alert('Données de debug:\n\n' + JSON.stringify(debugData, null, 2));
     }
 
     function displayError(message) {

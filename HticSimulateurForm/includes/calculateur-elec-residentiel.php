@@ -1,7 +1,8 @@
 <?php
 /**
- * Calculateur Électricité Résidentiel - Version organisée par catégories
+ * Calculateur Électricité Résidentiel - Version Complète
  * Fichier: includes/calculateur-elec-residentiel.php
+ * Version: 2.0 - Affichage détaillé complet
  */
 
 // Sécurité
@@ -14,7 +15,6 @@ class HticCalculateurElecResidentiel {
     private $userData;
     private $configData;
     private $debugMode;
-    private $resultats = array();
     
     public function __construct($userData = array(), $configData = array(), $debugMode = false) {
         $this->userData = $userData;
@@ -22,476 +22,777 @@ class HticCalculateurElecResidentiel {
         $this->debugMode = $debugMode;
         
         $this->logDebug("=== CALCULATEUR ÉLECTRICITÉ RÉSIDENTIEL INITIALISÉ ===");
+        $this->logDebug("Données utilisateur reçues: " . count($userData) . " champs");
+        $this->logDebug("Configuration disponible: " . count($configData) . " paramètres");
     }
     
     /**
      * Point d'entrée principal pour le calcul
      */
     public function calculate() {
-        $this->logDebug("Début du calcul pour électricité résidentiel");
+        $this->logDebug("🚀 DÉBUT DU CALCUL COMPLET");
         
         // Récupération et validation des données
         $validatedData = $this->validateAndExtractData();
         
         if (!$validatedData) {
-            return $this->returnError("Données invalides");
+            return $this->returnError("Données invalides ou incomplètes");
         }
         
-        // Initialiser les résultats avec données de base
-        $this->resultats = array(
-            'data_utilisateur' => $validatedData,
-            'consommations' => array(),
-            'puissances' => array(),
-            'totaux' => array(
-                'consommation_totale' => 0,
-                'puissance_totale' => 0
-            )
-        );
+        // Affichage des données récupérées pour debug
+        $this->displayReceivedData($validatedData);
         
-        // CALCULS PAR CATÉGORIE
-        $this->calculerChauffage();
-        $this->calculerChauffeEau();
-        $this->calculerElectromenagers();
-        $this->calculerMultimedia();
-        $this->calculerEquipementsSupplementaires();
-        $this->calculerEclairage();
+        // Calcul détaillé complet
+        $results = $this->performCompleteCalculation($validatedData);
         
-        // Calculs finaux
-        $this->calculerTotaux();
-        $this->calculerPuissanceRecommandee();
-        $this->calculerTarifs();
-        $this->genererRecommandations();
-        
-        $this->logDebug("=== RÉSULTATS FINAUX ===");
-        $this->logDebug("Consommation totale: " . $this->resultats['totaux']['consommation_totale'] . " kWh/an");
-        $this->logDebug("Puissance totale: " . $this->resultats['totaux']['puissance_totale'] . " kW");
+        $this->logDebug("✅ CALCUL TERMINÉ - Total: " . $results['consommation_annuelle'] . " kWh/an");
         
         return array(
             'success' => true,
-            'data' => $this->resultats
+            'data' => $results
         );
     }
     
-    // ===============================
-    // CALCUL CHAUFFAGE
-    // ===============================
-    
-    private function calculerChauffage() {
-        $this->logDebug("=== CALCUL CHAUFFAGE ===");
-        
-        $userData = $this->resultats['data_utilisateur'];
-        $chauffageElec = isset($userData['chauffage_electrique']) ? $userData['chauffage_electrique'] : 'non';
-        
-        $consommation = 0;
-        $puissance = 0;
-        
-        if ($chauffageElec === 'oui') {
-            $surface = floatval($userData['surface']);
-            $typeLogement = $userData['type_logement'];
-            $isolation = $userData['isolation'];
-            $typeChauffage = isset($userData['type_chauffage_elec']) ? $userData['type_chauffage_elec'] : 'convecteurs';
-            
-            // Récupérer les données de consommation par m² selon le type et isolation
-            $conso_m2_key = $typeLogement . '_' . $typeChauffage . '_' . $isolation;
-            $conso_m2 = isset($this->configData[$conso_m2_key]) ? $this->configData[$conso_m2_key] : 0;
-            
-            $consommation = $surface * $conso_m2;
-            
-            // Calcul puissance chauffage (50W par m² avec simultanéité 80%)
-            $puissance_base = isset($this->configData['chauffage_m2_puissance']) ? $this->configData['chauffage_m2_puissance'] : 50;
-            $simultaneite = isset($this->configData['chauffage_m2_simultaneite']) ? ($this->configData['chauffage_m2_simultaneite'] / 100) : 0.8;
-            
-            $puissance = ($surface * $puissance_base * $simultaneite) / 1000; // kW
-            
-            $this->logDebug("Surface: {$surface} m²");
-            $this->logDebug("Type: {$typeLogement} - Chauffage: {$typeChauffage} - Isolation: {$isolation}");
-            $this->logDebug("Consommation/m²: {$conso_m2} kWh/m²/an");
-            $this->logDebug("Consommation chauffage: {$consommation} kWh/an");
-            $this->logDebug("Puissance chauffage: {$puissance} kW");
-        } else {
-            $this->logDebug("Pas de chauffage électrique");
-        }
-        
-        $this->resultats['consommations']['chauffage'] = $consommation;
-        $this->resultats['puissances']['chauffage'] = $puissance;
-    }
-    
-    // ===============================
-    // CALCUL CHAUFFE-EAU
-    // ===============================
-    
-    private function calculerChauffeEau() {
-        $this->logDebug("=== CALCUL CHAUFFE-EAU ===");
-        
-        $userData = $this->resultats['data_utilisateur'];
-        $eauChaude = isset($userData['eau_chaude']) ? $userData['eau_chaude'] : 'non';
-        
-        $consommation = 0;
-        $puissance = 0;
-        
-        if ($eauChaude === 'oui') {
-            $nbPersonnes = intval($userData['nb_personnes']);
-            if ($nbPersonnes > 6) $nbPersonnes = 6;
-            
-            // Consommation de base
-            $conso_base = isset($this->configData['chauffe_eau']) ? $this->configData['chauffe_eau'] : 900;
-            
-            // Coefficient selon nombre de personnes
-            $coeff_key = 'coeff_chauffe_eau_' . $nbPersonnes;
-            $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
-            
-            $consommation = $conso_base * $coefficient;
-            
-            // Puissance chauffe-eau avec simultanéité
-            $puissance_base = isset($this->configData['chauffe_eau_puissance']) ? $this->configData['chauffe_eau_puissance'] : 2400;
-            $simultaneite = isset($this->configData['chauffe_eau_simultaneite']) ? ($this->configData['chauffe_eau_simultaneite'] / 100) : 0.3;
-            
-            $puissance = ($puissance_base * $simultaneite) / 1000; // kW
-            
-            $this->logDebug("Nombre de personnes: {$nbPersonnes}");
-            $this->logDebug("Consommation de base: {$conso_base} kWh/an");
-            $this->logDebug("Coefficient: {$coefficient}");
-            $this->logDebug("Consommation chauffe-eau: {$consommation} kWh/an");
-            $this->logDebug("Puissance chauffe-eau: {$puissance} kW");
-        } else {
-            $this->logDebug("Pas d'eau chaude électrique");
-        }
-        
-        $this->resultats['consommations']['chauffe_eau'] = $consommation;
-        $this->resultats['puissances']['chauffe_eau'] = $puissance;
-    }
-    
-    // ===============================
-    // CALCUL ÉLECTROMÉNAGERS
-    // ===============================
-    
-    private function calculerElectromenagers() {
-        $this->logDebug("=== CALCUL ÉLECTROMÉNAGERS ===");
-        
-        $userData = $this->resultats['data_utilisateur'];
-        $electromenagers = isset($userData['electromenagers']) && is_array($userData['electromenagers']) ? $userData['electromenagers'] : array();
-        $nbPersonnes = intval($userData['nb_personnes']);
-        if ($nbPersonnes > 6) $nbPersonnes = 6;
-        
-        $consommation_totale = 0;
-        $puissance_totale = 0;
-        
-        // Liste des électroménagers possibles
-        $electromenagers_disponibles = array(
-            'lave_linge', 'four', 'seche_linge', 'lave_vaisselle', 'cave_vin',
-            'refrigerateur', 'congelateur', 'plaque_cuisson'
-        );
-        
-        // Ajouter cuisson électrique si sélectionnée
-        $cuisson = isset($userData['cuisson_electrique']) ? $userData['cuisson_electrique'] : 'non';
-        if ($cuisson === 'oui' && !in_array('plaque_cuisson', $electromenagers)) {
-            $electromenagers[] = 'plaque_cuisson';
-        }
-        
-        foreach ($electromenagers_disponibles as $equipement) {
-            if (in_array($equipement, $electromenagers)) {
-                
-                // Consommation de base
-                $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 0;
-                
-                // Coefficient selon nombre de personnes
-                $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
-                $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
-                
-                $consommation = $conso_base * $coefficient;
-                $consommation_totale += $consommation;
-                
-                // Puissance avec simultanéité
-                $puissance_base = isset($this->configData[$equipement . '_puissance']) ? $this->configData[$equipement . '_puissance'] : 1000;
-                $simultaneite = isset($this->configData[$equipement . '_simultaneite']) ? ($this->configData[$equipement . '_simultaneite'] / 100) : 0.5;
-                
-                $puissance = ($puissance_base * $simultaneite) / 1000; // kW
-                $puissance_totale += $puissance;
-                
-                $this->logDebug("- {$equipement}: {$consommation} kWh/an, {$puissance} kW");
-            }
-        }
-        
-        // Ajouter forfait autres petits électroménagers
-        $forfait_petits = isset($this->configData['forfait_petits_electromenagers']) ? $this->configData['forfait_petits_electromenagers'] : 150;
-        $consommation_totale += $forfait_petits;
-        
-        $this->logDebug("Forfait petits électroménagers: {$forfait_petits} kWh/an");
-        $this->logDebug("TOTAL Électroménagers: {$consommation_totale} kWh/an, {$puissance_totale} kW");
-        
-        $this->resultats['consommations']['electromenagers'] = $consommation_totale;
-        $this->resultats['puissances']['electromenagers'] = $puissance_totale;
-    }
-    
-    // ===============================
-    // CALCUL MULTIMÉDIA (automatique)
-    // ===============================
-    
-    private function calculerMultimedia() {
-        $this->logDebug("=== CALCUL MULTIMÉDIA ===");
-        
-        // TV/PC/Box inclus automatiquement
-        $consommation = isset($this->configData['tv_pc_box']) ? $this->configData['tv_pc_box'] : 300;
-        
-        // Puissance multimédia avec simultanéité
-        $puissance_base = isset($this->configData['tv_pc_box_puissance']) ? $this->configData['tv_pc_box_puissance'] : 500;
-        $simultaneite = isset($this->configData['tv_pc_box_simultaneite']) ? ($this->configData['tv_pc_box_simultaneite'] / 100) : 0.8;
-        
-        $puissance = ($puissance_base * $simultaneite) / 1000; // kW
-        
-        $this->logDebug("TV/PC/Box: {$consommation} kWh/an, {$puissance} kW");
-        
-        $this->resultats['consommations']['multimedia'] = $consommation;
-        $this->resultats['puissances']['multimedia'] = $puissance;
-    }
-    
-    // ===============================
-    // CALCUL ÉQUIPEMENTS SUPPLÉMENTAIRES
-    // ===============================
-    
-    private function calculerEquipementsSupplementaires() {
-        $this->logDebug("=== CALCUL ÉQUIPEMENTS SUPPLÉMENTAIRES ===");
-        
-        $userData = $this->resultats['data_utilisateur'];
-        $equipements = isset($userData['equipements_speciaux']) && is_array($userData['equipements_speciaux']) ? $userData['equipements_speciaux'] : array();
-        
-        $consommation_totale = 0;
-        $puissance_totale = 0;
-        
-        // Piscine
-        $piscine = isset($userData['piscine']) ? $userData['piscine'] : 'non';
-        if ($piscine === 'simple') {
-            $conso = isset($this->configData['piscine']) ? $this->configData['piscine'] : 1400;
-            $consommation_totale += $conso;
-            
-            $puissance_base = isset($this->configData['piscine_puissance']) ? $this->configData['piscine_puissance'] : 2500;
-            $simultaneite = isset($this->configData['piscine_simultaneite']) ? ($this->configData['piscine_simultaneite'] / 100) : 0.8;
-            $puissance_totale += ($puissance_base * $simultaneite) / 1000;
-            
-            $this->logDebug("- Piscine simple: {$conso} kWh/an");
-            
-        } elseif ($piscine === 'chauffee') {
-            $conso = isset($this->configData['piscine_chauffee']) ? $this->configData['piscine_chauffee'] : 4000;
-            $consommation_totale += $conso;
-            $this->logDebug("- Piscine chauffée: {$conso} kWh/an");
-        }
-        
-        // Autres équipements
-        $equipements_config = array(
-            'spa_jacuzzi' => 'spa_jacuzzi',
-            'voiture_electrique' => 'voiture_electrique', 
-            'aquarium_petit' => 'aquarium',
-            'aquarium_grand' => 'aquarium',
-            'climatiseur_mobile' => 'climatiseur_mobile'
-        );
-        
-        foreach ($equipements_config as $equipement_user => $equipement_config) {
-            if (in_array($equipement_user, $equipements)) {
-                $conso = isset($this->configData[$equipement_config]) ? $this->configData[$equipement_config] : 0;
-                
-                // Aquarium grand = double de la consommation
-                if ($equipement_user === 'aquarium_grand') {
-                    $conso *= 2;
-                }
-                
-                $consommation_totale += $conso;
-                
-                // Puissance si disponible
-                if (isset($this->configData[$equipement_config . '_puissance'])) {
-                    $puissance_base = $this->configData[$equipement_config . '_puissance'];
-                    $simultaneite = isset($this->configData[$equipement_config . '_simultaneite']) ? ($this->configData[$equipement_config . '_simultaneite'] / 100) : 0.5;
-                    $puissance_totale += ($puissance_base * $simultaneite) / 1000;
-                }
-                
-                $this->logDebug("- {$equipement_user}: {$conso} kWh/an");
-            }
-        }
-        
-        $this->logDebug("TOTAL Équipements supplémentaires: {$consommation_totale} kWh/an, {$puissance_totale} kW");
-        
-        $this->resultats['consommations']['equipements_supplementaires'] = $consommation_totale;
-        $this->resultats['puissances']['equipements_supplementaires'] = $puissance_totale;
-    }
-    
-    // ===============================
-    // CALCUL ÉCLAIRAGE
-    // ===============================
-    
-    private function calculerEclairage() {
-        $this->logDebug("=== CALCUL ÉCLAIRAGE ===");
-        
-        $userData = $this->resultats['data_utilisateur'];
-        $surface = floatval($userData['surface']);
-        $typeEclairage = isset($userData['type_eclairage']) ? $userData['type_eclairage'] : 'led';
-        
-        // Consommation par m² selon le type d'éclairage
-        $conso_m2_key = 'eclairage_' . str_replace('_', '_', $typeEclairage) . '_m2';
-        $conso_m2 = isset($this->configData[$conso_m2_key]) ? $this->configData[$conso_m2_key] : 5;
-        
-        // Si pas trouvé, utiliser les valeurs par défaut
-        if (!isset($this->configData[$conso_m2_key])) {
-            $conso_m2 = ($typeEclairage === 'led') ? 5 : 15;
-        }
-        
-        $consommation = $surface * $conso_m2;
-        
-        // Puissance éclairage avec simultanéité
-        $puissance_base = isset($this->configData['eclairage_puissance']) ? $this->configData['eclairage_puissance'] : 500;
-        $simultaneite = isset($this->configData['eclairage_simultaneite']) ? ($this->configData['eclairage_simultaneite'] / 100) : 0.8;
-        
-        $puissance = ($puissance_base * $simultaneite) / 1000; // kW
-        
-        $this->logDebug("Surface: {$surface} m²");
-        $this->logDebug("Type éclairage: {$typeEclairage}");
-        $this->logDebug("Consommation/m²: {$conso_m2} kWh/m²/an");
-        $this->logDebug("Consommation éclairage: {$consommation} kWh/an, {$puissance} kW");
-        
-        $this->resultats['consommations']['eclairage'] = $consommation;
-        $this->resultats['puissances']['eclairage'] = $puissance;
-    }
-    
-    // ===============================
-    // CALCULS FINAUX
-    // ===============================
-    
-    private function calculerTotaux() {
-        $this->logDebug("=== CALCUL TOTAUX ===");
-        
-        $consommation_totale = 0;
-        $puissance_totale = 0;
-        
-        foreach ($this->resultats['consommations'] as $categorie => $conso) {
-            $consommation_totale += $conso;
-        }
-        
-        foreach ($this->resultats['puissances'] as $categorie => $puissance) {
-            $puissance_totale += $puissance;
-        }
-        
-        $this->resultats['totaux']['consommation_totale'] = $consommation_totale;
-        $this->resultats['totaux']['puissance_totale'] = $puissance_totale;
-        
-        $this->logDebug("Consommation totale: {$consommation_totale} kWh/an");
-        $this->logDebug("Puissance totale: {$puissance_totale} kW");
-    }
-    
-    private function calculerPuissanceRecommandee() {
-        $puissance_totale = $this->resultats['totaux']['puissance_totale'];
-        
-        // Ajouter marge de sécurité 20%
-        $puissance_avec_marge = $puissance_totale * 1.2;
-        
-        // Puissances standard disponibles
-        $puissances_standard = array(3, 6, 9, 12, 15, 18, 24, 30, 36);
-        
-        $puissance_recommandee = 3;
-        foreach ($puissances_standard as $puissance) {
-            if ($puissance_avec_marge <= $puissance) {
-                $puissance_recommandee = $puissance;
-                break;
-            }
-        }
-        
-        $this->resultats['totaux']['puissance_recommandee'] = $puissance_recommandee;
-        
-        $this->logDebug("Puissance avec marge: {$puissance_avec_marge} kW");
-        $this->logDebug("Puissance recommandée: {$puissance_recommandee} kVA");
-    }
-    
-    private function calculerTarifs() {
-        $this->logDebug("=== CALCUL TARIFS ===");
-        
-        $consommation = $this->resultats['totaux']['consommation_totale'];
-        $puissance = $this->resultats['totaux']['puissance_recommandee'];
-        
-        // Tarif BASE
-        $abo_base = isset($this->configData['base_abo_' . $puissance]) ? $this->configData['base_abo_' . $puissance] : 0;
-        $kwh_base = isset($this->configData['base_kwh_' . $puissance]) ? $this->configData['base_kwh_' . $puissance] : 0;
-        
-        $cout_base_annuel = ($abo_base * 12) + ($consommation * $kwh_base);
-        
-        // Tarif HEURES CREUSES
-        $abo_hc = isset($this->configData['hc_abo_' . $puissance]) ? $this->configData['hc_abo_' . $puissance] : 0;
-        $kwh_hp = isset($this->configData['hc_hp_' . $puissance]) ? $this->configData['hc_hp_' . $puissance] : 0;
-        $kwh_hc = isset($this->configData['hc_hc_' . $puissance]) ? $this->configData['hc_hc_' . $puissance] : 0;
-        
-        // Répartition HP/HC
-        $repartition_hp = isset($this->configData['repartition_hp']) ? $this->configData['repartition_hp'] : 60;
-        $repartition_hc = isset($this->configData['repartition_hc']) ? $this->configData['repartition_hc'] : 40;
-        
-        $conso_hp = $consommation * ($repartition_hp / 100);
-        $conso_hc = $consommation * ($repartition_hc / 100);
-        
-        $cout_hc_annuel = ($abo_hc * 12) + ($conso_hp * $kwh_hp) + ($conso_hc * $kwh_hc);
-        
-        $this->resultats['tarifs'] = array(
-            'base' => array(
-                'total_annuel' => round($cout_base_annuel, 2),
-                'total_mensuel' => round($cout_base_annuel / 12, 2)
-            ),
-            'hc' => array(
-                'total_annuel' => round($cout_hc_annuel, 2),
-                'total_mensuel' => round($cout_hc_annuel / 12, 2)
-            ),
-            'recommande' => ($cout_hc_annuel < $cout_base_annuel) ? 'hc' : 'base',
-            'economies' => round(abs($cout_base_annuel - $cout_hc_annuel), 2)
-        );
-        
-        $this->logDebug("Tarif BASE: " . $cout_base_annuel . "€/an");
-        $this->logDebug("Tarif HC: " . $cout_hc_annuel . "€/an");
-        $this->logDebug("Recommandé: " . $this->resultats['tarifs']['recommande']);
-    }
-    
-    private function genererRecommandations() {
-        $recommandations = array();
-        
-        $consommation = $this->resultats['totaux']['consommation_totale'];
-        $surface = floatval($this->resultats['data_utilisateur']['surface']);
-        
-        // Consommation par m²
-        $conso_m2 = $surface > 0 ? $consommation / $surface : 0;
-        
-        if ($conso_m2 > 150) {
-            $recommandations[] = "⚠️ Votre consommation est élevée (" . round($conso_m2) . " kWh/m²/an). Considérez l'amélioration de l'isolation.";
-        } elseif ($conso_m2 < 50) {
-            $recommandations[] = "👍 Excellente maîtrise de votre consommation !";
-        }
-        
-        // Recommandation tarifaire
-        if ($this->resultats['tarifs']['recommande'] === 'hc') {
-            $recommandations[] = "💡 Le tarif Heures Creuses vous ferait économiser " . $this->resultats['tarifs']['economies'] . "€/an.";
-        }
-        
-        $this->resultats['recommandations'] = $recommandations;
-    }
-    
-    // ===============================
-    // MÉTHODES UTILITAIRES
-    // ===============================
-    
+    /**
+     * Validation et extraction des données utilisateur
+     */
     private function validateAndExtractData() {
-        // Validation basique - à compléter selon vos besoins
-        $required_fields = array('surface', 'nb_personnes', 'isolation', 'type_logement');
+        $this->logDebug("=== VALIDATION ET EXTRACTION DES DONNÉES ===");
         
-        foreach ($required_fields as $field) {
-            if (!isset($this->userData[$field]) || empty($this->userData[$field])) {
-                $this->logDebug("Champ obligatoire manquant: " . $field);
+        $extractedData = array();
+        
+        // ÉTAPE 1: Informations du logement
+        $extractedData['type_logement'] = $this->extractValue('type_logement', 'string');
+        $extractedData['surface'] = $this->extractValue('surface', 'int');
+        $extractedData['nb_personnes'] = $this->extractValue('nb_personnes', 'int');
+        
+        // ÉTAPE 2: Chauffage et isolation
+        $extractedData['type_chauffage'] = $this->extractValue('type_chauffage', 'string');
+        $extractedData['isolation'] = $this->extractValue('isolation', 'string');
+        
+        // ÉTAPE 3: Électroménagers
+        $extractedData['electromenagers'] = $this->extractValue('electromenagers', 'array');
+        $extractedData['type_cuisson'] = $this->extractValue('type_cuisson', 'string');
+        
+        // ÉTAPE 4: Eau chaude
+        $extractedData['eau_chaude'] = $this->extractValue('eau_chaude', 'string');
+        
+        // ÉTAPE 5: Éclairage
+        $extractedData['type_eclairage'] = $this->extractValue('type_eclairage', 'string');
+        
+        // ÉTAPE 6: Équipements spéciaux
+        $extractedData['piscine'] = $this->extractValue('piscine', 'string');
+        $extractedData['equipements_speciaux'] = $this->extractValue('equipements_speciaux', 'array');
+        $extractedData['preference_tarif'] = $this->extractValue('preference_tarif', 'string');
+        
+        // Validation des champs obligatoires
+        $requiredFields = array('type_logement', 'surface', 'nb_personnes', 'type_chauffage', 'type_cuisson', 'eau_chaude', 'type_eclairage', 'piscine');
+        
+        foreach ($requiredFields as $field) {
+            if (empty($extractedData[$field]) && $extractedData[$field] !== '0') {
+                $this->logDebug("❌ ERREUR: Champ obligatoire manquant: " . $field);
                 return false;
             }
         }
         
-        return $this->userData;
+        // Validation spécifique: isolation obligatoire si chauffage électrique
+        $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
+        if (in_array($extractedData['type_chauffage'], $chauffagesElectriques) && empty($extractedData['isolation'])) {
+            $this->logDebug("❌ ERREUR: Isolation obligatoire pour le chauffage électrique");
+            return false;
+        }
+        
+        $this->logDebug("✅ Validation des données: OK");
+        
+        return $extractedData;
     }
     
+    /**
+     * Extraction d'une valeur avec validation de type
+     */
+    private function extractValue($key, $type = 'string') {
+        $value = isset($this->userData[$key]) ? $this->userData[$key] : null;
+        
+        switch ($type) {
+            case 'int':
+                $value = intval($value);
+                break;
+            case 'float':
+                $value = floatval($value);
+                break;
+            case 'array':
+                $value = is_array($value) ? $value : array();
+                break;
+            case 'string':
+            default:
+                $value = strval($value);
+                break;
+        }
+        
+        $this->logDebug("Extraction: {$key} = " . (is_array($value) ? '[' . implode(', ', $value) . ']' : $value));
+        
+        return $value;
+    }
+    
+    /**
+     * Affichage détaillé des données récupérées
+     */
+    private function displayReceivedData($data) {
+        $this->logDebug("=== DONNÉES RÉCUPÉRÉES DU FORMULAIRE ===");
+        
+        $this->logDebug("ÉTAPE 1 - LOGEMENT:");
+        $this->logDebug("- Type de logement: " . $data['type_logement']);
+        $this->logDebug("- Surface: " . $data['surface'] . " m²");
+        $this->logDebug("- Nombre de personnes: " . $data['nb_personnes']);
+        
+        $this->logDebug("ÉTAPE 2 - CHAUFFAGE:");
+        $this->logDebug("- Type de chauffage: " . $data['type_chauffage']);
+        if (!empty($data['isolation'])) {
+            $this->logDebug("- Isolation: " . $data['isolation']);
+        } else {
+            $this->logDebug("- Isolation: Non applicable (pas de chauffage électrique)");
+        }
+        
+        $this->logDebug("ÉTAPE 3 - ÉLECTROMÉNAGERS:");
+        $this->logDebug("- Électroménagers sélectionnés: " . (empty($data['electromenagers']) ? 'Aucun' : implode(', ', $data['electromenagers'])));
+        $this->logDebug("- Type de cuisson: " . $data['type_cuisson']);
+        
+        $this->logDebug("ÉTAPE 4 - EAU CHAUDE:");
+        $this->logDebug("- Eau chaude électrique: " . $data['eau_chaude']);
+        
+        $this->logDebug("ÉTAPE 5 - ÉCLAIRAGE:");
+        $this->logDebug("- Type d'éclairage: " . $data['type_eclairage']);
+        
+        $this->logDebug("ÉTAPE 6 - ÉQUIPEMENTS SPÉCIAUX:");
+        $this->logDebug("- Piscine: " . $data['piscine']);
+        if (!empty($data['equipements_speciaux'])) {
+            $this->logDebug("- Équipements spéciaux: " . implode(', ', $data['equipements_speciaux']));
+        } else {
+            $this->logDebug("- Équipements spéciaux: Aucun");
+        }
+        if (!empty($data['preference_tarif'])) {
+            $this->logDebug("- Préférence tarifaire: " . $data['preference_tarif']);
+        }
+        
+        $this->logDebug("=== CONFIGURATION DISPONIBLE ===");
+        if (!empty($this->configData)) {
+            $this->logDebug("Configuration chargée avec " . count($this->configData) . " paramètres");
+            
+            // Afficher quelques exemples de configuration
+            if (isset($this->configData['puissance_defaut'])) {
+                $this->logDebug("- Puissance par défaut: " . $this->configData['puissance_defaut'] . " kVA");
+            }
+            if (isset($this->configData['chauffe_eau'])) {
+                $this->logDebug("- Consommation chauffe-eau: " . $this->configData['chauffe_eau'] . " kWh/an");
+            }
+        } else {
+            $this->logDebug("⚠️ ATTENTION: Aucune configuration disponible");
+        }
+    }
+    
+    /**
+     * CALCUL DÉTAILLÉ COMPLET
+     */
+    private function performCompleteCalculation($data) {
+        $this->logDebug("=== CALCUL DÉTAILLÉ COMPLET EN COURS ===");
+        
+        $surface = (int)$data['surface'];
+        $nbPersonnes = (int)$data['nb_personnes'];
+        $typeLogement = $data['type_logement'];
+        
+        $this->logDebug("🏠 PARAMÈTRES DE BASE: {$typeLogement}, {$surface}m², {$nbPersonnes} personne(s)");
+        
+        // ==========================================
+        // CALCULS DÉTAILLÉS AVEC TOUTES LES INFOS
+        // ==========================================
+        
+        // 1. CHAUFFAGE
+        $chauffageDetails = $this->calculateChauffageDetaille($data);
+        $chauffageKwh = $chauffageDetails['total'];
+        $this->logDebug("🔥 Chauffage calculé: {$chauffageKwh} kWh/an");
+        
+        // 2. EAU CHAUDE
+        $eauChaudeDetails = $this->calculateEauChaudeDetaille($data);
+        $eauChaudeKwh = $eauChaudeDetails['total'];
+        $this->logDebug("💧 Eau chaude calculée: {$eauChaudeKwh} kWh/an");
+        
+        // 3. ÉLECTROMÉNAGERS
+        $electromenagersDetails = $this->calculateElectromenagetDetaille($data);
+        $electromenagersKwh = $electromenagersDetails['total'];
+        $this->logDebug("🏠 Électroménagers calculés: {$electromenagersKwh} kWh/an");
+        
+        // 4. CUISSON
+        $cuissonDetails = $this->calculateCuissonDetaille($data);
+        $cuissonKwh = $cuissonDetails['total'];
+        $this->logDebug("🍳 Cuisson calculée: {$cuissonKwh} kWh/an");
+        
+        // 5. ÉCLAIRAGE
+        $eclairageDetails = $this->calculateEclairageDetaille($data);
+        $eclairageKwh = $eclairageDetails['total'];
+        $this->logDebug("💡 Éclairage calculé: {$eclairageKwh} kWh/an");
+        
+        // 6. MULTIMÉDIA
+        $multimediaDetails = $this->calculateMultimediaDetaille($data);
+        $multimediaKwh = $multimediaDetails['total'];
+        $this->logDebug("📺 Multimédia calculé: {$multimediaKwh} kWh/an");
+        
+        // 7. ÉQUIPEMENTS SPÉCIAUX
+        $equipementsDetails = $this->calculateEquipementsSpeciauxDetaille($data);
+        $equipementsKwh = $equipementsDetails['total'];
+        $this->logDebug("⚡ Équipements spéciaux calculés: {$equipementsKwh} kWh/an");
+        
+        // TOTAL GÉNÉRAL
+        $consommationTotale = $chauffageKwh + $eauChaudeKwh + $electromenagersKwh + 
+                             $cuissonKwh + $eclairageKwh + $multimediaKwh + $equipementsKwh;
+        
+        $this->logDebug("📊 CONSOMMATION TOTALE: {$consommationTotale} kWh/an");
+        
+        // CALCUL DES TARIFS
+        $tarifsCalcules = $this->calculateTarifsDetaille($consommationTotale, $data);
+        
+        // PUISSANCE RECOMMANDÉE
+        $puissanceRecommandee = $this->calculatePuissanceRecommandee($consommationTotale, $data);
+        
+        // ==========================================
+        // STRUCTURE DE RETOUR COMPLÈTE
+        // ==========================================
+        
+        return array(
+            // Résultat principal
+            'consommation_annuelle' => (int)round($consommationTotale),
+            'puissance_recommandee' => $puissanceRecommandee,
+            
+            // TARIFS
+            'tarifs' => $tarifsCalcules,
+            
+            // RÉPARTITION SIMPLE (pour graphique)
+            'repartition' => array(
+                'chauffage' => (int)round($chauffageKwh),
+                'eau_chaude' => (int)round($eauChaudeKwh),
+                'electromenagers' => (int)round($electromenagersKwh),
+                'cuisson' => (int)round($cuissonKwh),
+                'eclairage' => (int)round($eclairageKwh),
+                'multimedia' => (int)round($multimediaKwh),
+                'tv_pc_box' => (int)round($multimediaKwh), // Alias pour rétrocompatibilité
+                'autres' => 0, // Divers non catégorisé
+                'equipements_speciaux' => $equipementsDetails['repartition'] // Détail par équipement
+            ),
+            
+            // DÉTAILS COMPLETS DE CALCUL
+            'details_calcul' => array(
+                'chauffage' => $chauffageDetails,
+                'eau_chaude' => $eauChaudeDetails,
+                'electromenagers' => $electromenagersDetails,
+                'cuisson' => $cuissonDetails,
+                'eclairage' => $eclairageDetails,
+                'multimedia' => $multimediaDetails,
+                'tv_pc_box' => $multimediaDetails, // Alias
+                'equipements_speciaux' => $equipementsDetails,
+                'coefficients' => array(
+                    'logement' => $typeLogement === 'appartement' ? 0.95 : 1.0,
+                    'personnes' => $this->getCoefficientPersonnes($nbPersonnes),
+                    'surface' => $this->getCoefficientSurface($surface)
+                ),
+                'methode_calcul' => 'HTIC Simulateur v2.0 - Calcul détaillé complet',
+                'timestamp' => date('Y-m-d H:i:s'),
+                'donnees_config_utilisees' => $this->getConfigSummary()
+            ),
+            
+            // RÉCAPITULATIF DES DONNÉES UTILISATEUR (pour affichage)
+            'recap' => $data
+        );
+    }
+    
+    // ==========================================
+    // CALCULS DÉTAILLÉS PAR POSTE
+    // ==========================================
+    
+    /**
+     * Calcul détaillé du chauffage
+     */
+    private function calculateChauffageDetaille($data) {
+        $typeChauffage = $data['type_chauffage'];
+        $surface = (int)$data['surface'];
+        $isolation = $data['isolation'] ?? '';
+        $typeLogement = $data['type_logement'];
+        
+        $this->logDebug("🔥 CALCUL CHAUFFAGE: {$typeChauffage}, isolation: {$isolation}");
+        
+        // Si pas de chauffage électrique
+        if ($typeChauffage === 'autre') {
+            return array(
+                'total' => 0,
+                'methode' => 'Chauffage non électrique',
+                'type_chauffage' => $typeChauffage,
+                'consommation_m2' => 0,
+                'surface_chauffee' => 0,
+                'coefficient_logement' => 0,
+                'coefficient_isolation' => 0,
+                'calcul' => '0 kWh/an - Chauffage non électrique sélectionné',
+                'explication' => 'Aucune consommation électrique car le chauffage principal n\'est pas électrique'
+            );
+        }
+        
+        // Récupération des données de config selon logement et chauffage
+        $configPrefix = $typeLogement . '_' . $typeChauffage . '_';
+        $isolationSuffix = $this->getIsolationConfigSuffix($isolation);
+        
+        $consommationM2 = $this->getConfigValue($configPrefix . $isolationSuffix, $this->getDefaultChauffage($typeChauffage, $isolation));
+        
+        // Coefficient logement (appartement généralement moins consommateur)
+        $coefficientLogement = $typeLogement === 'appartement' ? 0.95 : 1.0;
+        
+        // Calcul final
+        $consommationTotale = $surface * $consommationM2 * $coefficientLogement;
+        
+        $this->logDebug("Chauffage - Surface: {$surface}m², Conso/m²: {$consommationM2}, Coeff: {$coefficientLogement}");
+        
+        return array(
+            'total' => $consommationTotale,
+            'methode' => 'Surface × Consommation/m² × Coefficient logement',
+            'type_chauffage' => $typeChauffage,
+            'isolation' => $isolation,
+            'consommation_m2' => $consommationM2,
+            'surface_chauffee' => $surface,
+            'coefficient_logement' => $coefficientLogement,
+            'coefficient_isolation' => $this->getIsolationCoefficient($isolation),
+            'calcul' => "{$surface} m² × {$consommationM2} kWh/m²/an × {$coefficientLogement} = " . round($consommationTotale) . " kWh/an",
+            'explication' => "Consommation basée sur votre type de chauffage ({$typeChauffage}), l'isolation ({$isolation}) et la surface à chauffer"
+        );
+    }
+    
+    /**
+     * Calcul détaillé de l'eau chaude
+     */
+    private function calculateEauChaudeDetaille($data) {
+        $this->logDebug("💧 CALCUL EAU CHAUDE");
+        
+        if ($data['eau_chaude'] !== 'oui') {
+            return array(
+                'total' => 0,
+                'methode' => 'Eau chaude non électrique',
+                'type_production' => $data['eau_chaude'],
+                'base_kwh' => 0,
+                'coefficient' => 0,
+                'nb_personnes' => (int)$data['nb_personnes'],
+                'calcul' => '0 kWh/an - Eau chaude non électrique sélectionnée',
+                'explication' => 'Aucune consommation électrique car l\'eau chaude n\'est pas produite électriquement'
+            );
+        }
+        
+        $nbPersonnes = (int)$data['nb_personnes'];
+        $baseKwh = $this->getConfigValue('chauffe_eau', 900); // kWh pour 1 personne
+        $coefficient = $this->getCoefficientEauChaude($nbPersonnes);
+        
+        $total = $baseKwh * $coefficient;
+        
+        $this->logDebug("Eau chaude - Base: {$baseKwh} kWh, Coeff personnes: {$coefficient}");
+        
+        return array(
+            'total' => $total,
+            'methode' => 'Base eau chaude × Coefficient personnes',
+            'base_kwh' => $baseKwh,
+            'coefficient' => $coefficient,
+            'nb_personnes' => $nbPersonnes,
+            'calcul' => "{$baseKwh} kWh/an × {$coefficient} = " . round($total) . " kWh/an",
+            'explication' => "Consommation basée sur {$nbPersonnes} personne(s) avec un coefficient de {$coefficient}"
+        );
+    }
+    
+    /**
+     * Calcul détaillé des électroménagers
+     */
+    private function calculateElectromenagetDetaille($data) {
+        $electromenagers = $data['electromenagers'] ?? array();
+        $nbPersonnes = (int)$data['nb_personnes'];
+        
+        $this->logDebug("🏠 CALCUL ÉLECTROMÉNAGERS: " . count($electromenagers) . " équipements sélectionnés");
+        
+        $details = array();
+        $total = 0;
+        
+        // Consommations de base des équipements
+        $equipementsList = array(
+            'lave_linge' => 'Lave-linge',
+            'seche_linge' => 'Sèche-linge', 
+            'refrigerateur' => 'Réfrigérateur',
+            'congelateur' => 'Congélateur',
+            'lave_vaisselle' => 'Lave-vaisselle',
+            'four' => 'Four électrique',
+            'cave_a_vin' => 'Cave à vin'
+        );
+        
+        foreach ($electromenagers as $equipement) {
+            if (isset($equipementsList[$equipement])) {
+                $baseKwh = $this->getConfigValue($equipement, $this->getDefaultElectro($equipement));
+                $coefficient = $this->getCoefficientEquipement($equipement, $nbPersonnes);
+                $consommation = $baseKwh * $coefficient;
+                
+                $details[$equipement] = array(
+                    'nom' => $equipementsList[$equipement],
+                    'base_kwh' => $baseKwh,
+                    'coefficient' => $coefficient,
+                    'final_kwh' => $consommation
+                );
+                
+                $total += $consommation;
+                
+                $this->logDebug("- {$equipementsList[$equipement]}: {$baseKwh} × {$coefficient} = {$consommation} kWh");
+            }
+        }
+        
+        // Ajouter le forfait petits électroménagers (toujours inclus)
+        $forfaitPetits = $this->getConfigValue('forfait_petits_electromenagers', 150);
+        $details['forfait_petits'] = array(
+            'nom' => 'Forfait petits électroménagers',
+            'base_kwh' => $forfaitPetits,
+            'coefficient' => 1,
+            'final_kwh' => $forfaitPetits
+        );
+        $total += $forfaitPetits;
+        
+        return array(
+            'total' => $total,
+            'details' => $details,
+            'nb_equipements' => count($electromenagers),
+            'forfait_inclus' => $forfaitPetits,
+            'methode' => 'Somme des équipements sélectionnés × Coefficient personnes + Forfait petits électroménagers',
+            'explication' => 'Chaque électroménager est ajusté selon le nombre de personnes. Un forfait couvre les petits appareils.'
+        );
+    }
+    
+    /**
+     * Calcul détaillé de la cuisson
+     */
+    private function calculateCuissonDetaille($data) {
+        $typeCuisson = $data['type_cuisson'] ?? '';
+        $nbPersonnes = (int)$data['nb_personnes'];
+        
+        $this->logDebug("🍳 CALCUL CUISSON: {$typeCuisson}");
+        
+        if ($typeCuisson === 'autre') {
+            return array(
+                'total' => 0,
+                'methode' => 'Cuisson non électrique',
+                'type_cuisson' => $typeCuisson,
+                'calcul' => '0 kWh/an - Cuisson non électrique',
+                'explication' => 'Cuisson au gaz ou mixte, pas de consommation électrique pour la cuisson'
+            );
+        }
+        
+        $baseKwh = $this->getConfigValue('plaque_cuisson', 215);
+        $coefficient = $this->getCoefficientEquipement('plaque_cuisson', $nbPersonnes);
+        $total = $baseKwh * $coefficient;
+        
+        return array(
+            'total' => $total,
+            'base_kwh' => $baseKwh,
+            'coefficient' => $coefficient,
+            'nb_personnes' => $nbPersonnes,
+            'type_cuisson' => $typeCuisson,
+            'methode' => 'Base cuisson × Coefficient personnes',
+            'calcul' => "{$baseKwh} kWh/an × {$coefficient} = " . round($total) . " kWh/an",
+            'explication' => "Consommation des plaques de cuisson {$typeCuisson} ajustée pour {$nbPersonnes} personne(s)"
+        );
+    }
+    
+    /**
+     * Calcul détaillé de l'éclairage  
+     */
+    private function calculateEclairageDetaille($data) {
+        $typeEclairage = $data['type_eclairage'] ?? '';
+        $surface = (int)$data['surface'];
+        
+        $this->logDebug("💡 CALCUL ÉCLAIRAGE: {$typeEclairage}");
+        
+        $configKey = 'eclairage_' . ($typeEclairage === 'led' ? 'led' : 'incandescent') . '_m2';
+        $consommationM2 = $this->getConfigValue($configKey, ($typeEclairage === 'led' ? 5 : 15));
+        
+        $total = $surface * $consommationM2;
+        
+        return array(
+            'total' => $total,
+            'consommation_m2' => $consommationM2,
+            'surface' => $surface,
+            'type_eclairage' => $typeEclairage,
+            'methode' => 'Surface × Consommation éclairage par m²',
+            'calcul' => "{$surface} m² × {$consommationM2} kWh/m²/an = " . round($total) . " kWh/an",
+            'explication' => "Éclairage {$typeEclairage} avec une consommation de {$consommationM2} kWh/m²/an"
+        );
+    }
+    
+    /**
+     * Calcul détaillé du multimédia
+     */
+    private function calculateMultimediaDetaille($data) {
+        $nbPersonnes = (int)$data['nb_personnes'];
+        
+        $this->logDebug("📺 CALCUL MULTIMÉDIA (inclus automatiquement)");
+        
+        $baseKwh = $this->getConfigValue('tv_pc_box', 300);
+        $coefficient = $this->getCoefficientEquipement('tv_pc_box', $nbPersonnes);
+        $total = $baseKwh * $coefficient;
+        
+        return array(
+            'total' => $total,
+            'base_kwh' => $baseKwh,
+            'coefficient' => $coefficient,
+            'nb_personnes' => $nbPersonnes,
+            'methode' => 'Base multimédia × Coefficient personnes (inclus automatiquement)',
+            'calcul' => "{$baseKwh} kWh/an × {$coefficient} = " . round($total) . " kWh/an",
+            'explication' => 'Consommation TV, ordinateur, box internet incluse automatiquement et ajustée selon le nombre de personnes'
+        );
+    }
+    
+    /**
+     * Calcul détaillé des équipements spéciaux
+     */
+    private function calculateEquipementsSpeciauxDetaille($data) {
+        $equipementsSpeciaux = $data['equipements_speciaux'] ?? array();
+        $piscine = $data['piscine'] ?? 'non';
+        
+        $this->logDebug("⚡ CALCUL ÉQUIPEMENTS SPÉCIAUX");
+        
+        $repartition = array();
+        $total = 0;
+        $details = array();
+        
+        // PISCINE
+        if ($piscine === 'simple') {
+            $kwhPiscine = $this->getConfigValue('piscine', 1400);
+            $repartition['piscine'] = $kwhPiscine;
+            $total += $kwhPiscine;
+            $details['piscine'] = "Piscine simple: {$kwhPiscine} kWh/an";
+            $this->logDebug("- Piscine simple: {$kwhPiscine} kWh");
+        } elseif ($piscine === 'chauffee') {
+            $kwhPiscine = $this->getConfigValue('piscine_chauffee', 4000);
+            $repartition['piscine'] = $kwhPiscine;
+            $total += $kwhPiscine;
+            $details['piscine'] = "Piscine chauffée: {$kwhPiscine} kWh/an";
+            $this->logDebug("- Piscine chauffée: {$kwhPiscine} kWh");
+        } else {
+            $repartition['piscine'] = 0;
+            $details['piscine'] = "Pas de piscine: 0 kWh/an";
+        }
+        
+        // ÉQUIPEMENTS SPÉCIAUX
+        $equipementsPossibles = array(
+            'spa_jacuzzi' => array('config' => 'spa_jacuzzi', 'default' => 2000, 'nom' => 'Spa/Jacuzzi'),
+            'voiture_electrique' => array('config' => 'voiture_electrique', 'default' => 1500, 'nom' => 'Voiture électrique'),
+            'aquarium_petit' => array('config' => 'aquarium', 'default' => 240, 'coeff' => 0.5, 'nom' => 'Petit aquarium'),
+            'aquarium_grand' => array('config' => 'aquarium', 'default' => 240, 'coeff' => 2.0, 'nom' => 'Grand aquarium'),
+            'climatiseur_mobile' => array('config' => 'climatiseur_mobile', 'default' => 150, 'nom' => 'Climatiseur mobile')
+        );
+        
+        // Initialiser tous les équipements à 0
+        foreach (array('spa_jacuzzi', 'voiture_electrique', 'aquarium', 'climatiseur_mobile') as $eq) {
+            $repartition[$eq] = 0;
+        }
+        
+        foreach ($equipementsSpeciaux as $equipement) {
+            if (isset($equipementsPossibles[$equipement])) {
+                $config = $equipementsPossibles[$equipement];
+                $kwh = $this->getConfigValue($config['config'], $config['default']);
+                
+                if (isset($config['coeff'])) {
+                    $kwh *= $config['coeff'];
+                }
+                
+                $key = str_replace(['_petit', '_grand'], '', $equipement);
+                $repartition[$key] += $kwh;
+                $total += $kwh;
+                
+                $details[$equipement] = "{$config['nom']}: {$kwh} kWh/an";
+                $this->logDebug("- {$config['nom']}: {$kwh} kWh");
+            }
+        }
+        
+        return array(
+            'total' => $total,
+            'repartition' => $repartition,
+            'details_calcul' => $details,
+            'piscine_type' => $piscine,
+            'equipements_selectionnes' => $equipementsSpeciaux,
+            'nb_equipements' => count($equipementsSpeciaux),
+            'methode' => 'Somme des équipements spéciaux sélectionnés',
+            'explication' => 'Consommations spécifiques selon les équipements de confort et loisirs sélectionnés'
+        );
+    }
+    
+    /**
+     * Calcul des tarifs détaillé
+     */
+    private function calculateTarifsDetaille($consommationTotale, $data) {
+        $surface = (int)$data['surface'];
+        $puissanceRecommandee = $this->calculatePuissanceRecommandee($consommationTotale, $data);
+        
+        $this->logDebug("💰 CALCUL TARIFS pour {$consommationTotale} kWh/an, puissance {$puissanceRecommandee} kVA");
+        
+        // Récupération des tarifs BASE
+        $aboBase = $this->getConfigValue('base_abo_' . $puissanceRecommandee, 22.21);
+        $kwhBase = $this->getConfigValue('base_kwh_' . $puissanceRecommandee, 0.2516);
+        
+        // Récupération des tarifs HC
+        $aboHC = $this->getConfigValue('hc_abo_' . $puissanceRecommandee, 23.57);
+        $kwhHP = $this->getConfigValue('hc_hp_' . $puissanceRecommandee, 0.27);
+        $kwhHC = $this->getConfigValue('hc_hc_' . $puissanceRecommandee, 0.2068);
+        
+        // Répartition HP/HC
+        $repartitionHP = ($this->getConfigValue('repartition_hp', 60)) / 100;
+        $repartitionHC = ($this->getConfigValue('repartition_hc', 40)) / 100;
+        
+        $consommationHP = $consommationTotale * $repartitionHP;
+        $consommationHC = $consommationTotale * $repartitionHC;
+        
+        // Calculs des coûts
+        $coutBase = ($aboBase * 12) + ($consommationTotale * $kwhBase);
+        $coutHC = ($aboHC * 12) + ($consommationHP * $kwhHP) + ($consommationHC * $kwhHC);
+        
+        return array(
+            'base' => array(
+                'total_annuel' => (int)round($coutBase),
+                'total_mensuel' => (int)round($coutBase / 12),
+                'abonnement_mensuel' => $aboBase,
+                'prix_kwh' => $kwhBase,
+                'puissance_kva' => $puissanceRecommandee,
+                'calcul_detail' => "({$aboBase}€ × 12 mois) + ({$consommationTotale} kWh × {$kwhBase}€) = " . round($coutBase) . "€/an"
+            ),
+            'hc' => array(
+                'total_annuel' => (int)round($coutHC),
+                'total_mensuel' => (int)round($coutHC / 12),
+                'abonnement_mensuel' => $aboHC,
+                'prix_kwh_hp' => $kwhHP,
+                'prix_kwh_hc' => $kwhHC,
+                'consommation_hp' => (int)round($consommationHP),
+                'consommation_hc' => (int)round($consommationHC),
+                'repartition_hp' => $repartitionHP * 100,
+                'repartition_hc' => $repartitionHC * 100,
+                'puissance_kva' => $puissanceRecommandee,
+                'calcul_detail' => "({$aboHC}€ × 12) + (" . round($consommationHP) . " kWh × {$kwhHP}€) + (" . round($consommationHC) . " kWh × {$kwhHC}€) = " . round($coutHC) . "€/an"
+            ),
+            'economie_potentielle' => abs($coutBase - $coutHC),
+            'tarif_recommande' => ($coutHC < $coutBase) ? 'hc' : 'base'
+        );
+    }
+    
+    // ==========================================
+    // FONCTIONS UTILITAIRES
+    // ==========================================
+    
+    private function calculatePuissanceRecommandee($consommationTotale, $data) {
+        $surface = (int)$data['surface'];
+        
+        // Logique de calcul de puissance basée sur consommation et surface
+        if ($consommationTotale < 4000 && $surface <= 70) return '9';
+        if ($consommationTotale < 6000 && $surface <= 100) return '12';
+        if ($consommationTotale < 10000 && $surface <= 150) return '15';
+        if ($consommationTotale < 15000 && $surface <= 200) return '18';
+        if ($consommationTotale < 20000) return '24';
+        return '30';
+    }
+    
+    private function getCoefficientEauChaude($nbPersonnes) {
+        $coefficients = array(1 => 1.0, 2 => 2.0, 3 => 2.8, 4 => 3.7, 5 => 3.9, 6 => 5.5);
+        return $coefficients[$nbPersonnes] ?? 5.5;
+    }
+    
+    private function getCoefficientEquipement($equipement, $nbPersonnes) {
+        $configKey = 'coeff_' . $equipement . '_' . $nbPersonnes;
+        
+        // Coefficients par défaut si pas dans la config
+        $defaultCoeffs = array(
+            1 => 1.0, 2 => 1.0, 3 => 1.2, 4 => 1.4, 5 => 1.6, 6 => 1.8
+        );
+        
+        return $this->getConfigValue($configKey, $defaultCoeffs[$nbPersonnes] ?? 1.8);
+    }
+    
+    private function getCoefficientPersonnes($nbPersonnes) {
+        $coefficients = array(1 => 0.7, 2 => 1.0, 3 => 1.2, 4 => 1.4, 5 => 1.6, 6 => 1.8);
+        return $coefficients[$nbPersonnes] ?? 1.8;
+    }
+    
+    private function getCoefficientSurface($surface) {
+        // Pas de coefficient surface dans ce calcul, mais peut être ajouté
+        return 1.0;
+    }
+    
+    private function getIsolationConfigSuffix($isolation) {
+        $mapping = array(
+            'avant_1980' => 'mauvaise',
+            '1980_2000' => 'moyenne', 
+            'apres_2000' => 'bonne',
+            'renovation' => 'tres_bonne'
+        );
+        return $mapping[$isolation] ?? 'moyenne';
+    }
+    
+    private function getIsolationCoefficient($isolation) {
+        $coefficients = array(
+            'avant_1980' => 1.5,
+            '1980_2000' => 1.2,
+            'apres_2000' => 0.8,
+            'renovation' => 0.5
+        );
+        return $coefficients[$isolation] ?? 1.0;
+    }
+    
+    private function getConfigValue($key, $default = 0) {
+        return isset($this->configData[$key]) ? $this->configData[$key] : $default;
+    }
+    
+    private function getDefaultChauffage($typeChauffage, $isolation) {
+        // Valeurs par défaut selon type chauffage et isolation
+        $defaults = array(
+            'convecteurs' => array('avant_1980' => 200, '1980_2000' => 140, 'apres_2000' => 80, 'renovation' => 50),
+            'inertie' => array('avant_1980' => 170, '1980_2000' => 120, 'apres_2000' => 65, 'renovation' => 40),
+            'clim_reversible' => array('avant_1980' => 120, '1980_2000' => 80, 'apres_2000' => 50, 'renovation' => 25),
+            'pac' => array('avant_1980' => 100, '1980_2000' => 65, 'apres_2000' => 40, 'renovation' => 20)
+        );
+        
+        return $defaults[$typeChauffage][$isolation] ?? 100;
+    }
+    
+    private function getDefaultElectro($equipement) {
+        $defaults = array(
+            'lave_linge' => 100, 'seche_linge' => 175, 'refrigerateur' => 125,
+            'congelateur' => 125, 'lave_vaisselle' => 100, 'four' => 125, 'cave_a_vin' => 150
+        );
+        return $defaults[$equipement] ?? 100;
+    }
+    
+    private function getConfigSummary() {
+        return array(
+            'nb_parametres' => count($this->configData),
+            'derniere_maj' => date('Y-m-d'),
+            'version_config' => '2.0'
+        );
+    }
+    
+    /**
+     * Logging pour debug
+     */
     private function logDebug($message) {
         if ($this->debugMode || (defined('WP_DEBUG') && WP_DEBUG)) {
             error_log("[HTIC CALCULATEUR] " . $message);
         }
+        
+        // Debug dans le navigateur UNIQUEMENT si pas une requête AJAX OU si debug explicite demandé
+        if (!wp_doing_ajax() && $this->debugMode && isset($_GET['debug_html'])) {
+            echo "<!-- DEBUG: " . esc_html($message) . " -->\n";
+        }
     }
     
+    /**
+     * Retourner une erreur
+     */
     private function returnError($message) {
-        $this->logDebug("ERREUR: " . $message);
-        return array('success' => false, 'error' => $message);
+        $this->logDebug("❌ ERREUR: " . $message);
+        
+        return array(
+            'success' => false,
+            'error' => $message
+        );
     }
 }
 
@@ -503,33 +804,4 @@ function htic_calculateur_elec_residentiel($userData, $configData) {
     return $calculateur->calculate();
 }
 
-/**
- * Handler AJAX pour WordPress
- */
-add_action('wp_ajax_htic_calculate_estimation', 'htic_ajax_calculate_estimation');
-add_action('wp_ajax_nopriv_htic_calculate_estimation', 'htic_ajax_calculate_estimation');
-
-function htic_ajax_calculate_estimation() {
-    // Vérification sécurité
-    if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
-        wp_send_json_error('Nonce invalide');
-        return;
-    }
-    
-    $type = sanitize_text_field($_POST['type']);
-    $userData = $_POST['user_data'];
-    $configData = $_POST['config_data'];
-    
-    if ($type === 'elec-residentiel') {
-        $result = htic_calculateur_elec_residentiel($userData, $configData);
-        
-        if ($result['success']) {
-            wp_send_json_success($result['data']);
-        } else {
-            wp_send_json_error($result['error']);
-        }
-    } else {
-        wp_send_json_error('Type de calculateur non supporté: ' . $type);
-    }
-}
 ?>

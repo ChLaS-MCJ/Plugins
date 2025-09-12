@@ -373,9 +373,6 @@ class HticCalculateurElecResidentiel {
         }
     }
 
-    // 2. PROBLÈME EAU CHAUDE NULL
-    // Dans calculateEauChaudeDetaille(), même correction :
-
     private function calculateEauChaude($data) {
         $this->logDebug("=== CALCUL EAU CHAUDE DÉTAILLÉ ===");
         
@@ -430,9 +427,6 @@ class HticCalculateurElecResidentiel {
             );
         }
     }
-
-    // 3. PROBLÈME ÉLECTROMÉNAGERS NULL
-    // Dans calculerElectromenagers(), vérifiez que vous stockez bien les résultats :
 
     private function calculateElectromenager($data) {
         $this->logDebug("=== CALCUL ÉLECTROMÉNAGERS ===");
@@ -556,59 +550,57 @@ class HticCalculateurElecResidentiel {
         );
     }
     
+    /**
+     * Calcule la consommation d'un équipement spécifique
+     */
+    private function calculerEquipement($equipement, $nbPersonnes, &$consommation_totale, &$details_calcul) {
+        // Consommation de base
+        $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 0;
+        
+        // Coefficient selon nombre de personnes
+        $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
+        $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
+        
+        $consommation = $conso_base * $coefficient;
+        
+        // Puissance avec simultanéité
+        $puissance_base = isset($this->configData[$equipement . '_puissance']) ? $this->configData[$equipement . '_puissance'] : 0;
+        $simultaneite = isset($this->configData[$equipement . '_simultaneite']) ? ($this->configData[$equipement . '_simultaneite'] / 100) : 0.5;
+        $puissance = ($puissance_base * $simultaneite) / 1000; // en kW
+        
+        $consommation_totale += $consommation;
+        $puissance_totale += $puissance;
+        
+        // Stocker les détails pour l'affichage
+        $details_calcul[$equipement] = array(
+            'consommation' => $consommation,
+            'puissance' => $puissance,
+            'label' => $this->getEquipementLabel($equipement),
+            'coefficient' => $coefficient
+        );
+        
+        $this->logDebug("{$equipement}: {$conso_base} × {$coefficient} = {$consommation} kWh/an, {$puissance} kW");
+    }
 
-
-/**
- * Calcule la consommation d'un équipement spécifique
- */
-private function calculerEquipement($equipement, $nbPersonnes, &$consommation_totale, &$details_calcul) {
-    // Consommation de base
-    $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 0;
-    
-    // Coefficient selon nombre de personnes
-    $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
-    $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
-    
-    $consommation = $conso_base * $coefficient;
-    
-    // Puissance avec simultanéité
-    $puissance_base = isset($this->configData[$equipement . '_puissance']) ? $this->configData[$equipement . '_puissance'] : 0;
-    $simultaneite = isset($this->configData[$equipement . '_simultaneite']) ? ($this->configData[$equipement . '_simultaneite'] / 100) : 0.5;
-    $puissance = ($puissance_base * $simultaneite) / 1000; // en kW
-    
-    $consommation_totale += $consommation;
-    $puissance_totale += $puissance;
-    
-    // Stocker les détails pour l'affichage
-    $details_calcul[$equipement] = array(
-        'consommation' => $consommation,
-        'puissance' => $puissance,
-        'label' => $this->getEquipementLabel($equipement),
-        'coefficient' => $coefficient
-    );
-    
-    $this->logDebug("{$equipement}: {$conso_base} × {$coefficient} = {$consommation} kWh/an, {$puissance} kW");
-}
-
-/**
- * Retourne le label d'affichage d'un équipement
- */
-private function getEquipementLabel($equipement) {
-    $labels = array(
-        'lave_linge' => 'Lave-linge',
-        'four' => 'Four',
-        'seche_linge' => 'Sèche-linge',
-        'lave_vaisselle' => 'Lave-vaisselle',
-        'cave_a_vin' => 'Cave à vin',
-        'refrigerateur' => 'Réfrigérateur',
-        'congelateur' => 'Congélateur',
-        'plaque_induction' => 'Plaque à induction',
-        'plaque_vitroceramique' => 'Plaque vitrocéramique',
-        'tv_pc_box' => 'TV/PC/Box'
-    );
-    
-    return isset($labels[$equipement]) ? $labels[$equipement] : ucfirst(str_replace('_', ' ', $equipement));
-}
+    /**
+     * Retourne le label d'affichage d'un équipement
+     */
+    private function getEquipementLabel($equipement) {
+        $labels = array(
+            'lave_linge' => 'Lave-linge',
+            'four' => 'Four',
+            'seche_linge' => 'Sèche-linge',
+            'lave_vaisselle' => 'Lave-vaisselle',
+            'cave_a_vin' => 'Cave à vin',
+            'refrigerateur' => 'Réfrigérateur',
+            'congelateur' => 'Congélateur',
+            'plaque_induction' => 'Plaque à induction',
+            'plaque_vitroceramique' => 'Plaque vitrocéramique',
+            'tv_pc_box' => 'TV/PC/Box'
+        );
+        
+        return isset($labels[$equipement]) ? $labels[$equipement] : ucfirst(str_replace('_', ' ', $equipement));
+    }
     
     /**
      * Calcul détaillé de l'éclairage  
@@ -643,8 +635,15 @@ private function getEquipementLabel($equipement) {
         
         $this->logDebug("📺 CALCUL MULTIMÉDIA (inclus automatiquement)");
         
+        // Récupérer la base depuis la config
         $baseKwh = $this->getConfigValue('tv_pc_box', 300);
-        $coefficient = $this->getCoefficientEquipement('tv_pc_box', $nbPersonnes);
+        
+        // Récupérer directement le coefficient depuis la config
+        $coeff_key = 'coeff_tv_pc_box_' . $nbPersonnes;
+        $coefficient = $this->getConfigValue($coeff_key, 1.0);
+        
+        $this->logDebug("Coefficient multimédia pour {$nbPersonnes} personnes: {$coefficient}");
+        
         $total = $baseKwh * $coefficient;
         
         return array(
@@ -811,14 +810,22 @@ private function getEquipementLabel($equipement) {
     }
     
     private function getCoefficientEquipement($equipement, $nbPersonnes) {
-        $configKey = 'coeff_' . $equipement . '_' . $nbPersonnes;
+        // Limiter à 6 personnes max
+        if ($nbPersonnes > 6) $nbPersonnes = 6;
+        if ($nbPersonnes < 1) $nbPersonnes = 1;
         
-        // Coefficients par défaut si pas dans la config
-        $defaultCoeffs = array(
-            1 => 1.0, 2 => 1.0, 3 => 1.2, 4 => 1.4, 5 => 1.6, 6 => 1.8
-        );
+        // Construire la clé
+        $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
         
-        return $this->getConfigValue($configKey, $defaultCoeffs[$nbPersonnes] ?? 1.8);
+        // Debug
+        $this->logDebug("Recherche coefficient: {$coeff_key}");
+        
+        // Récupérer depuis la config avec fallback intelligent
+        $coefficient = $this->getConfigValue($coeff_key, 1.0);
+        
+        $this->logDebug("Coefficient trouvé: {$coefficient}");
+        
+        return $coefficient;
     }
     
     private function getCoefficientPersonnes($nbPersonnes) {

@@ -1200,3 +1200,244 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* CSS pour les simulations rapides - À ajouter dans elec-residentiel.css */
+
+/* Section simulations rapides */
+.simulations-rapides {
+    background: linear-gradient(135deg, var(--primary-50) 0%, var(--blue-50) 100%);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-2xl);
+    margin: var(--space-2xl) 0;
+    text-align: center;
+    border: 2px solid var(--primary-100);
+}
+
+.simulations-rapides h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-sm) 0;
+}
+
+.simulations-rapides>p {
+    color: var(--gray-600);
+    font-size: 1.125rem;
+    margin: 0 0 var(--space-xl) 0;
+}
+
+/* Profils rapides */
+.profils-rapides {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-lg);
+    margin: var(--space-xl) 0;
+}
+
+.profil-rapide-card {
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-lg);
+    width: 100%;
+    font-family: inherit;
+    box-shadow: var(--shadow-sm);
+}
+
+.profil-rapide-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+    background: var(--primary-50);
+}
+
+.profil-rapide-card:active {
+    transform: translateY(-2px);
+}
+
+.profil-icon {
+    font-size: 2.5rem;
+    background: var(--primary-100);
+    border-radius: var(--radius-lg);
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: var(--transition);
+}
+
+.profil-rapide-card:hover .profil-icon {
+    background: var(--primary);
+    color: white;
+}
+
+.profil-content {
+    flex: 1;
+}
+
+.profil-content h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-sm) 0;
+}
+
+.profil-content span {
+    color: var(--gray-600);
+    font-size: 0.95rem;
+    display: block;
+    margin-bottom: var(--space-sm);
+    line-height: 1.4;
+}
+
+.profil-content small {
+    color: var(--primary-600);
+    font-weight: 600;
+    font-size: 0.875rem;
+    background: var(--primary-100);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-md);
+    display: inline-block;
+}
+
+/* Séparateur OU */
+.ou-separator {
+    margin: var(--space-2xl) 0;
+    position: relative;
+    text-align: center;
+}
+
+.ou-separator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--gray-300);
+    z-index: 1;
+}
+
+.ou-separator span {
+    background: var(--primary-50);
+    color: var(--gray-500);
+    padding: 0 var(--space-lg);
+    font-weight: 600;
+    font-size: 0.875rem;
+    position: relative;
+    z-index: 2;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* Titre simulation personnalisée */
+.simulations-rapides h4 {
+    font-size: 1.375rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin: 0 0 var(--space-sm) 0;
+}
+
+.simulations-rapides h4+p {
+    color: var(--gray-600);
+    margin: 0 0 var(--space-lg) 0;
+}
+
+/* Animation de chargement pour profils rapides */
+.profil-rapide-card.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.profil-rapide-card.loading .profil-icon {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Badge simulation rapide dans les résultats */
+.simulation-rapide-badge {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-600) 100%);
+    color: white;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: var(--shadow-md);
+}
+
+.badge-icon {
+    font-size: 1.125rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .simulations-rapides {
+        padding: var(--space-xl);
+        margin: var(--space-lg) 0;
+    }
+
+    .simulations-rapides h3 {
+        font-size: 1.5rem;
+    }
+
+    .profils-rapides {
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+    }
+
+    .profil-rapide-card {
+        padding: var(--space-lg);
+        flex-direction: column;
+        text-align: center;
+        gap: var(--space-md);
+    }
+
+    .profil-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .simulations-rapides {
+        padding: var(--space-lg);
+    }
+
+    .profil-rapide-card {
+        padding: var(--space-md);
+    }
+
+    .profil-content h4 {
+        font-size: 1.125rem;
+    }
+
+    .profil-content span {
+        font-size: 0.875rem;
+    }
+}

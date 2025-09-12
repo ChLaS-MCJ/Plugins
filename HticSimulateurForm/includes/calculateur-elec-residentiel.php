@@ -238,7 +238,7 @@ class HticCalculateurElecResidentiel {
         
         // TOTAL GÉNÉRAL
         $consommationTotale = $chauffageKwh + $eauChaudeKwh + $electromenagersKwh + 
-                             $cuissonKwh + $eclairageKwh + $multimediaKwh + $equipementsKwh;
+                              $eclairageKwh + $multimediaKwh + $equipementsKwh;
         
         $this->logDebug("📊 CONSOMMATION TOTALE: {$consommationTotale} kWh/an");
         
@@ -300,14 +300,14 @@ class HticCalculateurElecResidentiel {
     // CALCULS DÉTAILLÉS PAR POSTE
     // ==========================================
     
-    private function calculateChauffage() {
+    private function calculateChauffage($data) {
         $this->logDebug("=== CALCUL CHAUFFAGE DÉTAILLÉ ===");
         
-        $userData = $this->resultats['data_utilisateur'];
-        $typeChauffage = isset($userData['type_chauffage']) ? $userData['type_chauffage'] : '';
-        $typeLogement = isset($userData['type_logement']) ? $userData['type_logement'] : 'maison';
-        $surface = floatval($userData['surface']);
-        $isolation = isset($userData['isolation']) ? $userData['isolation'] : '';
+        // Utiliser directement $data passé en paramètre
+        $typeChauffage = isset($data['type_chauffage']) ? $data['type_chauffage'] : '';
+        $typeLogement = isset($data['type_logement']) ? $data['type_logement'] : 'maison';
+        $surface = floatval($data['surface']);
+        $isolation = isset($data['isolation']) ? $data['isolation'] : '';
         
         // Vérifier si c'est du chauffage électrique
         $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
@@ -315,15 +315,13 @@ class HticCalculateurElecResidentiel {
         if (!in_array($typeChauffage, $chauffagesElectriques)) {
             $this->logDebug("Pas de chauffage électrique ({$typeChauffage})");
             
-            // CORRECTION : Stocker explicitement dans les résultats détaillés
-            $this->resultats['details_calcul']['chauffage'] = array(
+            return array(
                 'total' => 0,
                 'type_chauffage' => $typeChauffage,
                 'methode' => 'Pas de chauffage électrique',
                 'calcul' => 'Chauffage non électrique - consommation électrique: 0 kWh/an',
                 'explication' => 'Le chauffage principal n\'est pas électrique'
             );
-            return;
         }
         
         // Mapping des isolations
@@ -350,8 +348,7 @@ class HticCalculateurElecResidentiel {
             $this->logDebug("Consommation par m²: {$conso_par_m2} kWh/m²/an");
             $this->logDebug("Consommation chauffage: {$consommation} kWh/an");
             
-            // CORRECTION : Stocker dans les résultats détaillés 
-            $this->resultats['details_calcul']['chauffage'] = array(
+            return array(
                 'total' => $consommation,
                 'consommation_m2' => $conso_par_m2,
                 'surface' => $surface,
@@ -366,7 +363,7 @@ class HticCalculateurElecResidentiel {
         } else {
             $this->logDebug("ERREUR: Configuration manquante pour {$config_key}");
             
-            $this->resultats['details_calcul']['chauffage'] = array(
+            return array(
                 'total' => 0,
                 'erreur' => "Configuration manquante pour {$config_key}",
                 'methode' => 'Erreur de configuration',
@@ -379,12 +376,12 @@ class HticCalculateurElecResidentiel {
     // 2. PROBLÈME EAU CHAUDE NULL
     // Dans calculateEauChaudeDetaille(), même correction :
 
-    private function calculateEauChaude() {
+    private function calculateEauChaude($data) {
         $this->logDebug("=== CALCUL EAU CHAUDE DÉTAILLÉ ===");
         
-        $userData = $this->resultats['data_utilisateur'];
-        $eauChaude = isset($userData['eau_chaude']) ? $userData['eau_chaude'] : 'non';
-        $nbPersonnes = intval($userData['nb_personnes']);
+        // Utiliser directement $data passé en paramètre
+        $eauChaude = isset($data['eau_chaude']) ? $data['eau_chaude'] : 'non';
+        $nbPersonnes = intval($data['nb_personnes']);
         if ($nbPersonnes > 6) $nbPersonnes = 6;
         
         if ($eauChaude === 'oui') {
@@ -394,14 +391,13 @@ class HticCalculateurElecResidentiel {
             if ($conso_base === 0) {
                 $this->logDebug("ERREUR: Consommation de base chauffe-eau non trouvée");
                 
-                $this->resultats['details_calcul']['eau_chaude'] = array(
+                return array(
                     'total' => 0,
                     'erreur' => 'Configuration chauffe-eau manquante',
                     'methode' => 'Erreur de configuration',
                     'calcul' => 'Configuration manquante pour chauffe-eau',
                     'explication' => 'Données de consommation eau chaude non configurées'
                 );
-                return;
             }
             
             // Coefficient selon nombre de personnes
@@ -412,8 +408,7 @@ class HticCalculateurElecResidentiel {
             
             $this->logDebug("Consommation eau chaude: {$consommation} kWh/an");
             
-            // CORRECTION : Stocker dans les résultats détaillés
-            $this->resultats['details_calcul']['eau_chaude'] = array(
+            return array(
                 'total' => $consommation,
                 'base_kwh' => $conso_base,
                 'coefficient' => $coefficient,
@@ -427,7 +422,7 @@ class HticCalculateurElecResidentiel {
         } else {
             $this->logDebug("Pas d'eau chaude électrique");
             
-            $this->resultats['details_calcul']['eau_chaude'] = array(
+            return array(
                 'total' => 0,
                 'methode' => 'Pas d\'eau chaude électrique',
                 'calcul' => 'Eau chaude non électrique - consommation: 0 kWh/an',
@@ -439,12 +434,12 @@ class HticCalculateurElecResidentiel {
     // 3. PROBLÈME ÉLECTROMÉNAGERS NULL
     // Dans calculerElectromenagers(), vérifiez que vous stockez bien les résultats :
 
-    private function calculateElectromenager() {
+    private function calculateElectromenager($data) {
         $this->logDebug("=== CALCUL ÉLECTROMÉNAGERS ===");
         
-        $userData = $this->resultats['data_utilisateur'];
-        $electromenagers = isset($userData['electromenagers']) && is_array($userData['electromenagers']) ? $userData['electromenagers'] : array();
-        $nbPersonnes = intval($userData['nb_personnes']);
+        // Utiliser directement $data passé en paramètre
+        $electromenagers = isset($data['electromenagers']) && is_array($data['electromenagers']) ? $data['electromenagers'] : array();
+        $nbPersonnes = intval($data['nb_personnes']);
         if ($nbPersonnes > 6) $nbPersonnes = 6;
         
         $consommation_totale = 0;
@@ -458,34 +453,99 @@ class HticCalculateurElecResidentiel {
         
         foreach ($electromenagers as $equipement) {
             if (in_array($equipement, $electromenagers_disponibles)) {
-                $this->calculerEquipement($equipement, $nbPersonnes, $consommation_totale, $details_calcul);
+                // Calculer pour cet équipement
+                $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 0;
+                $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
+                $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
+                
+                $consommation = $conso_base * $coefficient;
+                $consommation_totale += $consommation;
+                
+                $details_calcul[$equipement] = array(
+                    'nom' => $this->getEquipementLabel($equipement),
+                    'base_kwh' => $conso_base,
+                    'coefficient' => $coefficient,
+                    'final_kwh' => $consommation
+                );
+                
+                $this->logDebug("{$equipement}: {$conso_base} × {$coefficient} = {$consommation} kWh/an");
             }
         }
         
         // === PLAQUE DE CUISSON ===
-        $type_cuisson = isset($userData['type_cuisson']) ? $userData['type_cuisson'] : '';
+        $type_cuisson = isset($data['type_cuisson']) ? $data['type_cuisson'] : '';
         
-        if ($type_cuisson === 'induction') {
-            $this->calculerEquipement('plaque_induction', $nbPersonnes, $consommation_totale, $details_calcul);
-        } elseif ($type_cuisson === 'vitroceramique') {
-            $this->calculerEquipement('plaque_vitroceramique', $nbPersonnes, $consommation_totale, $details_calcul);
+        if ($type_cuisson === 'induction' || $type_cuisson === 'plaque_induction') {
+            $equipement = 'plaque_induction';
+            $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 365;
+            
+            // La clé exacte comme dans votre configuration
+            $coeff_key = 'coeff_plaque_induction_' . $nbPersonnes;
+            
+            // Debug pour voir ce qui se passe
+            $this->logDebug("Recherche coefficient: {$coeff_key}");
+            $this->logDebug("Coefficient trouvé: " . (isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 'NON TROUVÉ'));
+            
+            // Récupérer le coefficient depuis la config
+            $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
+            
+            $consommation = $conso_base * $coefficient;
+            $consommation_totale += $consommation;
+            
+            $details_calcul['plaque_induction'] = array(
+                'nom' => 'Plaque à induction',
+                'base_kwh' => $conso_base,
+                'coefficient' => $coefficient,
+                'final_kwh' => $consommation,
+                'coeff_key' => $coeff_key // Ajouter pour debug
+            );
+            
+            $this->logDebug("Plaque induction: {$conso_base} × {$coefficient} = {$consommation} kWh/an");
+            
+        } elseif ($type_cuisson === 'vitroceramique' || $type_cuisson === 'plaque_vitroceramique') {
+            $equipement = 'plaque_vitroceramique';
+            $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 400;
+            
+            // La clé exacte comme dans votre configuration
+            $coeff_key = 'coeff_plaque_vitroceramique_' . $nbPersonnes;
+            
+            // Debug
+            $this->logDebug("Recherche coefficient: {$coeff_key}");
+            $this->logDebug("Coefficient trouvé: " . (isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 'NON TROUVÉ'));
+            
+            $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
+            
+            $consommation = $conso_base * $coefficient;
+            $consommation_totale += $consommation;
+            
+            $details_calcul['plaque_vitroceramique'] = array(
+                'nom' => 'Plaque vitrocéramique',
+                'base_kwh' => $conso_base,
+                'coefficient' => $coefficient,
+                'final_kwh' => $consommation,
+                'coeff_key' => $coeff_key // Pour debug
+            );
+            
+            $this->logDebug("Plaque vitrocéramique: {$conso_base} × {$coefficient} = {$consommation} kWh/an");
         }
         
         // === FORFAIT PETITS ÉLECTROMÉNAGERS ===
-        $forfait = isset($this->configData['forfait_petits_electromenagers']) ? $this->configData['forfait_petits_electromenagers'] : 0;
+        $forfait = isset($this->configData['forfait_petits_electromenagers']) ? $this->configData['forfait_petits_electromenagers'] : 100;
         if ($forfait > 0) {
             $consommation_totale += $forfait;
             $details_calcul['forfait_petits_electromenagers'] = array(
-                'consommation' => $forfait,
-                'label' => 'Forfait autres équipements'
+                'nom' => 'Forfait petits appareils',
+                'base_kwh' => $forfait,
+                'coefficient' => 1,
+                'final_kwh' => $forfait
             );
         }
         
         $this->logDebug("Total électroménagers: {$consommation_totale} kWh/an");
         
-        // CORRECTION : Stocker dans les résultats détaillés
-        $this->resultats['details_calcul']['electromenagers'] = array(
+        return array(
             'total' => $consommation_totale,
+            'details' => $details_calcul,
             'repartition' => $details_calcul,
             'nb_personnes' => $nbPersonnes,
             'electromenagers_selectionnes' => $electromenagers,
@@ -495,11 +555,13 @@ class HticCalculateurElecResidentiel {
             'explication' => 'Consommations ajustées selon le nombre de personnes et équipements sélectionnés'
         );
     }
+    
+
 
 /**
  * Calcule la consommation d'un équipement spécifique
  */
-private function calculerEquipement($equipement, $nbPersonnes, &$consommation_totale, &$puissance_totale, &$details_calcul) {
+private function calculerEquipement($equipement, $nbPersonnes, &$consommation_totale, &$details_calcul) {
     // Consommation de base
     $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 0;
     

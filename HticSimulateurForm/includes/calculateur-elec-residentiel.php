@@ -265,7 +265,6 @@ class HticCalculateurElecResidentiel {
                 'chauffage' => (int)round($chauffageKwh),
                 'eau_chaude' => (int)round($eauChaudeKwh),
                 'electromenagers' => (int)round($electromenagersKwh),
-                'cuisson' => (int)round($cuissonKwh),
                 'eclairage' => (int)round($eclairageKwh),
                 'multimedia' => (int)round($multimediaKwh),
                 'tv_pc_box' => (int)round($multimediaKwh), // Alias pour rétrocompatibilité
@@ -278,7 +277,6 @@ class HticCalculateurElecResidentiel {
                 'chauffage' => $chauffageDetails,
                 'eau_chaude' => $eauChaudeDetails,
                 'electromenagers' => $electromenagersDetails,
-                'cuisson' => $cuissonDetails,
                 'eclairage' => $eclairageDetails,
                 'multimedia' => $multimediaDetails,
                 'tv_pc_box' => $multimediaDetails, // Alias
@@ -406,6 +404,9 @@ class HticCalculateurElecResidentiel {
         $this->logDebug("👥 NOMBRE DE PERSONNES: " . $nbPersonnes);
         $this->logDebug("🍳 TYPE DE CUISSON: " . $typeCuisson);
         
+        // DEBUG: Vérifier les données du back disponibles
+        $this->logDebug("🗄️ DONNÉES BACK DISPONIBLES: " . count($this->configData) . " paramètres");
+        
         $details = array();
         $total = 0;
         
@@ -418,7 +419,6 @@ class HticCalculateurElecResidentiel {
             'cave_a_vin' => 'Cave à vin',          // E55
             'refrigerateur' => 'Réfrigérateur',    // E56
             'congelateur' => 'Congélateur'         // E57
-            // E58/E59 = plaques de cuisson - gérées séparément ci-dessous
         );
         
         $this->logDebug("📋 ÉQUIPEMENTS SÉLECTIONNÉS: " . implode(', ', $electromenagers));
@@ -428,8 +428,16 @@ class HticCalculateurElecResidentiel {
         // ========================================
         foreach ($electromenagers as $equipement) {
             if (isset($equipementsList[$equipement])) {
-                // Récupérer la consommation de base depuis la config
-                $baseKwh = $this->getConfigValue($equipement, $this->getDefaultElectro($equipement));
+                
+                // ✅ RÉCUPÉRATION DIRECTE DEPUIS LE BACK - SANS FALLBACK
+                if (!isset($this->configData[$equipement])) {
+                    $this->logDebug("❌ ERREUR: {$equipement} non trouvé dans configData");
+                    $this->logDebug("🔍 Clés disponibles: " . implode(', ', array_keys($this->configData)));
+                    continue; // Passer à l'équipement suivant
+                }
+                
+                $baseKwh = $this->configData[$equipement];
+                $this->logDebug("📊 {$equipement}: {$baseKwh} kWh (depuis back)");
                 
                 // Récupérer le coefficient selon le nombre de personnes
                 $coefficient = $this->getCoefficientEquipement($equipement, $nbPersonnes);
@@ -444,12 +452,14 @@ class HticCalculateurElecResidentiel {
                     'coefficient' => $coefficient,
                     'final_kwh' => $consommation,
                     'formule' => "{$baseKwh} kWh × {$coefficient} = {$consommation} kWh",
-                    'position_excel' => 'E5' . (array_search($equipement, array_keys($equipementsList)) + 1)
+                    'position_excel' => 'E5' . (array_search($equipement, array_keys($equipementsList)) + 1),
+                    'source' => 'configData'
                 );
                 
                 $total += $consommation;
                 
                 $this->logDebug("✅ {$equipementsList[$equipement]}: {$baseKwh} kWh × {$coefficient} = {$consommation} kWh");
+                
             } else {
                 $this->logDebug("⚠️ Équipement non reconnu: {$equipement}");
             }
@@ -460,7 +470,9 @@ class HticCalculateurElecResidentiel {
         // ========================================
         $cléPlaque = null;
         $nomPlaque = null;
-        
+        $positionExcel = null;
+
+        // Mapping correct des values du formulaire vers les clés du back
         if ($typeCuisson === 'induction') {
             $cléPlaque = 'plaque_induction';
             $nomPlaque = 'Plaque induction';
@@ -472,10 +484,21 @@ class HticCalculateurElecResidentiel {
         } else {
             $this->logDebug("🚫 Plaque de cuisson: non électrique (type: {$typeCuisson})");
         }
-        
+
         if ($cléPlaque) {
-            // Récupérer la consommation de base selon le type de plaque
-            $baseKwhPlaque = $this->getConfigValue($cléPlaque, $this->getDefaultElectro($cléPlaque));
+        
+        // ✅ RÉCUPÉRATION DIRECTE DEPUIS LE BACK - SANS FALLBACK
+        if (!isset($this->configData[$cléPlaque])) {
+            $this->logDebug("❌ ERREUR: {$cléPlaque} non trouvé dans configData");
+            $this->logDebug("🔍 Recherche de clés similaires...");
+            foreach (array_keys($this->configData) as $key) {
+                if (strpos($key, 'plaque') !== false) {
+                    $this->logDebug("- Trouvé: {$key} = " . $this->configData[$key]);
+                }
+            }
+        } else {
+            $baseKwhPlaque = $this->configData[$cléPlaque];
+            $this->logDebug("📊 {$cléPlaque}: {$baseKwhPlaque} kWh (depuis back)");
             
             // Récupérer le coefficient pour les plaques de cuisson
             $coefficientPlaque = $this->getCoefficientEquipement('plaque_cuisson', $nbPersonnes);
@@ -490,41 +513,54 @@ class HticCalculateurElecResidentiel {
                 'final_kwh' => $consommationPlaque,
                 'formule' => "{$baseKwhPlaque} kWh × {$coefficientPlaque} = {$consommationPlaque} kWh",
                 'type' => $typeCuisson,
-                'position_excel' => $positionExcel
+                'position_excel' => $positionExcel,
+                'source' => 'configData'
             );
             
             $total += $consommationPlaque;
             
             $this->logDebug("✅ {$nomPlaque}: {$baseKwhPlaque} kWh × {$coefficientPlaque} = {$consommationPlaque} kWh");
         }
-        
-        // ========================================
-        // FORFAIT PETITS ÉLECTROMÉNAGERS (I88) - TOUJOURS INCLUS
-        // ========================================
-        $forfaitPetits = $this->getConfigValue('forfait_petits_electromenagers', 150);
-        
-        $details['forfait_petits'] = array(
-            'nom' => 'Forfait petits électroménagers',
-            'base_kwh' => $forfaitPetits,
-            'coefficient' => 1,
-            'final_kwh' => $forfaitPetits,
-            'formule' => "{$forfaitPetits} kWh (forfait fixe)",
-            'position_excel' => 'I88'
-        );
-        
-        $total += $forfaitPetits;
-        
-        $this->logDebug("✅ Forfait petits électroménagers: {$forfaitPetits} kWh");
-        
-        // ========================================
-        // RÉSUMÉ FINAL
-        // ========================================
-        $this->logDebug("📊 TOTAL ÉLECTROMÉNAGERS: {$total} kWh/an");
-        $this->logDebug("📈 FORMULE EXCEL REPRODUITE: H52 = SOMME(E51:E59) + I88");
-        
-        // Compter le nombre d'équipements réellement calculés
-        $nbEquipementsCalculés = count($electromenagers);
-        if ($cléPlaque) $nbEquipementsCalculés++; // +1 pour la plaque
+    }
+    
+    // ========================================
+    // FORFAIT PETITS ÉLECTROMÉNAGERS (I88) - TOUJOURS INCLUS
+    // ========================================
+    
+    // ✅ RÉCUPÉRATION DIRECTE DEPUIS LE BACK
+    if (!isset($this->configData['forfait_petits_electromenagers'])) {
+        $this->logDebug("❌ ERREUR: forfait_petits_electromenagers non trouvé dans configData");
+        $forfaitPetits = 0; // Pas de valeur par défaut
+    } else {
+        $forfaitPetits = $this->configData['forfait_petits_electromenagers'];
+        $this->logDebug("📊 forfait_petits_electromenagers: {$forfaitPetits} kWh (depuis back)");
+    }
+    
+    $details['forfait_petits'] = array(
+        'nom' => 'Forfait petits électroménagers',
+        'base_kwh' => $forfaitPetits,
+        'coefficient' => 1,
+        'final_kwh' => $forfaitPetits,
+        'formule' => "{$forfaitPetits} kWh (forfait fixe)",
+        'position_excel' => 'I88',
+        'source' => 'configData'
+    );
+    
+    $total += $forfaitPetits;
+    
+    $this->logDebug("✅ Forfait petits électroménagers: {$forfaitPetits} kWh");
+    
+    // ========================================
+    // RÉSUMÉ FINAL
+    // ========================================
+    $this->logDebug("📊 TOTAL ÉLECTROMÉNAGERS: {$total} kWh/an");
+    $this->logDebug("📈 FORMULE EXCEL REPRODUITE: H52 = SOMME(E51:E59) + I88");
+    
+    // Compter le nombre d'équipements réellement calculés
+    $nbEquipementsCalculés = count($electromenagers);
+        if ($cléPlaque && isset($this->configData[$cléPlaque])) {
+            $nbEquipementsCalculés++; // +1 pour la plaque si trouvée
+        }
         
         return array(
             'total' => $total,
@@ -533,16 +569,18 @@ class HticCalculateurElecResidentiel {
             'nb_equipements_calcules' => $nbEquipementsCalculés,
             'forfait_inclus' => $forfaitPetits,
             'type_cuisson' => $typeCuisson,
-            'plaque_calculee' => $cléPlaque ? true : false,
+            'plaque_calculee' => ($cléPlaque && isset($this->configData[$cléPlaque])),
             'methode' => 'SOMME(E51:E59) + I88',
             'formule_excel' => 'H52 = SOMME(E51:E59) + I88',
             'explication' => 'Reproduction exacte du calcul Excel: équipements sélectionnés × coefficients + plaque selon type de cuisson + forfait petits électroménagers',
+            'valeurs_source' => 'Back-end WordPress uniquement',
             'debug_info' => array(
                 'electromenagers_recus' => $electromenagers,
                 'nb_personnes' => $nbPersonnes,
                 'type_cuisson' => $typeCuisson,
                 'plaque_utilisee' => $cléPlaque,
-                'equipements_reconnus' => array_intersect($electromenagers, array_keys($equipementsList))
+                'equipements_reconnus' => array_intersect($electromenagers, array_keys($equipementsList)),
+                'config_keys_disponibles' => array_keys($this->configData)
             )
         );
     }

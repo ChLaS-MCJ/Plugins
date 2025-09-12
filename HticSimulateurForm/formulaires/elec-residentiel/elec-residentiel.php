@@ -389,7 +389,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                     <label class="form-label">Cuisson / Plaques</label>
                     <div class="radio-group">
                         <label class="radio-card">
-                            <input type="radio" name="type_cuisson" value="induction" required>
+                            <input type="radio" name="type_cuisson" value="plaque_induction" required>
                             <div class="radio-content">
                                 <div class="radio-icon">⚡</div>
                                 <div class="radio-text">
@@ -400,7 +400,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                         </label>
                         
                         <label class="radio-card">
-                            <input type="radio" name="type_cuisson" value="vitroceramique" required>
+                            <input type="radio" name="type_cuisson" value="plaque_vitroceramique" required>
                             <div class="radio-content">
                                 <div class="radio-icon">🔥</div>
                                 <div class="radio-text">

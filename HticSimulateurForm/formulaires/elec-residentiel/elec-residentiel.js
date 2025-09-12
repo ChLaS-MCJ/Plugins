@@ -54,7 +54,7 @@ jQuery(document).ready(function ($) {
                 nb_personnes: '2',
                 isolation: '1980_2000',
                 type_chauffage: 'convecteurs',
-                type_cuisson: 'induction',
+                type_cuisson: 'plaque_vitroceramique',
                 electromenagers: ['lave_linge', 'refrigerateur', 'four'],
                 eau_chaude: 'oui',
                 type_eclairage: 'led',
@@ -73,7 +73,7 @@ jQuery(document).ready(function ($) {
                 nb_personnes: '4',
                 isolation: 'apres_2000',
                 type_chauffage: 'inertie',
-                type_cuisson: 'induction',
+                type_cuisson: 'plaque_induction',
                 electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur'],
                 eau_chaude: 'oui',
                 type_eclairage: 'led',
@@ -92,7 +92,7 @@ jQuery(document).ready(function ($) {
                 nb_personnes: '5',
                 isolation: 'renovation',
                 type_chauffage: 'pac',
-                type_cuisson: 'induction',
+                type_cuisson: 'plaque_induction',
                 electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur', 'cave_a_vin'],
                 eau_chaude: 'oui',
                 type_eclairage: 'led',
@@ -229,7 +229,6 @@ jQuery(document).ready(function ($) {
 
     // Affichage spécialisé pour simulations rapides
     function displayResultsRapide(results, nomProfil) {
-        console.log('🎯 Structure exacte des résultats:', JSON.stringify(results, null, 2));
         console.log('🎯 Affichage résultats rapides:', results);
 
         // VÉRIFICATION CORRIGÉE - Vérifier la vraie structure des données

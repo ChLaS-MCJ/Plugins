@@ -4,7 +4,7 @@
     --primary: #2563eb;
     --primary-light: #3b82f6;
     --primary-dark: #1d4ed8;
-    --success: #10b981;
+    --success: #82C720;
     --warning: #f59e0b;
     --error: #ef4444;
     --gray-50: #f9fafb;
@@ -763,7 +763,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-md);
-    padding: var(--space-md);
+    padding: 0.5rem 10px;
     background: var(--white);
     border: 1px solid var(--gray-200);
     border-radius: var(--radius-lg);
@@ -1184,7 +1184,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.5rem 0;
+    padding: 0.5rem 10px;
     border-bottom: 1px solid #f1f3f4;
 }
 

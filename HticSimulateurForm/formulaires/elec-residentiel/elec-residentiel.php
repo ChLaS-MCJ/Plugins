@@ -1,6 +1,6 @@
 <?php
 /**
- * Template du formulaire Électricité Résidentiel - VERSION CORRIGÉE COMPLÈTE
+ * Template du formulaire Électricité Résidentiel
  * Fichier: formulaires/elec-residentiel/elec-residentiel.php
  */
 
@@ -20,52 +20,6 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
         <div class="header-icon">⚡</div>
         <h1>Simulateur Électricité Résidentiel</h1>
         <p>Estimez votre consommation et trouvez le meilleur tarif pour votre logement</p>
-    </div>
-
-    <!-- Simulations rapides -->
-    <div class="simulations-rapides">
-        <h3>🚀 Simulations rapides</h3>
-        <p>Choisissez un profil type pour une estimation immédiate :</p>
-        
-        <div class="profils-grid">
-            <!-- Profils existants -->
-            <div class="profil-rapide-card" data-profil="petit-logement">
-                <div class="profil-icon">🏢</div>
-                <h4>Studio économique</h4>
-                <p>Studio 35m² • 1 personne • Chauffage gaz • Éclairage ancien</p>
-            </div>
-            
-            <div class="profil-rapide-card" data-profil="logement-moyen">
-                <div class="profil-icon">🏠</div>
-                <h4>Maison familiale</h4>
-                <p>Maison 120m² • 5 personnes • Convecteurs • Aquarium + Clim</p>
-            </div>
-            
-            <div class="profil-rapide-card" data-profil="grand-logement">
-                <div class="profil-icon">🏰</div>
-                <h4>Villa tout confort</h4>
-                <p>Villa 200m² • 6 personnes • Clim réversible • Piscine chauffée + Spa + VE</p>
-            </div>
-            
-            <!-- NOUVEAUX PROFILS À AJOUTER -->
-            <div class="profil-rapide-card" data-profil="appartement-moderne">
-                <div class="profil-icon">🌿</div>
-                <h4>Appartement écolo</h4>
-                <p>Appart 75m² • 3 personnes • PAC • Voiture électrique</p>
-            </div>
-            
-            <div class="profil-rapide-card" data-profil="maison-rurale">
-                <div class="profil-icon">🌾</div>
-                <h4>Maison campagne</h4>
-                <p>Maison 180m² • 4 personnes • Radiateurs inertie • Piscine simple</p>
-            </div>
-            
-            <div class="profil-rapide-card" data-profil="loft-urbain">
-                <div class="profil-icon">🏙️</div>
-                <h4>Loft urbain</h4>
-                <p>Loft 90m² • 2 personnes • Chauffage collectif • Spa + Clim</p>
-            </div>
-        </div>
     </div>
     
     <!-- Indicateur de progression -->
@@ -175,7 +129,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                     </select>
                 </div>
 
-                <!-- ISOLATION - Maintenant obligatoire à l'étape 1 -->
+                <!-- ISOLATION -->
                 <div class="form-group full-width">
                     <label class="form-label">Période de construction / Niveau d'isolation</label>
                     <div class="radio-group horizontal">
@@ -227,7 +181,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 2: Mode de chauffage principal - STRUCTURE SIMPLIFIÉE -->
+        <!-- ÉTAPE 2: Mode de chauffage principal -->
         <div class="form-step" data-step="2">
             <div class="step-header">
                 <h2>🔥 Mode de chauffage principal</h2>
@@ -305,7 +259,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
             
             <div class="form-grid">
-                <!-- Électroménagers de base (pré-cochés) -->
+                <!-- Électroménagers de base -->
                 <div class="form-group full-width">
                     <label class="form-label">Électroménagers de base</label>
                     <div class="checkbox-group horizontal">
@@ -388,7 +342,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                     </div>
                 </div>
                 
-                <!-- Cuisson / Plaques (choix unique) -->
+                <!-- Cuisson / Plaques -->
                 <div class="form-group full-width">
                     <label class="form-label">Cuisson / Plaques</label>
                     <div class="radio-group">
@@ -511,7 +465,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
             
             <div class="form-grid">
-                <!-- Piscine (choix unique) -->
+                <!-- Piscine -->
                 <div class="form-group full-width">
                     <label class="form-label">Piscine</label>
                     <div class="radio-group">
@@ -654,7 +608,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
         <!-- ÉTAPE 7: Résultats -->
         <div class="form-step" data-step="7">
             <div class="step-header">
-                <h2>📊 Vos résultats personnalisés</h2>
+                <h2>Vos résultats personnalisés</h2>
                 <p>Estimation basée sur vos informations</p>
             </div>
             
@@ -688,7 +642,6 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
         </div>
     </form>
     
-    <!-- Données de configuration pour JavaScript -->
     <script type="application/json" id="simulateur-config">
         <?php echo json_encode($config_data, JSON_PRETTY_PRINT); ?>
     </script>

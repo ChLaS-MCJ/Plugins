@@ -2,13 +2,11 @@
 
 jQuery(document).ready(function ($) {
 
-    // Variables
     let currentStep = 1;
     const totalSteps = 7;
     let formData = {};
     let configData = {};
 
-    // Initialisation
     init();
 
     function init() {
@@ -19,545 +17,16 @@ jQuery(document).ready(function ($) {
         setupSimulationsRapides();
     }
 
-    // Chargement configuration
     function loadConfigData() {
         const configElement = document.getElementById('simulateur-config');
         if (configElement) {
             try {
                 configData = JSON.parse(configElement.textContent);
-                console.log('✅ Configuration chargée:', Object.keys(configData).length, 'paramètres');
             } catch (e) {
                 console.error('❌ Erreur configuration:', e);
                 configData = {};
             }
         }
-    }
-
-    // ===============================
-    // SIMULATIONS RAPIDES
-    // ===============================
-
-    function setupSimulationsRapides() {
-        $('.profil-rapide-card').on('click', function () {
-            const profil = $(this).data('profil');
-            lancerSimulationRapide(profil);
-        });
-    }
-
-    // Définition des profils prédéfinis
-    function getProfilData(profil) {
-        const profils = {
-            'petit-logement': {
-                // Studio étudiant/jeune actif
-                type_logement: 'appartement',
-                surface: '35',
-                nb_personnes: '1',
-                isolation: 'avant_1980',
-                type_chauffage: 'gaz', // Pas de chauffage élec
-                type_cuisson: 'gaz', // Cuisson gaz
-                electromenagers: ['refrigerateur'], // Minimal
-                eau_chaude: 'non', // Eau chaude au gaz
-                type_eclairage: 'incandescent', // Vieux éclairage
-                piscine: 'non',
-                equipements_speciaux: [],
-                preference_tarif: 'base',
-                // Métadonnées
-                nom: 'Studio économique',
-                description: 'Studio 35m² • 1 personne • Chauffage gaz • Éclairage ancien'
-            },
-
-            'logement-moyen': {
-                // Famille avec enfants
-                type_logement: 'maison',
-                surface: '120',
-                nb_personnes: '5',
-                isolation: '1980_2000',
-                type_chauffage: 'convecteurs', // Vieux convecteurs
-                type_cuisson: 'plaque_vitroceramique',
-                electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur'],
-                eau_chaude: 'oui',
-                type_eclairage: 'led',
-                piscine: 'non',
-                equipements_speciaux: ['aquarium', 'climatiseur_mobile'],
-                preference_tarif: 'hc',
-                // Métadonnées
-                nom: 'Maison familiale',
-                description: 'Maison 120m² • 5 personnes • Convecteurs • Aquarium + Clim'
-            },
-
-            'grand-logement': {
-                // Villa moderne tout équipée
-                type_logement: 'maison',
-                surface: '200',
-                nb_personnes: '6',
-                isolation: 'renovation',
-                type_chauffage: 'clim_reversible', // Clim réversible
-                type_cuisson: 'plaque_induction',
-                electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'four', 'congelateur', 'cave_a_vin'],
-                eau_chaude: 'oui',
-                type_eclairage: 'led',
-                piscine: 'chauffee', // Piscine chauffée
-                equipements_speciaux: ['spa_jacuzzi', 'voiture_electrique', 'aquarium'],
-                preference_tarif: 'hc',
-                // Métadonnées
-                nom: 'Villa tout confort',
-                description: 'Villa 200m² • 6 personnes • Clim réversible • Piscine chauffée + Spa + VE'
-            },
-
-            // Profil supplémentaire pour tests
-            'appartement-moderne': {
-                type_logement: 'appartement',
-                surface: '75',
-                nb_personnes: '3',
-                isolation: 'apres_2000',
-                type_chauffage: 'pac', // Pompe à chaleur
-                type_cuisson: 'plaque_induction',
-                electromenagers: ['lave_linge', 'refrigerateur', 'lave_vaisselle', 'four'],
-                eau_chaude: 'oui',
-                type_eclairage: 'led',
-                piscine: 'non',
-                equipements_speciaux: ['voiture_electrique'],
-                preference_tarif: 'tempo',
-                // Métadonnées
-                nom: 'Appartement écolo',
-                description: 'Appart 75m² • 3 personnes • PAC • Voiture électrique'
-            },
-
-            'maison-rurale': {
-                type_logement: 'maison',
-                surface: '180',
-                nb_personnes: '4',
-                isolation: '1980_2000',
-                type_chauffage: 'inertie',
-                type_cuisson: 'gaz',
-                electromenagers: ['lave_linge', 'refrigerateur', 'congelateur', 'four'],
-                eau_chaude: 'oui',
-                type_eclairage: 'incandescent',
-                piscine: 'simple', // Piscine non chauffée
-                equipements_speciaux: [],
-                preference_tarif: 'base',
-                // Métadonnées
-                nom: 'Maison campagne',
-                description: 'Maison 180m² • 4 personnes • Radiateurs inertie • Piscine simple'
-            },
-
-            'loft-urbain': {
-                type_logement: 'appartement',
-                surface: '90',
-                nb_personnes: '2',
-                isolation: 'renovation',
-                type_chauffage: 'autre', // Chauffage central
-                type_cuisson: 'plaque_induction',
-                electromenagers: ['lave_linge', 'seche_linge', 'refrigerateur', 'lave_vaisselle', 'cave_a_vin'],
-                eau_chaude: 'non', // Eau chaude collective
-                type_eclairage: 'led',
-                piscine: 'non',
-                equipements_speciaux: ['spa_jacuzzi', 'climatiseur_mobile'],
-                preference_tarif: 'indifferent',
-                // Métadonnées
-                nom: 'Loft urbain',
-                description: 'Loft 90m² • 2 personnes • Chauffage collectif • Spa + Clim'
-            }
-        };
-
-        return profils[profil] || null;
-    }
-
-    // Fonction pour lancer une simulation rapide
-    function lancerSimulationRapide(profil) {
-        const profilData = getProfilData(profil);
-
-        if (!profilData) {
-            console.error('Profil non trouvé:', profil);
-            return;
-        }
-
-        console.log('🚀 Lancement simulation rapide:', profilData.nom);
-
-        // IMPORTANT: Retirer l'attribut required des champs non visibles
-        $('.form-step:not(.active)').find('input[required], select[required]').each(function () {
-            $(this).removeAttr('required').attr('data-was-required', 'true');
-        });
-
-        // Afficher l'état de chargement sur le bouton
-        const $button = $(`.profil-rapide-card[data-profil="${profil}"]`);
-        $button.addClass('loading');
-
-        // Remplir le formulaire avec les données du profil
-        remplirFormulaireAvecProfil(profilData);
-
-        // Aller directement à l'étape résultats
-        currentStep = 7;
-        showStep(7);
-        updateProgress();
-        updateNavigation();
-
-        // Afficher l'état de chargement dans les résultats
-        $('#results-container').html(`
-        <div class="loading-state">
-            <div class="loading-spinner"></div>
-            <p>Calcul rapide en cours...</p>
-            <small>Simulation : ${profilData.nom}</small>
-        </div>
-    `);
-
-        // Préparer les données (sans les métadonnées)
-        const userData = { ...profilData };
-        delete userData.nom;
-        delete userData.description;
-
-        // Envoyer directement au calculateur
-        sendDataToCalculatorRapide(userData, configData, profilData.nom);
-
-        // Masquer l'état de chargement du bouton après un délai
-        setTimeout(() => {
-            $button.removeClass('loading');
-        }, 2000);
-    }
-
-    // Version spécialisée pour les simulations rapides
-    function sendDataToCalculatorRapide(userData, configData, nomProfil) {
-        // Préparer les données pour le calculateur
-        const dataToSend = {
-            action: 'htic_calculate_estimation',
-            type: 'elec-residentiel',
-            user_data: userData,
-            config_data: configData,
-            simulation_rapide: true,
-            profil_nom: nomProfil
-        };
-
-        // Ajouter le nonce si disponible
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
-            dataToSend.nonce = hticSimulateur.nonce;
-        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.calculateNonce) {
-            dataToSend.nonce = hticSimulateurUnifix.calculateNonce;
-        }
-
-        // Déterminer l'URL AJAX
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
-        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.ajaxUrl) {
-            ajaxUrl = hticSimulateurUnifix.ajaxUrl;
-        }
-
-        console.log('📤 Envoi simulation rapide:', dataToSend);
-
-        $.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            dataType: 'json',
-            data: dataToSend,
-            timeout: 30000,
-            success: function (response) {
-                console.log('📥 Réponse simulation rapide:', response);
-
-                if (response.success) {
-                    displayResultsRapide(response.data, nomProfil);
-                } else {
-                    displayError('Erreur lors du calcul rapide: ' + (response.data || 'Erreur inconnue'));
-                }
-            },
-            error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX simulation rapide:', {
-                    status: status,
-                    error: error,
-                    responseText: xhr.responseText,
-                    statusCode: xhr.status
-                });
-
-                let errorMessage = 'Erreur de connexion lors du calcul rapide';
-
-                if (xhr.status === 0) {
-                    errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
-                } else if (xhr.status === 500) {
-                    errorMessage = 'Erreur interne du serveur. Contactez l\'administrateur.';
-                } else if (status === 'timeout') {
-                    errorMessage = 'Le calcul prend trop de temps. Réessayez.';
-                }
-
-                displayError(errorMessage);
-            }
-        });
-    }
-
-    // Affichage spécialisé pour simulations rapides
-    function displayResultsRapide(results, nomProfil) {
-        console.log('🎯 Affichage résultats rapides:', results);
-
-        // VÉRIFICATION CORRIGÉE - Vérifier la vraie structure des données
-        if (!results.consommation_annuelle || !results.tarifs) {
-            displayError('Données de résultats incomplètes pour la simulation rapide');
-            return;
-        }
-
-        // Extraire les données avec la vraie structure
-        const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
-        const puissanceRecommandee = results.puissance_recommandee || '12';
-
-        // Tarifs 
-        const tarifBase = results.tarifs.base || {};
-        const tarifHC = results.tarifs.hc || {};
-        const economie = results.tarifs.economie_potentielle || 0;
-        const tarifRecommande = results.tarifs.tarif_recommande || 'base';
-
-        // Répartition
-        const repartition = results.repartition || {};
-
-        const resultsHtml = `
-        <div class="results-summary">
-            <!-- Badge simulation rapide -->
-            <div class="simulation-rapide-badge">
-                <span class="badge-icon">🚀</span>
-                <span>Simulation rapide : ${nomProfil}</span>
-            </div>
-            
-            <!-- Résultat principal -->
-            <div class="result-card main-result">
-                <div class="result-icon">⚡</div>
-                <h3>Estimation pour : ${nomProfil}</h3>
-                <div class="big-number">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
-                <p>Puissance recommandée : <strong>${puissanceRecommandee} kVA</strong></p>
-                <small>Basé sur un profil type - Utilisez le formulaire personnalisé pour plus de précision</small>
-            </div>
-            
-            <!-- Comparaison des tarifs -->
-            <div class="tarifs-comparison">
-                <h3>💰 Comparaison des tarifs</h3>
-                <div class="tarifs-grid">
-                    <div class="tarif-card ${tarifRecommande === 'base' ? 'recommended' : ''}">
-                        <h4>Tarif BASE</h4>
-                        <div class="tarif-prix">${(tarifBase.total_annuel || 0).toLocaleString()}€<span>/an</span></div>
-                        <div class="tarif-mensuel">${(tarifBase.total_mensuel || 0).toLocaleString()}€/mois</div>
-                        ${tarifRecommande === 'base' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
-                    </div>
-                    <div class="tarif-card ${tarifRecommande === 'hc' ? 'recommended' : ''}">
-                        <h4>Heures Creuses</h4>
-                        <div class="tarif-prix">${(tarifHC.total_annuel || 0).toLocaleString()}€<span>/an</span></div>
-                        <div class="tarif-mensuel">${(tarifHC.total_mensuel || 0).toLocaleString()}€/mois</div>
-                        ${tarifRecommande === 'hc' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
-                    </div>
-                </div>
-                <div class="economies">
-                    <p>💡 <strong>Économies potentielles :</strong> ${Math.round(economie).toLocaleString()}€/an en choisissant le meilleur tarif !</p>
-                </div>
-            </div>
-            
-            <!-- Répartition simplifiée -->
-            <div class="repartition-conso">
-                <h3>📊 Répartition de la consommation</h3>
-                <div class="repartition-details">
-                    <div class="repartition-item">
-                        <span class="repartition-color" style="background: #ef4444;"></span>
-                        <span>Chauffage : ${(repartition.chauffage || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.chauffage || 0).toFixed(2)} kW</span>
-                    </div>
-                    
-                    <div class="repartition-item">
-                        <span class="repartition-color" style="background: #3b82f6;"></span>
-                        <span>Eau chaude : ${(repartition.eau_chaude || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.eau_chaude || 0).toFixed(2)} kW</span>
-                    </div>
-                    
-                    <div class="repartition-item">
-                        <span class="repartition-color" style="background: #10b981;"></span>
-                        <span>Électroménagers : ${(repartition.electromenagers || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.electromenagers || 0).toFixed(2)} kW</span>
-                    </div>
-                    
-                    <div class="repartition-item">
-                        <span class="repartition-color" style="background: #8b5cf6;"></span>
-                        <span>Multimédia : ${(repartition.multimedia || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.multimedia || 0).toFixed(2)} kW</span>
-                    </div>
-                    
-                    <div class="repartition-item">
-                        <span class="repartition-color" style="background: #f59e0b;"></span>
-                        <span>Éclairage : ${(repartition.eclairage || 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.eclairage || 0).toFixed(2)} kW</span>
-                    </div>
-                    
-                    <div class="repartition-item">
-                        <span class="repartition-color" style="background: #06b6d4;"></span>
-                        <span>Équipements spéciaux : ${Object.values(repartition.equipements_speciaux || {}).reduce((a, b) => (a || 0) + (b || 0), 0).toLocaleString()} kWh/an • ${(results.puissances_retenues?.equipements_speciaux || 0).toFixed(2)} kW</span>
-                    </div>
-                    
-                    <div class="repartition-item" style="margin-top: 10px; padding-top: 10px; border-top: 2px solid #e5e7eb; font-weight: bold;">
-                        <span class="repartition-color" style="background: #1f2937;"></span>
-                        <span>TOTAL : ${results.consommation_annuelle.toLocaleString()} kWh/an • ${(results.puissances_retenues?.total || 0).toFixed(2)} kW</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Détails techniques rapides - AFFICHAGE DIRECT -->
-            ${results.details_calcul ? `
-            <div class="details-rapide" style="margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px;">
-                <h4>📊 Détails complets du calcul</h4>
-                
-                <!-- Informations générales -->
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-                    <p><strong>Version :</strong> ${results.details_calcul.methode_calcul || 'HTIC v2.0'}</p>
-                    <p><strong>Timestamp :</strong> ${results.details_calcul.timestamp || ''}</p>
-                    <p><strong>Paramètres utilisés :</strong> ${results.details_calcul.donnees_config_utilisees?.nb_parametres || 0}</p>
-                </div>
-                
-                <!-- Détails par poste de consommation -->
-                <h5>📋 Détails par poste :</h5>
-                
-                ${results.details_calcul.chauffage ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #ef4444;">
-                    <h6>🔥 Chauffage : ${Math.round(results.repartition.chauffage || 0)} kWh/an</h6>
-                    <small style="color: #666;">
-                        • Type : ${results.details_calcul.chauffage.type_chauffage || 'Non spécifié'}<br>
-                        • Surface : ${results.details_calcul.chauffage.surface_chauffee || 0} m²<br>
-                        • Conso/m² : ${results.details_calcul.chauffage.consommation_m2 || 0} kWh/m²/an<br>
-                        • Isolation : ${results.details_calcul.chauffage.isolation || 'N/A'}<br>
-                        • <strong>Calcul :</strong> ${results.details_calcul.chauffage.calcul || 'N/A'}
-                    </small>
-                </div>
-                ` : ''}
-                
-                ${results.details_calcul.eau_chaude && results.repartition.eau_chaude > 0 ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #3b82f6;">
-                    <h6>💧 Eau chaude : ${Math.round(results.repartition.eau_chaude || 0)} kWh/an</h6>
-                    <small style="color: #666;">
-                        • Base : ${results.details_calcul.eau_chaude.base_kwh || 0} kWh<br>
-                        • Personnes : ${results.details_calcul.eau_chaude.nb_personnes || 0}<br>
-                        • Coefficient : ${results.details_calcul.eau_chaude.coefficient || 1}<br>
-                        • <strong>Calcul :</strong> ${results.details_calcul.eau_chaude.calcul || 'N/A'}
-                    </small>
-                </div>
-                ` : ''}
-                
-                ${results.details_calcul.electromenagers ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #10b981;">
-                    <h6>🏠 Électroménagers : ${Math.round(results.repartition.electromenagers || 0)} kWh/an</h6>
-                    <small style="color: #666;">
-                        ${results.details_calcul.electromenagers.details ?
-                        Object.entries(results.details_calcul.electromenagers.details).map(([key, item]) =>
-                            `• ${item.nom} : ${Math.round(item.final_kwh || 0)} kWh`
-                        ).join('<br>') : 'Détails non disponibles'
-                    }
-                    </small>
-                </div>
-                ` : ''}
-                
-                ${results.details_calcul.eclairage ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #f59e0b;">
-                    <h6>💡 Éclairage : ${Math.round(results.repartition.eclairage || 0)} kWh/an</h6>
-                    <small style="color: #666;">
-                        • Type : ${results.details_calcul.eclairage.type_eclairage || 'N/A'}<br>
-                        • Surface : ${results.details_calcul.eclairage.surface || 0} m²<br>
-                        • <strong>Calcul :</strong> ${results.details_calcul.eclairage.calcul || 'N/A'}
-                    </small>
-                </div>
-                ` : ''}
-                
-                ${results.details_calcul.multimedia ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #8b5cf6;">
-                    <h6>📺 Multimédia : ${Math.round(results.repartition.multimedia || 0)} kWh/an</h6>
-                    <small style="color: #666;">
-                        • Inclus automatiquement<br>
-                        • <strong>Calcul :</strong> ${results.details_calcul.multimedia.calcul || 'N/A'}
-                    </small>
-                </div>
-                ` : ''}
-                
-                ${results.details_calcul.equipements_speciaux && Object.keys(results.details_calcul.equipements_speciaux.details_calcul || {}).length > 0 ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #06b6d4;">
-                    <h6>⚡ Équipements spéciaux : ${Math.round(Object.values(results.repartition.equipements_speciaux || {}).reduce((a, b) => (a || 0) + (b || 0), 0))} kWh/an</h6>
-                    <small style="color: #666;">
-                        ${Object.entries(results.details_calcul.equipements_speciaux.details_calcul || {})
-                        .map(([key, value]) => `• ${value}`)
-                        .join('<br>')}
-                    </small>
-                </div>
-                ` : ''}
-                
-                <!-- Résumé total -->
-                <div style="background: #e8f4fd; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
-                    <h6>⚡ Total général : ${results.consommation_annuelle.toLocaleString()} kWh/an</h6>
-                </div>
-            </div>
-            ` : ''}
-            
-            <!-- Actions -->
-            <div class="results-actions">
-                <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimer</button>
-                <button class="btn btn-secondary" id="btn-simulation-personnalisee">📝 Simulation personnalisée</button>
-                <button class="btn btn-outline" id="btn-autre-profil">🔄 Autre profil type</button>
-            </div>
-        </div>
-    `;
-
-        $('#results-container').html(resultsHtml);
-        $('.results-summary').hide().fadeIn(600);
-
-        // Gestionnaires pour les boutons d'actions rapides
-        $('#btn-simulation-personnalisee').on('click', function () {
-            restartSimulation();
-            $('html, body').animate({
-                scrollTop: $('.progress-container').offset().top - 50
-            }, 600);
-        });
-
-        $('#btn-autre-profil').on('click', function () {
-            restartSimulation();
-            $('html, body').animate({
-                scrollTop: $('.simulations-rapides').offset().top - 50
-            }, 600);
-        });
-    }
-
-    // Fonction pour remplir le formulaire (utile pour debug et historique)
-    function remplirFormulaireAvecProfil(profilData) {
-        // Remplir les champs radio
-        if (profilData.type_logement) {
-            $(`input[name="type_logement"][value="${profilData.type_logement}"]`).prop('checked', true);
-        }
-        if (profilData.isolation) {
-            $(`input[name="isolation"][value="${profilData.isolation}"]`).prop('checked', true);
-        }
-        if (profilData.chauffage_electrique) {
-            $(`input[name="chauffage_electrique"][value="${profilData.chauffage_electrique}"]`).prop('checked', true);
-        }
-        if (profilData.type_chauffage_elec) {
-            $(`input[name="type_chauffage_elec"][value="${profilData.type_chauffage_elec}"]`).prop('checked', true);
-        }
-        if (profilData.cuisson_electrique) {
-            $(`input[name="cuisson_electrique"][value="${profilData.cuisson_electrique}"]`).prop('checked', true);
-        }
-        if (profilData.eau_chaude) {
-            $(`input[name="eau_chaude"][value="${profilData.eau_chaude}"]`).prop('checked', true);
-        }
-        if (profilData.type_eclairage) {
-            $(`input[name="type_eclairage"][value="${profilData.type_eclairage}"]`).prop('checked', true);
-        }
-        if (profilData.piscine) {
-            $(`input[name="piscine"][value="${profilData.piscine}"]`).prop('checked', true);
-        }
-
-        // Remplir les champs de saisie
-        if (profilData.surface) {
-            $('#surface').val(profilData.surface);
-        }
-        if (profilData.nb_personnes) {
-            $('#nb_personnes').val(profilData.nb_personnes);
-        }
-
-        // Remplir les checkboxes électroménagers
-        $('input[name="electromenagers[]"]').prop('checked', false); // Tout décocher d'abord
-        if (profilData.electromenagers && Array.isArray(profilData.electromenagers)) {
-            profilData.electromenagers.forEach(function (electromenager) {
-                $(`input[name="electromenagers[]"][value="${electromenager}"]`).prop('checked', true);
-            });
-        }
-
-        // Remplir les checkboxes équipements spéciaux
-        $('input[name="equipements_speciaux[]"]').prop('checked', false); // Tout décocher d'abord
-        if (profilData.equipements_speciaux && Array.isArray(profilData.equipements_speciaux)) {
-            profilData.equipements_speciaux.forEach(function (equipement) {
-                $(`input[name="equipements_speciaux[]"][value="${equipement}"]`).prop('checked', true);
-            });
-        }
-
-        console.log('📝 Formulaire rempli avec le profil:', profilData.nom);
     }
 
     // ===============================
@@ -692,7 +161,6 @@ jQuery(document).ready(function ($) {
         const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
         let isValid = true;
 
-        // Retirer anciennes classes
         currentStepElement.find('.field-error, .field-success').removeClass('field-error field-success');
 
         // Validation spécifique par étape
@@ -766,7 +234,6 @@ jQuery(document).ready(function ($) {
         // Type chauffage obligatoire
         const typeChauffage = stepElement.find('input[name="type_chauffage"]:checked');
         if (!typeChauffage.length) {
-            // Ne pas bloquer si l'étape n'est pas visible
             if (!stepElement.is(':visible')) return true;
             return false;
         }
@@ -777,7 +244,6 @@ jQuery(document).ready(function ($) {
         // Type cuisson obligatoire
         const typeCuisson = stepElement.find('input[name="type_cuisson"]:checked');
         if (!typeCuisson.length) {
-            // Ne pas bloquer si l'étape n'est pas visible
             if (!stepElement.is(':visible')) return true;
             return false;
         }
@@ -884,7 +350,6 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        console.log('💾 Données sauvegardées étape', currentStep, ':', formData);
     }
 
     function collectAllFormData() {
@@ -911,7 +376,6 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        console.log('📋 Données complètes collectées:', formData);
         return formData;
     }
 
@@ -975,14 +439,12 @@ jQuery(document).ready(function ($) {
             ajaxUrl = hticSimulateurUnifix.ajaxUrl;
         }
 
-        console.log('📤 Envoi vers le calculateur:', dataToSend);
-
         $.ajax({
             url: ajaxUrl,
             type: 'POST',
             dataType: 'json',
             data: dataToSend,
-            timeout: 30000, // 30 secondes
+            timeout: 30000,
             success: function (response) {
                 console.log('📥 Réponse du calculateur:', response);
 
@@ -1020,7 +482,6 @@ jQuery(document).ready(function ($) {
     // ===============================
 
     function displayResults(results) {
-        console.log('Affichage des résultats:', results);
 
         // Vérifier que toutes les données nécessaires sont présentes
         if (!results || !results.consommation_annuelle || !results.tarifs) {
@@ -1092,203 +553,88 @@ jQuery(document).ready(function ($) {
             
             <!-- Répartition de la consommation -->
             <div class="repartition-conso">
-                <h3>📊 Répartition de votre consommation</h3>
+                <h3>Répartition de votre consommation</h3>
                 <div class="repartition-details">
-                    ${chauffage > 0 ? `
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #ef4444;"></span>
                         <span>Chauffage : ${chauffage.toLocaleString()} kWh</span>
-                    </div>` : ''}
-                    ${eauChaude > 0 ? `
+                    </div>
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #3b82f6;"></span>
                         <span>Eau chaude : ${eauChaude.toLocaleString()} kWh</span>
-                    </div>` : ''}
-                    ${electromenagers > 0 ? `
+                    </div>
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #10b981;"></span>
                         <span>Électroménager : ${electromenagers.toLocaleString()} kWh</span>
-                    </div>` : ''}
-                    ${eclairage > 0 ? `
+                    </div>
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #f59e0b;"></span>
                         <span>Éclairage : ${eclairage.toLocaleString()} kWh</span>
-                    </div>` : ''}
-                    ${multimedia > 0 ? `
+                    </div>
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #8b5cf6;"></span>
                         <span>Multimédia : ${multimedia.toLocaleString()} kWh</span>
-                    </div>` : ''}
-                    ${equipementsSpeciaux > 0 ? `
+                    </div>
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #06b6d4;"></span>
                         <span>Équipements spéciaux : ${equipementsSpeciaux.toLocaleString()} kWh</span>
-                    </div>` : ''}
-                    ${autres > 0 ? `
+                    </div>
                     <div class="repartition-item">
                         <span class="repartition-color" style="background: #6b7280;"></span>
                         <span>Autres : ${autres.toLocaleString()} kWh</span>
-                    </div>` : ''}
+                    </div>
                 </div>
+
             </div>
             
             <!-- Récapitulatif -->
+           <!-- Récapitulatif -->
             <div class="recap-section">
-                <h3>📋 Récapitulatif de vos informations</h3>
+                <h3>Récapitulatif de vos informations</h3>
                 <div class="recap-grid">
                     <div class="recap-item">
-                        <strong>Type de logement :</strong> ${getLogementLabel(results.recap?.type_logement || 'Non spécifié')}
+                        <strong>Type de logement :</strong> ${getLogementLabel(results.recap?.type_logement ?? 'Non spécifié')}
                     </div>
                     <div class="recap-item">
-                        <strong>Surface :</strong> ${results.recap?.surface || 'Non spécifié'} m²
+                        <strong>Surface :</strong> ${results.recap?.surface ?? 'Non spécifié'} m²
                     </div>
                     <div class="recap-item">
-                        <strong>Nombre de personnes :</strong> ${results.recap?.nb_personnes || 'Non spécifié'}
+                        <strong>Nombre de personnes :</strong> ${results.recap?.nb_personnes ?? 'Non spécifié'}
                     </div>
                     <div class="recap-item">
-                        <strong>Chauffage :</strong> ${getHeatingLabel(results.recap?.type_chauffage || 'Non spécifié')}
+                        <strong>Chauffage :</strong> ${getHeatingLabel(results.recap?.type_chauffage ?? 'Non spécifié')}
                     </div>
                     <div class="recap-item">
                         <strong>Eau chaude :</strong> ${results.recap?.eau_chaude === 'oui' ? 'Électrique' : 'Autre énergie'}
                     </div>
-                </div>
-            </div>
-            
-            <!-- Détails techniques - AFFICHAGE DIRECT -->
-            ${results.details_calcul ? `
-            <div class="details-technique" style="margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px;">
-                <h4>📊 Détails complets du calcul</h4>
-                
-                <!-- Méthode de calcul -->
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-                    <p><strong>🔧 Méthode :</strong> ${results.details_calcul.methode_calcul || 'Calcul standard'}</p>
-                    <p><strong>📅 Timestamp :</strong> ${results.details_calcul.timestamp || 'Non spécifié'}</p>
-                    <p><strong>📊 Paramètres utilisés :</strong> ${results.details_calcul.donnees_config_utilisees?.nb_parametres || 0}</p>
-                </div>
-                
-                <!-- Détails par poste -->
-                <h5>🔍 Détails par poste de consommation :</h5>
-                
-                <!-- CHAUFFAGE -->
-                ${results.details_calcul.chauffage ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                    <h6>🔥 Chauffage (${results.repartition.chauffage} kWh/an)</h6>
-                    <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                        <li>Type : ${results.details_calcul.chauffage.type_chauffage || 'Non électrique'}</li>
-                        <li>Isolation : ${results.details_calcul.chauffage.isolation || 'N/A'}</li>
-                        <li>Consommation/m² : ${results.details_calcul.chauffage.consommation_m2 || 0} kWh/m²/an</li>
-                        <li>Surface chauffée : ${results.details_calcul.chauffage.surface_chauffee || 0} m²</li>
-                        <li>Coefficient logement : ${results.details_calcul.chauffage.coefficient_logement || 1}</li>
-                        <li><strong>Calcul :</strong> ${results.details_calcul.chauffage.calcul || 'N/A'}</li>
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <!-- EAU CHAUDE -->
-                ${results.details_calcul.eau_chaude ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                    <h6>💧 Eau chaude (${results.repartition.eau_chaude} kWh/an)</h6>
-                    <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                        <li>Base : ${results.details_calcul.eau_chaude.base_kwh || 0} kWh/an</li>
-                        <li>Nombre de personnes : ${results.details_calcul.eau_chaude.nb_personnes || 1}</li>
-                        <li>Coefficient : ${results.details_calcul.eau_chaude.coefficient || 1}</li>
-                        <li><strong>Calcul :</strong> ${results.details_calcul.eau_chaude.calcul || 'N/A'}</li>
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <!-- ÉLECTROMÉNAGERS -->
-                ${results.details_calcul.electromenagers && results.details_calcul.electromenagers.details ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                    <h6>🏠 Électroménagers (${results.repartition.electromenagers} kWh/an)</h6>
-                    <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                        ${Object.entries(results.details_calcul.electromenagers.details).map(([key, item]) => `
-                            <li>${item.nom} : ${Math.round(item.base_kwh)} kWh × ${item.coefficient} = ${Math.round(item.final_kwh)} kWh/an</li>
-                        `).join('')}
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <!-- ÉCLAIRAGE -->
-                ${results.details_calcul.eclairage ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                    <h6>💡 Éclairage (${results.repartition.eclairage} kWh/an)</h6>
-                    <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                        <li>Type : ${results.details_calcul.eclairage.type_eclairage || 'N/A'}</li>
-                        <li>Surface : ${results.details_calcul.eclairage.surface || 0} m²</li>
-                        <li>Consommation/m² : ${results.details_calcul.eclairage.consommation_m2 || 0} kWh/m²/an</li>
-                        <li><strong>Calcul :</strong> ${results.details_calcul.eclairage.calcul || 'N/A'}</li>
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <!-- MULTIMÉDIA -->
-                ${results.details_calcul.multimedia ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                    <h6>📺 Multimédia/TV/PC (${results.repartition.multimedia} kWh/an)</h6>
-                    <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                        <li>Base : ${results.details_calcul.multimedia.base_kwh || 0} kWh/an</li>
-                        <li>Coefficient : ${results.details_calcul.multimedia.coefficient || 1}</li>
-                        <li><strong>Calcul :</strong> ${results.details_calcul.multimedia.calcul || 'N/A'}</li>
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <!-- ÉQUIPEMENTS SPÉCIAUX -->
-                ${results.details_calcul.equipements_speciaux ? `
-                <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                    <h6>⚡ Équipements spéciaux (${Object.values(results.repartition.equipements_speciaux || {}).reduce((a, b) => a + b, 0)} kWh/an)</h6>
-                    <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                        ${Object.entries(results.details_calcul.equipements_speciaux.details_calcul || {}).map(([key, value]) => `
-                            <li>${value}</li>
-                        `).join('')}
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <!-- COEFFICIENTS APPLIQUÉS -->
-                ${results.details_calcul.coefficients ? `
-                <div style="background: #e8f4fd; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
-                    <h6>🧮 Coefficients globaux appliqués</h6>
-                    <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                        <li>Coefficient logement (${results.recap.type_logement}) : ${results.details_calcul.coefficients.logement}</li>
-                        <li>Coefficient personnes (${results.recap.nb_personnes} pers.) : ${results.details_calcul.coefficients.personnes}</li>
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <!-- TARIFS DÉTAILLÉS -->
-                ${results.tarifs ? `
-                <div style="background: #f0f9ff; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
-                    <h6>💰 Détails des tarifs</h6>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem;">
-                        <div>
-                            <strong>Tarif BASE :</strong>
-                            <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                                <li>Abonnement : ${results.tarifs.base.abonnement_mensuel}€/mois</li>
-                                <li>Prix kWh : ${results.tarifs.base.prix_kwh}€</li>
-                                <li>Puissance : ${results.tarifs.base.puissance_kva} kVA</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <strong>Tarif Heures Creuses :</strong>
-                            <ul style="margin: 0.5rem 0; font-size: 0.9rem;">
-                                <li>Abonnement : ${results.tarifs.hc.abonnement_mensuel}€/mois</li>
-                                <li>HP : ${results.tarifs.hc.prix_kwh_hp}€ (${results.tarifs.hc.repartition_hp}%)</li>
-                                <li>HC : ${results.tarifs.hc.prix_kwh_hc}€ (${results.tarifs.hc.repartition_hc}%)</li>
-                            </ul>
-                        </div>
+                    <div class="recap-item">
+                        <strong>Isolation :</strong> ${getIsolationLabel(results.recap?.isolation ?? 'Non spécifié')}
+                    </div>
+                    <div class="recap-item">
+                        <strong>Type de cuisson :</strong> ${getCuissonLabel(results.recap?.type_cuisson ?? 'Non spécifié')}
+                    </div>
+                    <div class="recap-item">
+                        <strong>Éclairage :</strong> ${getEclairageLabel(results.recap?.type_eclairage ?? 'Non spécifié')}
+                    </div>
+                    <div class="recap-item">
+                        <strong>Piscine :</strong> ${results.recap?.piscine === 'oui' ? 'Oui' : 'Non'}
+                    </div>
+                    <div class="recap-item">
+                        <strong>Équipements spéciaux :</strong> 
+                        ${(results.recap?.equipements_speciaux?.length ?? 0) > 0
+                ? results.recap.equipements_speciaux.join(', ')
+                : 'Aucun'}
+                    </div>
+                    <div class="recap-item">
+                        <strong>Préférence tarifaire :</strong> ${getPreferenceLabel(results.recap?.preference_tarif ?? 'Non spécifié')}
                     </div>
                 </div>
-                ` : ''}
             </div>
-            ` : ''}
+
             
             <!-- Actions -->
             <div class="results-actions">
-                <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimer les résultats</button>
-                <button class="btn btn-secondary" onclick="downloadPDF()">📄 Télécharger PDF</button>
-                <button class="btn btn-outline" onclick="shareResults()">📤 Partager</button>
+                <button class="btn btn-primary" onclick="window.print()">Imprimer les résultats</button>
             </div>
         </div>
     `;
@@ -1296,25 +642,43 @@ jQuery(document).ready(function ($) {
         $('#results-container').html(resultsHtml);
         $('.results-summary').hide().fadeIn(600);
 
-        console.log('✅ Résultats affichés avec succès');
     }
 
-    // Fonction pour partager les résultats
-    window.shareResults = function () {
-        if (navigator.share) {
-            navigator.share({
-                title: 'Mon estimation de consommation électrique',
-                text: `Ma consommation estimée: ${results.consommation_annuelle} kWh/an`,
-                url: window.location.href
-            });
-        } else {
-            // Fallback pour les navigateurs qui ne supportent pas Web Share API
-            const url = window.location.href;
-            navigator.clipboard.writeText(url).then(() => {
-                alert('Lien copié dans le presse-papier !');
-            });
+    function getIsolationLabel(code) {
+        switch (code) {
+            case 'avant_1975': return 'Avant 1975 (peu isolé)';
+            case '1975_2000': return '1975 - 2000';
+            case 'apres_2000': return 'Après 2000 (bonne isolation)';
+            default: return code;
         }
-    };
+    }
+
+    function getCuissonLabel(code) {
+        switch (code) {
+            case 'plaque_induction': return 'Plaques à induction';
+            case 'plaque_vitro': return 'Plaques vitrocéramiques';
+            case 'plaque_gaz': return 'Gaz';
+            default: return code;
+        }
+    }
+
+    function getEclairageLabel(code) {
+        switch (code) {
+            case 'led': return 'LED';
+            case 'halogene': return 'Halogène';
+            case 'fluorescent': return 'Fluorescent (néons, tubes)';
+            default: return code;
+        }
+    }
+
+    function getPreferenceLabel(code) {
+        switch (code) {
+            case 'indifferent': return 'Indifférent';
+            case 'hc': return 'Optimisé Heures Creuses';
+            case 'base': return 'Tarif Base';
+            default: return code;
+        }
+    }
 
     function displayError(message) {
         $('#results-container').html(`
@@ -1331,7 +695,7 @@ jQuery(document).ready(function ($) {
 
         // Gestionnaire retour au formulaire
         $('#btn-back-to-form').on('click', function () {
-            goToStep(6); // Retourner à la dernière étape
+            goToStep(6);
         });
     }
 
@@ -1402,17 +766,5 @@ jQuery(document).ready(function ($) {
         getCurrentStep: () => currentStep,
         goToStep: goToStep
     };
-
-    // Debug
-    if (window.location.search.includes('debug=1')) {
-        console.log('🐛 Mode debug activé');
-        window.hticDebug = {
-            formData: () => formData,
-            configData: () => configData,
-            collectData: collectAllFormData,
-            step: () => currentStep,
-            calculate: () => calculateResults()
-        };
-    }
 
 });

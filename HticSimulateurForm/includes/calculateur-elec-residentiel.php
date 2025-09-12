@@ -20,17 +20,12 @@ class HticCalculateurElecResidentiel {
         $this->userData = $userData;
         $this->configData = $configData;
         $this->debugMode = $debugMode;
-        
-        $this->logDebug("=== CALCULATEUR ÉLECTRICITÉ RÉSIDENTIEL INITIALISÉ ===");
-        $this->logDebug("Données utilisateur reçues: " . count($userData) . " champs");
-        $this->logDebug("Configuration disponible: " . count($configData) . " paramètres");
     }
     
     /**
      * Point d'entrée principal pour le calcul
      */
     public function calculate() {
-        $this->logDebug("🚀 DÉBUT DU CALCUL COMPLET");
         
         // Récupération et validation des données
         $validatedData = $this->validateAndExtractData();
@@ -39,13 +34,8 @@ class HticCalculateurElecResidentiel {
             return $this->returnError("Données invalides ou incomplètes");
         }
         
-        // Affichage des données récupérées pour debug
-        $this->displayReceivedData($validatedData);
-        
         // Calcul détaillé complet
         $results = $this->performCompleteCalculation($validatedData);
-        
-        $this->logDebug("✅ CALCUL TERMINÉ - Total: " . $results['consommation_annuelle'] . " kWh/an");
         
         return array(
             'success' => true,
@@ -57,30 +47,29 @@ class HticCalculateurElecResidentiel {
      * Validation et extraction des données utilisateur
      */
     private function validateAndExtractData() {
-        $this->logDebug("=== VALIDATION ET EXTRACTION DES DONNÉES ===");
         
         $extractedData = array();
         
-        // ÉTAPE 1: Informations du logement
+        // Informations du logement
         $extractedData['type_logement'] = $this->extractValue('type_logement', 'string');
         $extractedData['surface'] = $this->extractValue('surface', 'int');
         $extractedData['nb_personnes'] = $this->extractValue('nb_personnes', 'int');
         
-        // ÉTAPE 2: Chauffage et isolation
+        // Chauffage et isolation
         $extractedData['type_chauffage'] = $this->extractValue('type_chauffage', 'string');
         $extractedData['isolation'] = $this->extractValue('isolation', 'string');
         
-        // ÉTAPE 3: Électroménagers
+        // Électroménagers
         $extractedData['electromenagers'] = $this->extractValue('electromenagers', 'array');
         $extractedData['type_cuisson'] = $this->extractValue('type_cuisson', 'string');
         
-        // ÉTAPE 4: Eau chaude
+        // Eau chaude
         $extractedData['eau_chaude'] = $this->extractValue('eau_chaude', 'string');
         
-        // ÉTAPE 5: Éclairage
+        // Éclairage
         $extractedData['type_eclairage'] = $this->extractValue('type_eclairage', 'string');
         
-        // ÉTAPE 6: Équipements spéciaux
+        // Équipements spéciaux
         $extractedData['piscine'] = $this->extractValue('piscine', 'string');
         $extractedData['equipements_speciaux'] = $this->extractValue('equipements_speciaux', 'array');
         $extractedData['preference_tarif'] = $this->extractValue('preference_tarif', 'string');
@@ -101,8 +90,6 @@ class HticCalculateurElecResidentiel {
             $this->logDebug("❌ ERREUR: Isolation obligatoire pour le chauffage électrique");
             return false;
         }
-        
-        $this->logDebug("✅ Validation des données: OK");
         
         return $extractedData;
     }
@@ -129,78 +116,17 @@ class HticCalculateurElecResidentiel {
                 break;
         }
         
-        $this->logDebug("Extraction: {$key} = " . (is_array($value) ? '[' . implode(', ', $value) . ']' : $value));
-        
         return $value;
-    }
-    
-    /**
-     * Affichage détaillé des données récupérées
-     */
-    private function displayReceivedData($data) {
-        $this->logDebug("=== DONNÉES RÉCUPÉRÉES DU FORMULAIRE ===");
-        
-        $this->logDebug("ÉTAPE 1 - LOGEMENT:");
-        $this->logDebug("- Type de logement: " . $data['type_logement']);
-        $this->logDebug("- Surface: " . $data['surface'] . " m²");
-        $this->logDebug("- Nombre de personnes: " . $data['nb_personnes']);
-        
-        $this->logDebug("ÉTAPE 2 - CHAUFFAGE:");
-        $this->logDebug("- Type de chauffage: " . $data['type_chauffage']);
-        if (!empty($data['isolation'])) {
-            $this->logDebug("- Isolation: " . $data['isolation']);
-        } else {
-            $this->logDebug("- Isolation: Non applicable (pas de chauffage électrique)");
-        }
-        
-        $this->logDebug("ÉTAPE 3 - ÉLECTROMÉNAGERS:");
-        $this->logDebug("- Électroménagers sélectionnés: " . (empty($data['electromenagers']) ? 'Aucun' : implode(', ', $data['electromenagers'])));
-        $this->logDebug("- Type de cuisson: " . $data['type_cuisson']);
-        
-        $this->logDebug("ÉTAPE 4 - EAU CHAUDE:");
-        $this->logDebug("- Eau chaude électrique: " . $data['eau_chaude']);
-        
-        $this->logDebug("ÉTAPE 5 - ÉCLAIRAGE:");
-        $this->logDebug("- Type d'éclairage: " . $data['type_eclairage']);
-        
-        $this->logDebug("ÉTAPE 6 - ÉQUIPEMENTS SPÉCIAUX:");
-        $this->logDebug("- Piscine: " . $data['piscine']);
-        if (!empty($data['equipements_speciaux'])) {
-            $this->logDebug("- Équipements spéciaux: " . implode(', ', $data['equipements_speciaux']));
-        } else {
-            $this->logDebug("- Équipements spéciaux: Aucun");
-        }
-        if (!empty($data['preference_tarif'])) {
-            $this->logDebug("- Préférence tarifaire: " . $data['preference_tarif']);
-        }
-        
-        $this->logDebug("=== CONFIGURATION DISPONIBLE ===");
-        if (!empty($this->configData)) {
-            $this->logDebug("Configuration chargée avec " . count($this->configData) . " paramètres");
-            
-            // Afficher quelques exemples de configuration
-            if (isset($this->configData['puissance_defaut'])) {
-                $this->logDebug("- Puissance par défaut: " . $this->configData['puissance_defaut'] . " kVA");
-            }
-            if (isset($this->configData['chauffe_eau'])) {
-                $this->logDebug("- Consommation chauffe-eau: " . $this->configData['chauffe_eau'] . " kWh/an");
-            }
-        } else {
-            $this->logDebug("⚠️ ATTENTION: Aucune configuration disponible");
-        }
     }
     
     /**
      * CALCUL DÉTAILLÉ COMPLET
      */
     private function performCompleteCalculation($data) {
-        $this->logDebug("=== CALCUL DÉTAILLÉ COMPLET EN COURS ===");
         
         $surface = (int)$data['surface'];
         $nbPersonnes = (int)$data['nb_personnes'];
         $typeLogement = $data['type_logement'];
-        
-        $this->logDebug("🏠 PARAMÈTRES DE BASE: {$typeLogement}, {$surface}m², {$nbPersonnes} personne(s)");
         
         // ==========================================
         // CALCULS DÉTAILLÉS AVEC TOUTES LES INFOS
@@ -209,44 +135,30 @@ class HticCalculateurElecResidentiel {
         // 1. CHAUFFAGE
         $chauffageDetails = $this->calculateChauffage($data);
         $chauffageKwh = $chauffageDetails['total'];
-        $this->logDebug("🔥 Chauffage calculé: {$chauffageKwh} kWh/an");
         
         // 2. EAU CHAUDE
         $eauChaudeDetails = $this->calculateEauChaude($data);
         $eauChaudeKwh = $eauChaudeDetails['total'];
-        $this->logDebug("💧 Eau chaude calculée: {$eauChaudeKwh} kWh/an");
         
         // 3. ÉLECTROMÉNAGERS
         $electromenagersDetails = $this->calculateElectromenager($data);
         $electromenagersKwh = $electromenagersDetails['total'];
-        $this->logDebug("🏠 Électroménagers calculés: {$electromenagersKwh} kWh/an");
         
-        // 5. ÉCLAIRAGE
+        // 4. ÉCLAIRAGE
         $eclairageDetails = $this->calculateEclairageDetaille($data);
         $eclairageKwh = $eclairageDetails['total'];
-        $this->logDebug("💡 Éclairage calculé: {$eclairageKwh} kWh/an");
         
-        // 6. MULTIMÉDIA
+        // 5. MULTIMÉDIA
         $multimediaDetails = $this->calculateMultimediaDetaille($data);
         $multimediaKwh = $multimediaDetails['total'];
-        $this->logDebug("📺 Multimédia calculé: {$multimediaKwh} kWh/an");
         
-        // 7. ÉQUIPEMENTS SPÉCIAUX
+        // 6. ÉQUIPEMENTS SPÉCIAUX
         $equipementsDetails = $this->calculateEquipementsSpeciauxDetaille($data);
         $equipementsKwh = $equipementsDetails['total'];
-        $this->logDebug("⚡ Équipements spéciaux calculés: {$equipementsKwh} kWh/an");
         
-        // TOTAL GÉNÉRAL
-        $consommationTotale = $chauffageKwh + $eauChaudeKwh + $electromenagersKwh + 
-                              $eclairageKwh + $multimediaKwh + $equipementsKwh;
+
         
-        $this->logDebug("📊 CONSOMMATION TOTALE: {$consommationTotale} kWh/an");
         
-        // CALCUL DES TARIFS
-        $tarifsCalcules = $this->calculateTarifsDetaille($consommationTotale, $data);
-        
-        // PUISSANCE RECOMMANDÉE
-        $puissanceRecommandee = $this->calculatePuissanceRecommandee($consommationTotale, $data);
 
         $puissanceChauffage = $this->calculatePuissanceChauffage($data);
         $puissanceEauChaude = $this->calculatePuissanceEauChaude($data);
@@ -255,10 +167,19 @@ class HticCalculateurElecResidentiel {
         $puissanceEquipements = $this->calculatePuissanceEquipementsSpeciaux($data);
         $puissanceEclairage = $this->calculatePuissanceEclairage($data);
 
+        // TOTAL RETENUE PUISSANCE
         $puissanceTotaleRetenue = $puissanceChauffage + $puissanceEauChaude + $puissanceElectromenagers + 
                                 $puissanceMultimedia + $puissanceEquipements + $puissanceEclairage;
 
-        
+        // PUISSANCE RECOMMANDÉE - Mettre ICI avec le bon paramètre
+        $puissanceRecommandee = $this->calculatePuissanceRecommandee($puissanceTotaleRetenue);
+
+        // TOTAL GÉNÉRAL
+        $consommationTotale = $chauffageKwh + $eauChaudeKwh + $electromenagersKwh + 
+                            $eclairageKwh + $multimediaKwh + $equipementsKwh;
+
+        // CALCUL DES TARIFS - passer la puissance recommandée
+        $tarifsCalcules = $this->calculateTarifsDetaille($consommationTotale, $data, $puissanceRecommandee);
         // ==========================================
         // STRUCTURE DE RETOUR COMPLÈTE
         // ==========================================
@@ -278,9 +199,9 @@ class HticCalculateurElecResidentiel {
                 'electromenagers' => (int)round($electromenagersKwh),
                 'eclairage' => (int)round($eclairageKwh),
                 'multimedia' => (int)round($multimediaKwh),
-                'tv_pc_box' => (int)round($multimediaKwh), // Alias pour rétrocompatibilité
-                'autres' => 0, // Divers non catégorisé
-                'equipements_speciaux' => $equipementsDetails['repartition'] // Détail par équipement
+                'tv_pc_box' => (int)round($multimediaKwh),
+                'autres' => 0,
+                'equipements_speciaux' => $equipementsDetails['repartition']
             ),
             
             // DÉTAILS COMPLETS DE CALCUL
@@ -290,12 +211,10 @@ class HticCalculateurElecResidentiel {
                 'electromenagers' => $electromenagersDetails,
                 'eclairage' => $eclairageDetails,
                 'multimedia' => $multimediaDetails,
-                'tv_pc_box' => $multimediaDetails, // Alias
+                'tv_pc_box' => $multimediaDetails,
                 'equipements_speciaux' => $equipementsDetails,
                 'coefficients' => array(
                     'logement' => $typeLogement === 'appartement' ? 0.95 : 1.0,
-                    'personnes' => $this->getCoefficientPersonnes($nbPersonnes),
-                    'surface' => $this->getCoefficientSurface($surface)
                 ),
                 'methode_calcul' => 'HTIC Simulateur v2.0 - Calcul détaillé complet',
                 'timestamp' => date('Y-m-d H:i:s'),
@@ -322,19 +241,14 @@ class HticCalculateurElecResidentiel {
     // ==========================================
     
     private function calculateChauffage($data) {
-        $this->logDebug("=== CALCUL CHAUFFAGE DÉTAILLÉ ===");
         
-        // Utiliser directement $data passé en paramètre
         $typeChauffage = isset($data['type_chauffage']) ? $data['type_chauffage'] : '';
         $typeLogement = isset($data['type_logement']) ? $data['type_logement'] : 'maison';
         $surface = floatval($data['surface']);
         $isolation = isset($data['isolation']) ? $data['isolation'] : '';
-        
-        // Vérifier si c'est du chauffage électrique
         $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
         
         if (!in_array($typeChauffage, $chauffagesElectriques)) {
-            $this->logDebug("Pas de chauffage électrique ({$typeChauffage})");
             
             return array(
                 'total' => 0,
@@ -363,13 +277,7 @@ class HticCalculateurElecResidentiel {
         $conso_par_m2 = isset($this->configData[$config_key]) ? $this->configData[$config_key] : 0;
         
         if ($conso_par_m2 > 0) {
-            // Calcul simple : surface × conso/m² (pas de coefficient, déjà dans les valeurs)
             $consommation = $surface * $conso_par_m2;
-            
-            $this->logDebug("Type chauffage: {$typeChauffage}");
-            $this->logDebug("Clé de config: {$config_key}");
-            $this->logDebug("Consommation par m²: {$conso_par_m2} kWh/m²/an");
-            $this->logDebug("Consommation chauffage: {$consommation} kWh/an");
             
             return array(
                 'total' => $consommation,
@@ -384,7 +292,6 @@ class HticCalculateurElecResidentiel {
                 'explication' => "Chauffage {$typeChauffage} en {$typeLogement} avec isolation {$isolation}"
             );
         } else {
-            $this->logDebug("ERREUR: Configuration manquante pour {$config_key}");
             
             return array(
                 'total' => 0,
@@ -397,19 +304,15 @@ class HticCalculateurElecResidentiel {
     }
 
     private function calculateEauChaude($data) {
-        $this->logDebug("=== CALCUL EAU CHAUDE DÉTAILLÉ ===");
         
-        // Utiliser directement $data passé en paramètre
         $eauChaude = isset($data['eau_chaude']) ? $data['eau_chaude'] : 'non';
         $nbPersonnes = intval($data['nb_personnes']);
         if ($nbPersonnes > 6) $nbPersonnes = 6;
         
         if ($eauChaude === 'oui') {
-            // Récupération des valeurs depuis la configuration
             $conso_base = isset($this->configData['chauffe_eau']) ? $this->configData['chauffe_eau'] : 0;
             
             if ($conso_base === 0) {
-                $this->logDebug("ERREUR: Consommation de base chauffe-eau non trouvée");
                 
                 return array(
                     'total' => 0,
@@ -420,13 +323,10 @@ class HticCalculateurElecResidentiel {
                 );
             }
             
-            // Coefficient selon nombre de personnes
             $coeff_key = 'coeff_chauffe_eau_' . $nbPersonnes;
             $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
             
             $consommation = $conso_base * $coefficient;
-            
-            $this->logDebug("Consommation eau chaude: {$consommation} kWh/an");
             
             return array(
                 'total' => $consommation,
@@ -440,7 +340,6 @@ class HticCalculateurElecResidentiel {
             );
             
         } else {
-            $this->logDebug("Pas d'eau chaude électrique");
             
             return array(
                 'total' => 0,
@@ -452,9 +351,7 @@ class HticCalculateurElecResidentiel {
     }
 
     private function calculateElectromenager($data) {
-        $this->logDebug("=== CALCUL ÉLECTROMÉNAGERS ===");
         
-        // Utiliser directement $data passé en paramètre
         $electromenagers = isset($data['electromenagers']) && is_array($data['electromenagers']) ? $data['electromenagers'] : array();
         $nbPersonnes = intval($data['nb_personnes']);
         if ($nbPersonnes > 6) $nbPersonnes = 6;
@@ -462,7 +359,6 @@ class HticCalculateurElecResidentiel {
         $consommation_totale = 0;
         $details_calcul = array();
         
-        // === ÉLECTROMÉNAGERS SÉLECTIONNÉS ===
         $electromenagers_disponibles = array(
             'lave_linge', 'four', 'seche_linge', 'lave_vaisselle', 
             'cave_a_vin', 'refrigerateur', 'congelateur'
@@ -470,7 +366,6 @@ class HticCalculateurElecResidentiel {
         
         foreach ($electromenagers as $equipement) {
             if (in_array($equipement, $electromenagers_disponibles)) {
-                // Calculer pour cet équipement
                 $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 0;
                 $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
                 $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
@@ -485,7 +380,6 @@ class HticCalculateurElecResidentiel {
                     'final_kwh' => $consommation
                 );
                 
-                $this->logDebug("{$equipement}: {$conso_base} × {$coefficient} = {$consommation} kWh/an");
             }
         }
         
@@ -496,14 +390,8 @@ class HticCalculateurElecResidentiel {
             $equipement = 'plaque_induction';
             $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 365;
             
-            // La clé exacte comme dans votre configuration
             $coeff_key = 'coeff_plaque_induction_' . $nbPersonnes;
             
-            // Debug pour voir ce qui se passe
-            $this->logDebug("Recherche coefficient: {$coeff_key}");
-            $this->logDebug("Coefficient trouvé: " . (isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 'NON TROUVÉ'));
-            
-            // Récupérer le coefficient depuis la config
             $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
             
             $consommation = $conso_base * $coefficient;
@@ -514,21 +402,14 @@ class HticCalculateurElecResidentiel {
                 'base_kwh' => $conso_base,
                 'coefficient' => $coefficient,
                 'final_kwh' => $consommation,
-                'coeff_key' => $coeff_key // Ajouter pour debug
+                'coeff_key' => $coeff_key
             );
-            
-            $this->logDebug("Plaque induction: {$conso_base} × {$coefficient} = {$consommation} kWh/an");
             
         } elseif ($type_cuisson === 'vitroceramique' || $type_cuisson === 'plaque_vitroceramique') {
             $equipement = 'plaque_vitroceramique';
             $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 400;
             
-            // La clé exacte comme dans votre configuration
             $coeff_key = 'coeff_plaque_vitroceramique_' . $nbPersonnes;
-            
-            // Debug
-            $this->logDebug("Recherche coefficient: {$coeff_key}");
-            $this->logDebug("Coefficient trouvé: " . (isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 'NON TROUVÉ'));
             
             $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
             
@@ -540,13 +421,11 @@ class HticCalculateurElecResidentiel {
                 'base_kwh' => $conso_base,
                 'coefficient' => $coefficient,
                 'final_kwh' => $consommation,
-                'coeff_key' => $coeff_key // Pour debug
+                'coeff_key' => $coeff_key
             );
-            
-            $this->logDebug("Plaque vitrocéramique: {$conso_base} × {$coefficient} = {$consommation} kWh/an");
+
         }
         
-        // === FORFAIT PETITS ÉLECTROMÉNAGERS ===
         $forfait = isset($this->configData['forfait_petits_electromenagers']) ? $this->configData['forfait_petits_electromenagers'] : 100;
         if ($forfait > 0) {
             $consommation_totale += $forfait;
@@ -557,8 +436,6 @@ class HticCalculateurElecResidentiel {
                 'final_kwh' => $forfait
             );
         }
-        
-        $this->logDebug("Total électroménagers: {$consommation_totale} kWh/an");
         
         return array(
             'total' => $consommation_totale,
@@ -573,41 +450,6 @@ class HticCalculateurElecResidentiel {
         );
     }
     
-    /**
-     * Calcule la consommation d'un équipement spécifique
-     */
-    private function calculerEquipement($equipement, $nbPersonnes, &$consommation_totale, &$details_calcul) {
-        // Consommation de base
-        $conso_base = isset($this->configData[$equipement]) ? $this->configData[$equipement] : 0;
-        
-        // Coefficient selon nombre de personnes
-        $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
-        $coefficient = isset($this->configData[$coeff_key]) ? $this->configData[$coeff_key] : 1;
-        
-        $consommation = $conso_base * $coefficient;
-        
-        // Puissance avec simultanéité
-        $puissance_base = isset($this->configData[$equipement . '_puissance']) ? $this->configData[$equipement . '_puissance'] : 0;
-        $simultaneite = isset($this->configData[$equipement . '_simultaneite']) ? ($this->configData[$equipement . '_simultaneite'] / 100) : 0.5;
-        $puissance = ($puissance_base * $simultaneite) / 1000; // en kW
-        
-        $consommation_totale += $consommation;
-        $puissance_totale += $puissance;
-        
-        // Stocker les détails pour l'affichage
-        $details_calcul[$equipement] = array(
-            'consommation' => $consommation,
-            'puissance' => $puissance,
-            'label' => $this->getEquipementLabel($equipement),
-            'coefficient' => $coefficient
-        );
-        
-        $this->logDebug("{$equipement}: {$conso_base} × {$coefficient} = {$consommation} kWh/an, {$puissance} kW");
-    }
-
-    /**
-     * Retourne le label d'affichage d'un équipement
-     */
     private function getEquipementLabel($equipement) {
         $labels = array(
             'lave_linge' => 'Lave-linge',
@@ -625,14 +467,9 @@ class HticCalculateurElecResidentiel {
         return isset($labels[$equipement]) ? $labels[$equipement] : ucfirst(str_replace('_', ' ', $equipement));
     }
     
-    /**
-     * Calcul détaillé de l'éclairage  
-     */
     private function calculateEclairageDetaille($data) {
         $typeEclairage = $data['type_eclairage'] ?? '';
         $surface = (int)$data['surface'];
-        
-        $this->logDebug("💡 CALCUL ÉCLAIRAGE: {$typeEclairage}");
         
         $configKey = 'eclairage_' . ($typeEclairage === 'led' ? 'led' : 'incandescent') . '_m2';
         $consommationM2 = $this->getConfigValue($configKey, ($typeEclairage === 'led' ? 5 : 15));
@@ -650,22 +487,13 @@ class HticCalculateurElecResidentiel {
         );
     }
     
-    /**
-     * Calcul détaillé du multimédia
-     */
     private function calculateMultimediaDetaille($data) {
         $nbPersonnes = (int)$data['nb_personnes'];
         
-        $this->logDebug("📺 CALCUL MULTIMÉDIA (inclus automatiquement)");
-        
-        // Récupérer la base depuis la config
         $baseKwh = $this->getConfigValue('tv_pc_box', 300);
         
-        // Récupérer directement le coefficient depuis la config
         $coeff_key = 'coeff_tv_pc_box_' . $nbPersonnes;
         $coefficient = $this->getConfigValue($coeff_key, 1.0);
-        
-        $this->logDebug("Coefficient multimédia pour {$nbPersonnes} personnes: {$coefficient}");
         
         $total = $baseKwh * $coefficient;
         
@@ -680,14 +508,9 @@ class HticCalculateurElecResidentiel {
         );
     }
     
-    /**
-     * Calcul détaillé des équipements spéciaux
-     */
     private function calculateEquipementsSpeciauxDetaille($data) {
         $equipementsSpeciaux = $data['equipements_speciaux'] ?? array();
         $piscine = $data['piscine'] ?? 'non';
-        
-        $this->logDebug("⚡ CALCUL ÉQUIPEMENTS SPÉCIAUX");
         
         $repartition = array();
         $total = 0;
@@ -699,13 +522,11 @@ class HticCalculateurElecResidentiel {
             $repartition['piscine'] = $kwhPiscine;
             $total += $kwhPiscine;
             $details['piscine'] = "Piscine simple: {$kwhPiscine} kWh/an";
-            $this->logDebug("- Piscine simple: {$kwhPiscine} kWh");
         } elseif ($piscine === 'chauffee') {
             $kwhPiscine = $this->getConfigValue('piscine_chauffee', 4000);
             $repartition['piscine'] = $kwhPiscine;
             $total += $kwhPiscine;
             $details['piscine'] = "Piscine chauffée: {$kwhPiscine} kWh/an";
-            $this->logDebug("- Piscine chauffée: {$kwhPiscine} kWh");
         } else {
             $repartition['piscine'] = 0;
             $details['piscine'] = "Pas de piscine: 0 kWh/an";
@@ -719,7 +540,6 @@ class HticCalculateurElecResidentiel {
             'climatiseur_mobile' => array('config' => 'climatiseur_mobile', 'default' => 150, 'nom' => 'Climatiseur mobile')
         );
         
-        // Initialiser tous les équipements à 0
         foreach (array('spa_jacuzzi', 'voiture_electrique', 'aquarium', 'climatiseur_mobile') as $eq) {
             $repartition[$eq] = 0;
         }
@@ -733,7 +553,6 @@ class HticCalculateurElecResidentiel {
                 $total += $kwh;
                 
                 $details[$equipement] = "{$config['nom']}: {$kwh} kWh/an";
-                $this->logDebug("- {$config['nom']}: {$kwh} kWh");
             }
         }
         
@@ -749,14 +568,8 @@ class HticCalculateurElecResidentiel {
         );
     }
     
-    /**
-     * Calcul des tarifs détaillé
-     */
-    private function calculateTarifsDetaille($consommationTotale, $data) {
+    private function calculateTarifsDetaille($consommationTotale, $data, $puissanceRecommandee) {
         $surface = (int)$data['surface'];
-        $puissanceRecommandee = $this->calculatePuissanceRecommandee($consommationTotale, $data);
-        
-        $this->logDebug("💰 CALCUL TARIFS pour {$consommationTotale} kWh/an, puissance {$puissanceRecommandee} kVA");
         
         // Récupération des tarifs BASE
         $aboBase = $this->getConfigValue('base_abo_' . $puissanceRecommandee, 22.21);
@@ -814,20 +627,16 @@ class HticCalculateurElecResidentiel {
         $typeChauffage = $data['type_chauffage'] ?? '';
         $surface = floatval($data['surface']);
         
-        // Pas de chauffage électrique = 0
         $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
         if (!in_array($typeChauffage, $chauffagesElectriques)) {
             return 0;
         }
         
-        // Récupérer puissance et simultanéité depuis config
-        $puissance_m2 = $this->getConfigValue('chauffage_m2_puissance', 50); // W/m²
+        $puissance_m2 = $this->getConfigValue('chauffage_m2_puissance', 50);
         $simultaneite = $this->getConfigValue('chauffage_m2_simultaneite', 80) / 100;
         
         // Calcul : (surface × puissance/m² × simultanéité) / 1000 / 0.95
         $puissance = ($surface * $puissance_m2 * $simultaneite) / 1000 / 0.95;
-        
-        $this->logDebug("Puissance chauffage: {$surface}m² × {$puissance_m2}W/m² × {$simultaneite} / 1000 / 0.95 = {$puissance} kW");
         
         return $puissance;
     }
@@ -839,14 +648,11 @@ class HticCalculateurElecResidentiel {
             return 0;
         }
         
-        // Récupérer puissance et simultanéité
-        $puissance = $this->getConfigValue('chauffe_eau_puissance', 2400); // W
+        $puissance = $this->getConfigValue('chauffe_eau_puissance', 2400);
         $simultaneite = $this->getConfigValue('chauffe_eau_simultaneite', 30) / 100;
         
         // Calcul : (puissance × simultanéité) / 1000 / 0.95
         $puissance_kw = ($puissance * $simultaneite) / 1000 / 0.95;
-        
-        $this->logDebug("Puissance eau chaude: {$puissance}W × {$simultaneite} / 1000 / 0.95 = {$puissance_kw} kW");
         
         return $puissance_kw;
     }
@@ -856,7 +662,6 @@ class HticCalculateurElecResidentiel {
         $type_cuisson = $data['type_cuisson'] ?? '';
         $puissance_totale = 0;
         
-        // Liste des équipements avec leur clé de config
         $equipements_config = array(
             'lave_linge' => 'lave_linge',
             'four' => 'four',
@@ -867,7 +672,6 @@ class HticCalculateurElecResidentiel {
             'congelateur' => 'congelateur'
         );
         
-        // Calculer pour chaque équipement sélectionné
         foreach ($electromenagers as $equipement) {
             if (isset($equipements_config[$equipement])) {
                 $config_key = $equipements_config[$equipement];
@@ -877,7 +681,6 @@ class HticCalculateurElecResidentiel {
                 if ($puissance > 0) {
                     $puissance_kw = ($puissance * $simultaneite) / 1000 / 0.95;
                     $puissance_totale += $puissance_kw;
-                    $this->logDebug("Puissance {$equipement}: {$puissance}W × {$simultaneite} / 1000 / 0.95 = {$puissance_kw} kW");
                 }
             }
         }
@@ -888,13 +691,11 @@ class HticCalculateurElecResidentiel {
             $simultaneite = $this->getConfigValue('plaque_induction_simultaneite', 30) / 100;
             $puissance_kw = ($puissance * $simultaneite) / 1000 / 0.95;
             $puissance_totale += $puissance_kw;
-            $this->logDebug("Puissance plaque induction: {$puissance}W × {$simultaneite} / 1000 / 0.95 = {$puissance_kw} kW");
         } elseif ($type_cuisson === 'plaque_vitroceramique' || $type_cuisson === 'vitroceramique') {
             $puissance = $this->getConfigValue('plaque_vitroceramique_puissance', 3000);
             $simultaneite = $this->getConfigValue('plaque_vitroceramique_simultaneite', 30) / 100;
             $puissance_kw = ($puissance * $simultaneite) / 1000 / 0.95;
             $puissance_totale += $puissance_kw;
-            $this->logDebug("Puissance plaque vitro: {$puissance}W × {$simultaneite} / 1000 / 0.95 = {$puissance_kw} kW");
         }
         
         return $puissance_totale;
@@ -906,8 +707,6 @@ class HticCalculateurElecResidentiel {
         $simultaneite = $this->getConfigValue('tv_pc_box_simultaneite', 80) / 100;
         
         $puissance_kw = ($puissance * $simultaneite) / 1000 / 0.95;
-        
-        $this->logDebug("Puissance multimédia: {$puissance}W × {$simultaneite} / 1000 / 0.95 = {$puissance_kw} kW");
         
         return $puissance_kw;
     }
@@ -923,7 +722,6 @@ class HticCalculateurElecResidentiel {
             $simultaneite = $this->getConfigValue('piscine_simultaneite', 80) / 100;
             $puissance_kw = ($puissance * $simultaneite) / 1000 / 0.95;
             $puissance_totale += $puissance_kw;
-            $this->logDebug("Puissance piscine: {$puissance}W × {$simultaneite} / 1000 / 0.95 = {$puissance_kw} kW");
         }
         
         // Équipements spéciaux
@@ -943,7 +741,6 @@ class HticCalculateurElecResidentiel {
                 if ($puissance > 0) {
                     $puissance_kw = ($puissance * $simultaneite) / 1000 / 0.95;
                     $puissance_totale += $puissance_kw;
-                    $this->logDebug("Puissance {$equipement}: {$puissance}W × {$simultaneite} / 1000 / 0.95 = {$puissance_kw} kW");
                 }
             }
         }
@@ -957,8 +754,6 @@ class HticCalculateurElecResidentiel {
         
         $puissance_kw = ($puissance * $simultaneite) / 1000 / 0.95;
         
-        $this->logDebug("Puissance éclairage: {$puissance}W × {$simultaneite} / 1000 / 0.95 = {$puissance_kw} kW");
-        
         return $puissance_kw;
     }
     
@@ -966,21 +761,20 @@ class HticCalculateurElecResidentiel {
     // FONCTIONS UTILITAIRES
     // ==========================================
     
-    private function calculatePuissanceRecommandee($consommationTotale, $data) {
-        $surface = (int)$data['surface'];
+    private function calculatePuissanceRecommandee($puissanceTotaleRetenue) {
+    // Basé sur la puissance retenue avec marge de sécurité
+        $puissanceNecessaire = ceil($puissanceTotaleRetenue * 1.1); // Marge 10%
         
-        // Logique de calcul de puissance basée sur consommation et surface
-        if ($consommationTotale < 4000 && $surface <= 70) return '9';
-        if ($consommationTotale < 6000 && $surface <= 100) return '12';
-        if ($consommationTotale < 10000 && $surface <= 150) return '15';
-        if ($consommationTotale < 15000 && $surface <= 200) return '18';
-        if ($consommationTotale < 20000) return '24';
-        return '30';
-    }
-    
-    private function getCoefficientEauChaude($nbPersonnes) {
-        $coefficients = array(1 => 1.0, 2 => 2.0, 3 => 2.8, 4 => 3.7, 5 => 3.9, 6 => 5.5);
-        return $coefficients[$nbPersonnes] ?? 5.5;
+        // Pour 13.93 kW -> 15.3 kW -> recommander 18 kVA
+        if ($puissanceNecessaire <= 3) return 3;
+        if ($puissanceNecessaire <= 6) return 6;
+        if ($puissanceNecessaire <= 9) return 9;
+        if ($puissanceNecessaire <= 12) return 12;
+        if ($puissanceNecessaire <= 15) return 15;
+        if ($puissanceNecessaire <= 18) return 18;
+        if ($puissanceNecessaire <= 24) return 24;
+        if ($puissanceNecessaire <= 30) return 30;
+        return 36;
     }
     
     private function getCoefficientEquipement($equipement, $nbPersonnes) {
@@ -991,26 +785,11 @@ class HticCalculateurElecResidentiel {
         // Construire la clé
         $coeff_key = 'coeff_' . $equipement . '_' . $nbPersonnes;
         
-        // Debug
-        $this->logDebug("Recherche coefficient: {$coeff_key}");
-        
-        // Récupérer depuis la config avec fallback intelligent
         $coefficient = $this->getConfigValue($coeff_key, 1.0);
-        
-        $this->logDebug("Coefficient trouvé: {$coefficient}");
         
         return $coefficient;
     }
     
-    private function getCoefficientPersonnes($nbPersonnes) {
-        $coefficients = array(1 => 0.7, 2 => 1.0, 3 => 1.2, 4 => 1.4, 5 => 1.6, 6 => 1.8);
-        return $coefficients[$nbPersonnes] ?? 1.8;
-    }
-    
-    private function getCoefficientSurface($surface) {
-        // Pas de coefficient surface dans ce calcul, mais peut être ajouté
-        return 1.0;
-    }
     
     private function getIsolationConfigSuffix($isolation) {
         $mapping = array(
@@ -1022,39 +801,11 @@ class HticCalculateurElecResidentiel {
         return $mapping[$isolation] ?? 'moyenne';
     }
     
-    private function getIsolationCoefficient($isolation) {
-        $coefficients = array(
-            'avant_1980' => 1.5,
-            '1980_2000' => 1.2,
-            'apres_2000' => 0.8,
-            'renovation' => 0.5
-        );
-        return $coefficients[$isolation] ?? 1.0;
-    }
     
     private function getConfigValue($key, $default = 0) {
         return isset($this->configData[$key]) ? $this->configData[$key] : $default;
     }
     
-    private function getDefaultChauffage($typeChauffage, $isolation) {
-        // Valeurs par défaut selon type chauffage et isolation
-        $defaults = array(
-            'convecteurs' => array('avant_1980' => 200, '1980_2000' => 140, 'apres_2000' => 80, 'renovation' => 50),
-            'inertie' => array('avant_1980' => 170, '1980_2000' => 120, 'apres_2000' => 65, 'renovation' => 40),
-            'clim_reversible' => array('avant_1980' => 120, '1980_2000' => 80, 'apres_2000' => 50, 'renovation' => 25),
-            'pac' => array('avant_1980' => 100, '1980_2000' => 65, 'apres_2000' => 40, 'renovation' => 20)
-        );
-        
-        return $defaults[$typeChauffage][$isolation] ?? 100;
-    }
-    
-    private function getDefaultElectro($equipement) {
-        $defaults = array(
-            'lave_linge' => 100, 'seche_linge' => 175, 'refrigerateur' => 125,
-            'congelateur' => 125, 'lave_vaisselle' => 100, 'four' => 125, 'cave_a_vin' => 150
-        );
-        return $defaults[$equipement] ?? 100;
-    }
     
     private function getConfigSummary() {
         return array(

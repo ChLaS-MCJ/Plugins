@@ -1,0 +1,695 @@
+/* formulaires/elec-professionnel/elec-professionnel.css - CSS Électricité Professionnel */
+
+/* ========================================
+   VARIABLES CSS SPÉCIFIQUES PROFESSIONNEL
+   ======================================== */
+:root {
+    /* Couleurs professionnelles */
+    --primary-pro: #1e40af;
+    --primary-pro-light: #3b82f6;
+    --primary-pro-dark: #1e3a8a;
+    --primary-pro-50: #eff6ff;
+    --primary-pro-100: #dbeafe;
+    --primary-pro-200: #bfdbfe;
+
+    /* Couleurs spécifiques business */
+    --business: #059669;
+    --business-50: #ecfdf5;
+    --business-light: #10b981;
+    --warning-pro: #d97706;
+    --danger-pro: #dc2626;
+
+    /* Couleurs d'état professionnel */
+    --eligible: #16a34a;
+    --non-eligible: #dc2626;
+    --eligible-bg: #f0fdf4;
+    --non-eligible-bg: #fef2f2;
+
+    /* Ombres renforcées */
+    --shadow-business: 0 4px 12px rgba(30, 64, 175, 0.15);
+    --shadow-elevated: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+/* ========================================
+   OVERRIDE COULEURS POUR LE THEME PRO
+   ======================================== */
+#htic-simulateur-elec-professionnel {
+    --primary: var(--primary-pro);
+    --primary-light: var(--primary-pro-light);
+    --primary-dark: var(--primary-pro-dark);
+    --primary-50: var(--primary-pro-50);
+    --primary-100: var(--primary-pro-100);
+    --primary-200: var(--primary-pro-200);
+}
+
+/* ========================================
+   EN-TÊTE PROFESSIONNEL
+   ======================================== */
+#htic-simulateur-elec-professionnel .simulateur-header {
+    background: linear-gradient(135deg, var(--primary-pro) 0%, #1e3a8a 50%, #1e40af 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+#htic-simulateur-elec-professionnel .simulateur-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="%23ffffff" opacity="0.1"/><circle cx="80" cy="30" r="1.5" fill="%23ffffff" opacity="0.1"/><circle cx="40" cy="70" r="1" fill="%23ffffff" opacity="0.1"/><circle cx="90" cy="80" r="2.5" fill="%23ffffff" opacity="0.1"/></svg>') repeat;
+    animation: float 20s infinite linear;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px) rotate(0deg);
+    }
+
+    100% {
+        transform: translateY(-100px) rotate(360deg);
+    }
+}
+
+#htic-simulateur-elec-professionnel .header-icon {
+    font-size: 3.5rem;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* ========================================
+   ÉLÉMENTS SPÉCIFIQUES PROFESSIONNEL
+   ======================================== */
+
+/* Badges d'éligibilité */
+.badge-eligibilite {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+}
+
+.badge-eligibilite.eligible {
+    background: var(--eligible-bg);
+    color: var(--eligible);
+    border: 1px solid var(--eligible);
+}
+
+.badge-eligibilite.non-eligible {
+    background: var(--non-eligible-bg);
+    color: var(--non-eligible);
+    border: 1px solid var(--non-eligible);
+}
+
+/* Info box d'éligibilité */
+.info-box.eligibilite {
+    background: var(--primary-pro-50);
+    border-color: var(--primary-pro-200);
+    border-left: 4px solid var(--primary-pro);
+}
+
+.info-box.eligibilite .info-icon {
+    color: var(--primary-pro);
+    font-size: 1.8rem;
+}
+
+/* Radio cards avec thème business */
+.radio-card input:checked~.radio-content {
+    border-color: var(--primary-pro);
+    background: var(--primary-pro-50);
+    box-shadow: var(--shadow-business);
+}
+
+.radio-card:hover .radio-content {
+    border-color: var(--primary-pro-light);
+    transform: translateY(-2px);
+}
+
+/* Badges spéciaux pour les options pro */
+.radio-badge.trv-eligible {
+    background: var(--eligible-bg);
+    color: var(--eligible);
+    border: 1px solid var(--eligible);
+}
+
+.radio-badge.marche-libre {
+    background: var(--business-50);
+    color: var(--business);
+    border: 1px solid var(--business);
+}
+
+.radio-badge.haute-consommation {
+    background: #fef2f2;
+    color: var(--danger-pro);
+    border: 1px solid var(--danger-pro);
+}
+
+/* Groupes de checkboxes équipements */
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.checkbox-card {
+    transition: all 0.2s ease;
+}
+
+.checkbox-card:hover {
+    transform: translateY(-2px);
+}
+
+.checkbox-card input:checked~.checkbox-content {
+    border-color: var(--primary-pro);
+    background: var(--primary-pro-50);
+    box-shadow: var(--shadow-business);
+}
+
+.checkbox-content {
+    min-height: 85px;
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: all 0.2s ease;
+}
+
+.checkbox-icon {
+    font-size: 2.2rem;
+    width: 55px;
+    height: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.checkbox-card input:checked~.checkbox-content .checkbox-icon {
+    background: var(--primary-pro);
+    color: white;
+    box-shadow: var(--shadow-business);
+}
+
+/* ========================================
+   FORMULAIRE ÉTAPES SPÉCIALES
+   ======================================== */
+
+/* Section entreprise */
+.form-step[data-step="1"] .form-select {
+    font-size: 1rem;
+    font-weight: 500;
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+}
+
+.form-step[data-step="1"] .form-select:focus {
+    border-color: var(--primary-pro);
+    box-shadow: 0 0 0 3px var(--primary-pro-100);
+}
+
+/* Section locaux avec visuels */
+.form-step[data-step="2"] .radio-content {
+    min-height: 90px;
+}
+
+.form-step[data-step="2"] .radio-icon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+}
+
+/* Section profil d'activité */
+.form-step[data-step="3"] .radio-text {
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+/* Section équipements avec layout spécialisé */
+.form-step[data-step="4"] .checkbox-group {
+    margin-top: 1rem;
+}
+
+.form-step[data-step="4"] .form-group.full-width .checkbox-group {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* ========================================
+   INPUT GROUPES PROFESSIONNELS
+   ======================================== */
+.input-group .input-suffix {
+    background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+    border-color: var(--gray-200);
+    color: var(--gray-700);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.form-input:focus+.input-suffix {
+    border-color: var(--primary-pro);
+    background: var(--primary-pro-50);
+    color: var(--primary-pro);
+}
+
+/* ========================================
+   RÉSULTATS PROFESSIONNELS
+   ======================================== */
+.results-summary {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.result-card.main-result {
+    background: linear-gradient(135deg, var(--primary-pro) 0%, var(--primary-pro-dark) 100%);
+    color: white;
+    text-align: center;
+    margin-bottom: 2.5rem;
+    box-shadow: var(--shadow-elevated);
+}
+
+.result-card.main-result .result-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.result-card.main-result h3 {
+    color: white;
+    opacity: 0.95;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.result-card.main-result .big-number {
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-size: 3.5rem;
+}
+
+/* Tarifs comparison professionnelle */
+.tarifs-comparison {
+    margin-bottom: 3rem;
+}
+
+.tarifs-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.tarif-card {
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+    background: var(--white);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.tarif-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gray-200);
+    transition: all 0.3s ease;
+}
+
+.tarif-card.trv::before {
+    background: linear-gradient(90deg, var(--eligible) 0%, #16a34a 100%);
+}
+
+.tarif-card.offre-francaise::before {
+    background: linear-gradient(90deg, var(--business) 0%, #059669 100%);
+}
+
+.tarif-card.offre-marche::before {
+    background: linear-gradient(90deg, var(--warning-pro) 0%, #ea580c 100%);
+}
+
+.tarif-card.tempo::before {
+    background: linear-gradient(90deg, var(--primary-pro) 0%, #1e3a8a 100%);
+}
+
+.tarif-card.recommended {
+    border-color: var(--primary-pro);
+    background: var(--primary-pro-50);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--shadow-elevated);
+}
+
+.tarif-card h4 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--gray-900);
+}
+
+.tarif-prix {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: var(--primary-pro);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.tarif-mensuel {
+    font-size: 1.2rem;
+    color: var(--gray-600);
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.tarif-details {
+    font-size: 0.9rem;
+    color: var(--gray-500);
+    line-height: 1.4;
+}
+
+.recommended-badge {
+    background: linear-gradient(135deg, var(--primary-pro) 0%, var(--primary-pro-dark) 100%);
+    box-shadow: var(--shadow-business);
+    z-index: 1;
+}
+
+/* ========================================
+   ÉCONOMIES ET CONSEILS PRO
+   ======================================== */
+.economies {
+    background: linear-gradient(135deg, var(--business-50) 0%, #ecfdf5 100%);
+    border: 2px solid var(--business-light);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    margin-top: 2rem;
+}
+
+.economies::before {
+    content: '💰';
+    position: absolute;
+    font-size: 6rem;
+    top: -1rem;
+    right: -1rem;
+    opacity: 0.1;
+}
+
+.economies h4 {
+    color: var(--business);
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.economies p {
+    color: var(--business);
+    font-size: 1.1rem;
+    margin-bottom: 0;
+    font-weight: 600;
+}
+
+/* Détails de consommation professionnelle */
+.consumption-breakdown {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 0;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    margin-top: 2rem;
+}
+
+.consumption-header {
+    background: linear-gradient(135deg, var(--primary-pro) 0%, var(--primary-pro-dark) 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    margin: 0;
+}
+
+.consumption-header h4 {
+    color: white;
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.consumption-item {
+    border-bottom: 1px solid var(--gray-100);
+    transition: all 0.2s ease;
+}
+
+.consumption-item:hover {
+    background: var(--gray-50);
+}
+
+.consumption-item:last-child {
+    border-bottom: none;
+}
+
+.consumption-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+}
+
+.consumption-label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.consumption-icon {
+    font-size: 1.8rem;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    border-radius: 12px;
+}
+
+.consumption-text strong {
+    display: block;
+    font-weight: 600;
+    color: var(--gray-900);
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.consumption-text span {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+}
+
+.consumption-value {
+    text-align: right;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--primary-pro);
+}
+
+.consumption-value .unit {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+/* ========================================
+   TEMPO PROFESSIONNEL
+   ======================================== */
+.tempo-details {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 0;
+    margin-top: 2rem;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.tempo-header {
+    background: linear-gradient(135deg, var(--primary-pro) 0%, var(--primary-pro-dark) 100%);
+    color: white;
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.tempo-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.tempo-icon::before {
+    content: '⚡';
+}
+
+.tempo-title h4 {
+    color: white;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.8rem;
+}
+
+.tempo-subtitle {
+    opacity: 0.9;
+    font-size: 1.1rem;
+}
+
+.tempo-periods {
+    padding: 2rem;
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.period-card {
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+}
+
+.period-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+.period-card.period-bleu {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.period-card.period-blanc {
+    border-color: #f59e0b;
+    background: #fefbf3;
+}
+
+.period-card.period-rouge {
+    border-color: #ef4444;
+    background: #fef2f2;
+}
+
+/* ========================================
+   RESPONSIVE PROFESSIONNEL
+   ======================================== */
+@media (max-width: 768px) {
+    .checkbox-group {
+        grid-template-columns: 1fr;
+    }
+
+    .tarifs-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .tarif-card.recommended {
+        transform: none;
+    }
+
+    .tempo-periods {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+
+    .consumption-row {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .form-step[data-step="2"] .radio-content,
+    .form-step[data-step="3"] .radio-content {
+        min-height: auto;
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+}
+
+/* ========================================
+   ANIMATIONS ET MICRO-INTERACTIONS
+   ======================================== */
+.tarif-card,
+.checkbox-card,
+.radio-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-business);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* Loading states */
+.loading-moderne {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    padding: 3rem;
+    text-align: center;
+}
+
+.loading-spinner-moderne {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--primary-pro-200);
+    border-top: 4px solid var(--primary-pro);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-moderne p {
+    color: var(--gray-600);
+    font-size: 1.1rem;
+    margin: 0;
+}

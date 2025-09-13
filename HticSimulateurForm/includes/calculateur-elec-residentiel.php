@@ -241,7 +241,6 @@ class HticCalculateurElecResidentiel {
     // ==========================================
     
     private function calculateChauffage($data) {
-        
         $typeChauffage = isset($data['type_chauffage']) ? $data['type_chauffage'] : '';
         $typeLogement = isset($data['type_logement']) ? $data['type_logement'] : 'maison';
         $surface = floatval($data['surface']);
@@ -249,7 +248,6 @@ class HticCalculateurElecResidentiel {
         $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
         
         if (!in_array($typeChauffage, $chauffagesElectriques)) {
-            
             return array(
                 'total' => 0,
                 'type_chauffage' => $typeChauffage,
@@ -269,12 +267,27 @@ class HticCalculateurElecResidentiel {
         
         $isolationNormalisee = isset($isolationMapping[$isolation]) ? $isolationMapping[$isolation] : 'moyenne';
         
-        // Construire la clé de configuration
-        // Les valeurs appartement_* sont déjà avec le coefficient 0.95 appliqué
-        $config_key = $typeLogement . '_' . $typeChauffage . '_' . $isolationNormalisee;
+        // Mapping des types de chauffage vers les clés de config
+        $chauffageMapping = array(
+            'convecteurs' => 'convecteurs',
+            'inertie' => 'inertie',
+            'clim_reversible' => 'clim',
+            'pac' => 'pac'
+        );
+        
+        $chauffageKey = isset($chauffageMapping[$typeChauffage]) ? $chauffageMapping[$typeChauffage] : $typeChauffage;
+        
+        // Construire la clé de configuration avec le nom mappé
+        $config_key = $typeLogement . '_' . $chauffageKey . '_' . $isolationNormalisee;
         
         // Récupérer la consommation par m² depuis la configuration
         $conso_par_m2 = isset($this->configData[$config_key]) ? $this->configData[$config_key] : 0;
+        
+        // Si toujours pas trouvé, essayer avec le nom complet (pour compatibilité)
+        if ($conso_par_m2 == 0) {
+            $config_key_alt = $typeLogement . '_' . $typeChauffage . '_' . $isolationNormalisee;
+            $conso_par_m2 = isset($this->configData[$config_key_alt]) ? $this->configData[$config_key_alt] : 0;
+        }
         
         if ($conso_par_m2 > 0) {
             $consommation = $surface * $conso_par_m2;
@@ -292,7 +305,6 @@ class HticCalculateurElecResidentiel {
                 'explication' => "Chauffage {$typeChauffage} en {$typeLogement} avec isolation {$isolation}"
             );
         } else {
-            
             return array(
                 'total' => 0,
                 'erreur' => "Configuration manquante pour {$config_key}",
@@ -569,52 +581,208 @@ class HticCalculateurElecResidentiel {
     }
     
     private function calculateTarifsDetaille($consommationTotale, $data, $puissanceRecommandee) {
-        $surface = (int)$data['surface'];
+    
+    // ===================================
+    // RÉCUPÉRATION DES DONNÉES DU BACK
+    // ===================================
+    
+    // 1. TARIF BASE TRV
+    // Abonnement et prix kWh depuis la config
+    $abo_base_mensuel = $this->getConfigValue('base_abo_' . $puissanceRecommandee, 21.53);
+    $prix_kwh_base = $this->getConfigValue('base_kwh_' . $puissanceRecommandee, 0.2516);
+    
+    // 2. TARIF HEURES CREUSES TRV  
+    // Abonnement et prix HP/HC depuis la config
+    $abo_hc_mensuel = $this->getConfigValue('hc_abo_' . $puissanceRecommandee, 22.76);
+    $prix_kwh_hp = $this->getConfigValue('hc_hp_' . $puissanceRecommandee, 0.2700);
+    $prix_kwh_hc = $this->getConfigValue('hc_hc_' . $puissanceRecommandee, 0.2068);
+    
+    // Répartition HP/HC (paramétrable dans le back)
+    $repartition_hp = $this->getConfigValue('repartition_hp', 60) / 100;
+    $repartition_hc = $this->getConfigValue('repartition_hc', 40) / 100;
+    
+    // 3. TARIF TEMPO TRV
+    // Abonnement Tempo
+    $abo_tempo_mensuel = $this->getConfigValue('tempo_abo_' . $puissanceRecommandee, 23.59);
+    
+    // Prix des 6 périodes Tempo
+    $prix_tempo_bleu_hp = $this->getConfigValue('tempo_bleu_hp', 0.1609);
+    $prix_tempo_bleu_hc = $this->getConfigValue('tempo_bleu_hc', 0.1296);
+    $prix_tempo_blanc_hp = $this->getConfigValue('tempo_blanc_hp', 0.1894);
+    $prix_tempo_blanc_hc = $this->getConfigValue('tempo_blanc_hc', 0.1486);
+    $prix_tempo_rouge_hp = $this->getConfigValue('tempo_rouge_hp', 0.7562);
+    $prix_tempo_rouge_hc = $this->getConfigValue('tempo_rouge_hc', 0.1568);
+    
+    // Nombre de jours par couleur (paramétrable)
+    $jours_bleus = $this->getConfigValue('tempo_jours_bleus', 300);
+    $jours_blancs = $this->getConfigValue('tempo_jours_blancs', 43);
+    $jours_rouges = $this->getConfigValue('tempo_jours_rouges', 22);
+    
+    // ===================================
+    // CALCUL 1 : TARIF BASE TRV
+    // ===================================
+    /* 
+     * Formule BASE = Abonnement annuel + (Consommation totale × Prix kWh)
+     * - Abonnement annuel = Abo mensuel × 12 mois
+     * - Coût consommation = Total kWh × Prix unitaire
+     */
+    
+    $cout_abo_base_annuel = $abo_base_mensuel * 12;
+    $cout_conso_base = $consommationTotale * $prix_kwh_base;
+    $cout_total_base = $cout_abo_base_annuel + $cout_conso_base;
+    
+    $this->logDebug("=== CALCUL TARIF BASE ===");
+    $this->logDebug("Puissance: {$puissanceRecommandee} kVA");
+    $this->logDebug("Abo mensuel: {$abo_base_mensuel}€/mois");
+        // ===================================
+        // CALCUL 2 : TARIF HEURES CREUSES TRV
+        // ===================================
+        /*
+        * Formule HC = Abonnement annuel + (Conso HP × Prix HP) + (Conso HC × Prix HC)
+        * - Répartition : généralement 60% en HP, 40% en HC
+        * - HP = Heures Pleines (journée)
+        * - HC = Heures Creuses (nuit/weekend)
+        */
         
-        // Récupération des tarifs BASE
-        $aboBase = $this->getConfigValue('base_abo_' . $puissanceRecommandee, 22.21);
-        $kwhBase = $this->getConfigValue('base_kwh_' . $puissanceRecommandee, 0.2516);
+        $consommation_hp = $consommationTotale * $repartition_hp;
+        $consommation_hc = $consommationTotale * $repartition_hc;
         
-        // Récupération des tarifs HC
-        $aboHC = $this->getConfigValue('hc_abo_' . $puissanceRecommandee, 23.57);
-        $kwhHP = $this->getConfigValue('hc_hp_' . $puissanceRecommandee, 0.27);
-        $kwhHC = $this->getConfigValue('hc_hc_' . $puissanceRecommandee, 0.2068);
+        $cout_abo_hc_annuel = $abo_hc_mensuel * 12;
+        $cout_conso_hp = $consommation_hp * $prix_kwh_hp;
+        $cout_conso_hc = $consommation_hc * $prix_kwh_hc;
+        $cout_total_hc = $cout_abo_hc_annuel + $cout_conso_hp + $cout_conso_hc;
         
-        // Répartition HP/HC
-        $repartitionHP = ($this->getConfigValue('repartition_hp', 60)) / 100;
-        $repartitionHC = ($this->getConfigValue('repartition_hc', 40)) / 100;
+        // ===================================
+        // CALCUL 3 : TARIF TEMPO TRV
+        // ===================================
+        /*
+        * Formule TEMPO = Abonnement + Σ(Conso période × Prix période)
+        * - 300 jours BLEUS (tarif bas)
+        * - 43 jours BLANCS (tarif moyen)  
+        * - 22 jours ROUGES (tarif élevé)
+        * - Chaque jour a HP et HC
+        * - Total = 365 jours/an
+        */
         
-        $consommationHP = $consommationTotale * $repartitionHP;
-        $consommationHC = $consommationTotale * $repartitionHC;
+        // Répartition de la consommation sur les jours
+        $ratio_bleus = $jours_bleus / 365;
+        $ratio_blancs = $jours_blancs / 365;
+        $ratio_rouges = $jours_rouges / 365;
         
-        // Calculs des coûts
-        $coutBase = ($aboBase * 12) + ($consommationTotale * $kwhBase);
-        $coutHC = ($aboHC * 12) + ($consommationHP * $kwhHP) + ($consommationHC * $kwhHC);
+        // Consommation par période (avec répartition HP/HC)
+        $conso_bleu_hp = $consommationTotale * $ratio_bleus * $repartition_hp;
+        $conso_bleu_hc = $consommationTotale * $ratio_bleus * $repartition_hc;
+        $conso_blanc_hp = $consommationTotale * $ratio_blancs * $repartition_hp;
+        $conso_blanc_hc = $consommationTotale * $ratio_blancs * $repartition_hc;
+        $conso_rouge_hp = $consommationTotale * $ratio_rouges * $repartition_hp;
+        $conso_rouge_hc = $consommationTotale * $ratio_rouges * $repartition_hc;
+        
+        // Coûts par période
+        $cout_bleu = ($conso_bleu_hp * $prix_tempo_bleu_hp) + ($conso_bleu_hc * $prix_tempo_bleu_hc);
+        $cout_blanc = ($conso_blanc_hp * $prix_tempo_blanc_hp) + ($conso_blanc_hc * $prix_tempo_blanc_hc);
+        $cout_rouge = ($conso_rouge_hp * $prix_tempo_rouge_hp) + ($conso_rouge_hc * $prix_tempo_rouge_hc);
+        
+        $cout_abo_tempo_annuel = $abo_tempo_mensuel * 12;
+        $cout_total_tempo = $cout_abo_tempo_annuel + $cout_bleu + $cout_blanc + $cout_rouge;
+        
+        // ===================================
+        // DÉTERMINER LE MEILLEUR TARIF
+        // ===================================
+        
+        $tarifs = array(
+            'base' => $cout_total_base,
+            'hc' => $cout_total_hc,
+            'tempo' => $cout_total_tempo
+        );
+        
+        $tarif_recommande = array_keys($tarifs, min($tarifs))[0];
+        
+        // ===================================
+        // RETOUR DES RÉSULTATS STRUCTURÉS
+        // ===================================
         
         return array(
+            // Compatible avec l'ancien format pour la rétrocompatibilité
             'base' => array(
-                'total_annuel' => (int)round($coutBase),
-                'total_mensuel' => (int)round($coutBase / 12),
-                'abonnement_mensuel' => $aboBase,
-                'prix_kwh' => $kwhBase,
+                'total_annuel' => (int)round($cout_total_base),
+                'total_mensuel' => (int)round($cout_total_base / 12),
+                'abonnement_mensuel' => $abo_base_mensuel,
+                'prix_kwh' => $prix_kwh_base,
                 'puissance_kva' => $puissanceRecommandee,
-                'calcul_detail' => "({$aboBase}€ × 12 mois) + ({$consommationTotale} kWh × {$kwhBase}€) = " . round($coutBase) . "€/an"
+                'calcul_detail' => sprintf(
+                    "Abo: %.2f€/mois × 12 = %.2f€/an + Conso: %d kWh × %.4f€ = %.2f€",
+                    $abo_base_mensuel,
+                    $cout_abo_base_annuel,
+                    $consommationTotale,
+                    $prix_kwh_base,
+                    $cout_conso_base
+                )
             ),
+            
             'hc' => array(
-                'total_annuel' => (int)round($coutHC),
-                'total_mensuel' => (int)round($coutHC / 12),
-                'abonnement_mensuel' => $aboHC,
-                'prix_kwh_hp' => $kwhHP,
-                'prix_kwh_hc' => $kwhHC,
-                'consommation_hp' => (int)round($consommationHP),
-                'consommation_hc' => (int)round($consommationHC),
-                'repartition_hp' => $repartitionHP * 100,
-                'repartition_hc' => $repartitionHC * 100,
+                'total_annuel' => (int)round($cout_total_hc),
+                'total_mensuel' => (int)round($cout_total_hc / 12),
+                'abonnement_mensuel' => $abo_hc_mensuel,
+                'prix_kwh_hp' => $prix_kwh_hp,
+                'prix_kwh_hc' => $prix_kwh_hc,
+                'consommation_hp' => (int)round($consommation_hp),
+                'consommation_hc' => (int)round($consommation_hc),
+                'repartition_hp' => $repartition_hp * 100,
+                'repartition_hc' => $repartition_hc * 100,
                 'puissance_kva' => $puissanceRecommandee,
-                'calcul_detail' => "({$aboHC}€ × 12) + (" . round($consommationHP) . " kWh × {$kwhHP}€) + (" . round($consommationHC) . " kWh × {$kwhHC}€) = " . round($coutHC) . "€/an"
+                'calcul_detail' => sprintf(
+                    "Abo: %.2f€ × 12 + HP: %d kWh × %.4f€ + HC: %d kWh × %.4f€",
+                    $abo_hc_mensuel,
+                    round($consommation_hp),
+                    $prix_kwh_hp,
+                    round($consommation_hc),
+                    $prix_kwh_hc
+                )
             ),
-            'economie_potentielle' => abs($coutBase - $coutHC),
-            'tarif_recommande' => ($coutHC < $coutBase) ? 'hc' : 'base'
+            
+            // NOUVEAU : Ajout du tarif TEMPO
+            'tempo' => array(
+                'total_annuel' => (int)round($cout_total_tempo),
+                'total_mensuel' => (int)round($cout_total_tempo / 12),
+                'abonnement_mensuel' => $abo_tempo_mensuel,
+                'details_periodes' => array(
+                    'bleu' => array(
+                        'jours' => $jours_bleus,
+                        'cout_total' => round($cout_bleu, 2),
+                        'hp_kwh' => round($conso_bleu_hp),
+                        'hc_kwh' => round($conso_bleu_hc),
+                        'hp_prix' => $prix_tempo_bleu_hp,
+                        'hc_prix' => $prix_tempo_bleu_hc
+                    ),
+                    'blanc' => array(
+                        'jours' => $jours_blancs,
+                        'cout_total' => round($cout_blanc, 2),
+                        'hp_kwh' => round($conso_blanc_hp),
+                        'hc_kwh' => round($conso_blanc_hc),
+                        'hp_prix' => $prix_tempo_blanc_hp,
+                        'hc_prix' => $prix_tempo_blanc_hc
+                    ),
+                    'rouge' => array(
+                        'jours' => $jours_rouges,
+                        'cout_total' => round($cout_rouge, 2),
+                        'hp_kwh' => round($conso_rouge_hp),
+                        'hc_kwh' => round($conso_rouge_hc),
+                        'hp_prix' => $prix_tempo_rouge_hp,
+                        'hc_prix' => $prix_tempo_rouge_hc
+                    )
+                ),
+                'puissance_kva' => $puissanceRecommandee,
+                'calcul_detail' => sprintf(
+                    "Abo: %.2f€ × 12 + Bleu: %.2f€ + Blanc: %.2f€ + Rouge: %.2f€",
+                    $abo_tempo_mensuel,
+                    $cout_bleu,
+                    $cout_blanc,
+                    $cout_rouge
+                )
+            ),
+            
+            'economie_potentielle' => abs(max($tarifs) - min($tarifs)),
+            'tarif_recommande' => $tarif_recommande
         );
     }
 

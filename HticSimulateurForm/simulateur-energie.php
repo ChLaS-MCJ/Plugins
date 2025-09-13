@@ -688,7 +688,11 @@ class HticSimulateurEnergieAdmin {
             'eclairage_incandescent_m2' => 15,
 
             'coefficient_maison' => 1,
-            'coefficient_appartement' => 0.95
+            'coefficient_appartement' => 0.95,
+
+            'tempo_jours_bleus' => 300,
+            'tempo_jours_blancs' => 43,
+            'tempo_jours_rouges' => 22
         );
     }
     

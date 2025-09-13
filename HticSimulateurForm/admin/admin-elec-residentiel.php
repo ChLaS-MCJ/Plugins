@@ -217,6 +217,25 @@ if (empty($elec_residentiel)) {
             </tbody>
         </table>
 
+        <h4>Configuration Tempo - Nombre de jours</h4>
+        <table class="wp-list-table">
+            <tr>
+                <td>Jours Bleus:</td>
+                <td><input type="number" name="htic_simulateur_elec_residentiel_data[tempo_jours_bleus]" 
+                        value="<?php echo esc_attr($elec_residentiel['tempo_jours_bleus'] ?? 300); ?>" /></td>
+            </tr>
+            <tr>
+                <td>Jours Blancs:</td>
+                <td><input type="number" name="htic_simulateur_elec_residentiel_data[tempo_jours_blancs]" 
+                        value="<?php echo esc_attr($elec_residentiel['tempo_jours_blancs'] ?? 43); ?>" /></td>
+            </tr>
+            <tr>
+                <td>Jours Rouges:</td>
+                <td><input type="number" name="htic_simulateur_elec_residentiel_data[tempo_jours_rouges]" 
+                        value="<?php echo esc_attr($elec_residentiel['tempo_jours_rouges'] ?? 22); ?>" /></td>
+            </tr>
+        </table>
+
         <!-- Répartition TEMPO -->
         <table class="form-table">
             <tr>

@@ -253,10 +253,6 @@ $config_data = get_option('htic_simulateur_elec_professionnel_data', array());
                             <label for="pas_info">Je n'ai pas cette information pour le moment</label>
                         </div>
                     </div>
-                    
-                    <button type="button" class="btn btn-info">
-                        <span>ℹ️</span> Comment trouver ces informations ?
-                    </button>
                 </div>
             </div>
             

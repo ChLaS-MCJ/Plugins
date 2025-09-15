@@ -336,6 +336,7 @@ class HticSimulateurEnergieAdmin {
         }
     }
 
+
     private function saveCalculationLog($type, $userData, $results) {
         global $wpdb;
         
@@ -383,33 +384,6 @@ class HticSimulateurEnergieAdmin {
         $formulaire_path = HTIC_SIMULATEUR_PATH . 'formulaires/' . $type . '/';
         $formulaire_url = HTIC_SIMULATEUR_URL . 'formulaires/' . $type . '/';
         
-        if (file_exists(HTIC_SIMULATEUR_PATH . 'includes/common.css')) {
-            wp_enqueue_style(
-                'htic-simulateur-common', 
-                HTIC_SIMULATEUR_URL . 'includes/common.css', 
-                array(), 
-                HTIC_SIMULATEUR_VERSION
-            );
-        }
-        
-        if (file_exists($formulaire_path . $type . '.css')) {
-            wp_enqueue_style(
-                'htic-simulateur-' . $type, 
-                $formulaire_url . $type . '.css', 
-                array('htic-simulateur-common'), 
-                HTIC_SIMULATEUR_VERSION
-            );
-        }
-        
-        if (file_exists(HTIC_SIMULATEUR_PATH . 'includes/common.js')) {
-            wp_enqueue_script(
-                'htic-simulateur-common-js', 
-                HTIC_SIMULATEUR_URL . 'includes/common.js', 
-                array('jquery'), 
-                HTIC_SIMULATEUR_VERSION, 
-                true
-            );
-        }
         
         if (file_exists($formulaire_path . $type . '.js')) {
             wp_enqueue_script(

@@ -38,6 +38,9 @@ class HticSimulateurEnergieAdmin {
 
         add_action('wp_ajax_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
         add_action('wp_ajax_nopriv_htic_calculate_estimation', array($this, 'ajax_calculate_estimation'));
+
+        add_action('wp_ajax_htic_get_communes_gaz', array($this, 'ajax_get_communes_gaz'));
+        add_action('wp_ajax_nopriv_htic_get_communes_gaz', array($this, 'ajax_get_communes_gaz'));
     }
         
     public function activate() {
@@ -670,35 +673,92 @@ class HticSimulateurEnergieAdmin {
         );
     }
     
-    public function get_default_gaz_residentiel() {
-       return array(
-            // Tarification
-            'gaz_abo_mensuel' => 102.12,
-            'gaz_prix_kwh' => 0.0878,
-            
-            // Consommations de base
-            'gaz_cuisson_annuel' => 250,
-            'gaz_eau_chaude_base' => 2000,
-            'gaz_eau_chaude_par_personne' => 400,
-            'gaz_cuisson_par_personne' => 50,
-            
-            // Chauffage par isolation (kWh/m²/an)
-            'gaz_chauffage_avant_1980' => 160,
-            'gaz_chauffage_1980_2000' => 70,
-            'gaz_chauffage_apres_2000' => 110,
-            'gaz_chauffage_renovation' => 20, 
-            
-            // Coefficients
-            'coefficient_maison' => 1.0,
-            'coefficient_appartement' => 0.85,
-            'temperature_reference' => 19.0,
-            'majoration_par_degre' => 7.0,
-            
-            // Limites
-            'surface_min_chauffage' => 15,
-            'nb_personnes_min' => 1
-        );
-    }
+public function get_default_gaz_residentiel() {
+    return array(
+        // COMMUNES (19 total) - Excel M20:N38
+        'communes_gaz' => array(
+            'AIRE SUR L\'ADOUR',
+            'BARCELONNE DU GERS', 
+            'BASCONS',
+            'BENESSE LES DAX',
+            'CAMPAGNE',
+            'CARCARES SAINTE CROIX',
+            'GAAS',
+            'GEAUNE',
+            'LABATUT',
+            'LALUQUE',
+            'MAZEROLLES',
+            'MEILHAN',
+            'MISSON',
+            'PONTONX SUR L\'ADOUR',
+            'POUILLON',
+            'SAINT MAURICE',
+            'SOUPROSSE',
+            'TETHIEU',
+            'YGOS SAINT SATURNIN'
+        ),
+        
+        // TYPES GAZ PAR COMMUNE - Excel exact
+        'communes_types' => array(
+            'AIRE SUR L\'ADOUR' => 'naturel',
+            'BARCELONNE DU GERS' => 'naturel', 
+            'BASCONS' => 'propane',
+            'BENESSE LES DAX' => 'propane',
+            'CAMPAGNE' => 'propane',
+            'CARCARES SAINTE CROIX' => 'propane',
+            'GAAS' => 'naturel',
+            'GEAUNE' => 'propane',
+            'LABATUT' => 'naturel',
+            'LALUQUE' => 'naturel',
+            'MAZEROLLES' => 'propane',
+            'MEILHAN' => 'propane',
+            'MISSON' => 'naturel',
+            'PONTONX SUR L\'ADOUR' => 'propane',
+            'POUILLON' => 'naturel',
+            'SAINT MAURICE' => 'propane',
+            'SOUPROSSE' => 'propane',
+            'TETHIEU' => 'propane',
+            'YGOS SAINT SATURNIN' => 'propane'
+        ),
+        
+        // GAZ NATUREL (2 tranches GOM0/GOM1) - Excel P9:Q10
+        'seuil_gom_naturel' => 4000, // P6
+        'gaz_naturel_gom0_abo' => 8.92, // P9 = 107.04/12
+        'gaz_naturel_gom0_kwh' => 0.1265, // P10
+        'gaz_naturel_gom1_abo' => 22.42, // Q9 = 269.01/12  
+        'gaz_naturel_gom1_kwh' => 0.0978, // Q10
+        
+        // GAZ PROPANE (5 tranches P0-P4) - Excel P14:T15
+        'gaz_propane_p0_abo' => 4.64, // P14 = 55.7/12
+        'gaz_propane_p0_kwh' => 0.12479, // P15
+        'gaz_propane_p1_abo' => 5.26, // Q14 = 63.09/12
+        'gaz_propane_p1_kwh' => 0.11852, // Q15
+        'gaz_propane_p2_abo' => 16.06, // R14 calculé
+        'gaz_propane_p2_kwh' => 0.11305, // R15
+        'gaz_propane_p3_abo' => 34.56, // S14 calculé
+        'gaz_propane_p3_kwh' => 0.10273, // S15
+        'gaz_propane_p4_abo' => 311.01, // T14 calculé
+        'gaz_propane_p4_kwh' => 0.10064, // T15
+        
+        // CONSOMMATIONS PAR USAGE - Excel K28, K29
+        'gaz_cuisson_par_personne' => 50, // K28 - PAS de base
+        'gaz_eau_chaude_par_personne' => 400, // K29 - PAS de base
+        
+        // ISOLATION (4 niveaux) - Excel G28:H31 
+        'gaz_chauffage_niveau_1' => 160, // H28
+        'gaz_chauffage_niveau_2' => 70, // H29
+        'gaz_chauffage_niveau_3' => 110, // H30
+        'gaz_chauffage_niveau_4' => 20, // H31
+        
+        // COEFFICIENTS LOGEMENT
+        'coefficient_maison' => 1.0,
+        'coefficient_appartement' => 0.8,
+        
+        // PARAMÈTRES DIVERS
+        'surface_min_chauffage' => 15,
+        'nb_personnes_min' => 1
+    );
+}
     
     public function get_default_elec_professionnel() {
         return array(
@@ -993,6 +1053,63 @@ class HticSimulateurEnergieAdmin {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql);
     }
+
+    /**
+ * Endpoint AJAX pour récupérer les communes configurées
+ */
+public function ajax_get_communes_gaz() {
+    // Vérification nonce
+    if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+        wp_send_json_error('Sécurité échouée');
+        return;
+    }
+    
+    // Récupérer les communes depuis les données de configuration
+    $gaz_data = get_option('htic_simulateur_gaz_residentiel_data', array());
+    
+    // Chercher les communes dans la configuration
+    $communes = array();
+    
+    // Si vous avez une structure de communes dans vos données
+    if (isset($gaz_data['communes']) && is_array($gaz_data['communes'])) {
+        $communes = $gaz_data['communes'];
+    } else {
+        // Sinon, utiliser les communes par défaut Excel
+        $communes = $this->get_default_communes_excel();
+    }
+    
+    wp_send_json_success(array('communes' => $communes));
+}
+
+/**
+ * Obtenir les communes par défaut depuis Excel
+ */
+private function get_default_communes_excel() {
+    return array(
+        // Communes Gaz Naturel (données Excel exactes)
+        array('nom' => 'AIRE SUR L\'ADOUR', 'type' => 'naturel'),
+        array('nom' => 'BARCELONNE DU GERS', 'type' => 'naturel'),
+        array('nom' => 'GAAS', 'type' => 'naturel'),
+        array('nom' => 'LABATUT', 'type' => 'naturel'),
+        array('nom' => 'LALUQUE', 'type' => 'naturel'),
+        array('nom' => 'MISSON', 'type' => 'naturel'),
+        array('nom' => 'POUILLON', 'type' => 'naturel'),
+        
+        // Communes Gaz Propane (données Excel exactes)
+        array('nom' => 'BASCONS', 'type' => 'propane'),
+        array('nom' => 'BENESSE LES DAX', 'type' => 'propane'),
+        array('nom' => 'CAMPAGNE', 'type' => 'propane'),
+        array('nom' => 'CARCARES SAINTE CROIX', 'type' => 'propane'),
+        array('nom' => 'GEAUNE', 'type' => 'propane'),
+        array('nom' => 'MAZEROLLES', 'type' => 'propane'),
+        array('nom' => 'MEILHAN', 'type' => 'propane'),
+        array('nom' => 'PONTONX SUR L\'ADOUR', 'type' => 'propane'),
+        array('nom' => 'SAINT MAURICE', 'type' => 'propane'),
+        array('nom' => 'SOUPROSSE', 'type' => 'propane'),
+        array('nom' => 'TETHIEU', 'type' => 'propane'),
+        array('nom' => 'YGOS SAINT SATURNIN', 'type' => 'propane'),
+    );
+}
 }
 
 new HticSimulateurEnergieAdmin();

@@ -1,10 +1,7 @@
 <?php
-// ==========================================
-// FICHIER: calculateur-gaz-residentiel.php
-// ==========================================
 /**
- * Calculateur Gaz Résidentiel - Backend de calcul
- * Fichier: calculateur-gaz-residentiel.php
+ * Calculateur Gaz Résidentiel CORRIGÉ - Logique Excel exacte
+ * Reproduit fidèlement les calculs du fichier Excel "Conso Gaz Résidentiel"
  */
 
 // Sécurité
@@ -12,354 +9,274 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-/**
- * Classe pour le calcul des consommations et coûts gaz résidentiel
- */
 class HticCalculateurGazResidentiel {
     
-    private $config;
+    private $userData;
+    private $configData;
+    private $debugMode;
     
-    public function __construct() {
-        $this->config = $this->get_configuration();
+    public function __construct($userData = array(), $configData = array(), $debugMode = false) {
+        $this->userData = $userData;
+        $this->configData = $configData;
+        $this->debugMode = $debugMode;
     }
     
     /**
-     * Récupérer la configuration depuis la base de données
+     * Point d'entrée principal - reproduit exactement l'Excel
      */
-    private function get_configuration() {
-        $default_config = array(
-            // Tarification
-            'gaz_abo_mensuel' => 102.12,
-            'gaz_prix_kwh' => 0.0878,
+    public function calculate() {
+        if (!$this->validateUserData()) {
+            return $this->returnError("Données utilisateur invalides");
+        }
+        
+        // ÉTAPE 1: Déterminer type de gaz (cellule I9)
+        $typeGaz = $this->determineTypeGaz();
+        
+        // ÉTAPE 2: Calculer consommations (C26, C27, C28)
+        $consommations = $this->calculateConsommationsExcel();
+        
+        // ÉTAPE 3: Déterminer tranche tarifaire (cellule J9)
+        $tranche = $this->determineTrancheTarifaire($consommations['total'], $typeGaz);
+        
+        // ÉTAPE 4: Calculer coûts (K9, K10, K11)
+        $couts = $this->calculateCostsExcel($consommations, $typeGaz, $tranche);
+        
+        // Résultats finaux
+        $results = array(
+            'type_gaz' => $typeGaz,
+            'tranche_tarifaire' => $tranche,
+            'commune' => $this->userData['commune'] ?? '',
             
-            // Consommations de base
-            'gaz_cuisson_annuel' => 250,
-            'gaz_eau_chaude_base' => 2000,
-            'gaz_eau_chaude_par_personne' => 400,
-            'gaz_cuisson_par_personne' => 50,
+            // Consommations détaillées (Excel C26:C28)
+            'detail_chauffage' => $consommations['chauffage'],
+            'detail_eau_chaude' => $consommations['eau_chaude'], 
+            'detail_cuisson' => $consommations['cuisson'],
+            'consommation_totale' => $consommations['total'], // Excel F11
             
-            // Chauffage par isolation (kWh/m²/an)
-            'gaz_chauffage_avant_1980' => 160,
-            'gaz_chauffage_1980_2000' => 70,
-            'gaz_chauffage_apres_2000' => 110,
-            'gaz_chauffage_renovation' => 20,
+            // Coûts détaillés (Excel K9:K11)
+            'cout_abonnement_annuel' => $couts['abonnement'], // K9
+            'cout_consommation' => $couts['consommation'], // K10
+            'total_ttc' => $couts['total'], // K11
+            'total_annuel' => $couts['total'], // Alias
+            'total_mensuel' => round($couts['total'] / 12, 2),
             
-            // Coefficients
-            'coefficient_maison' => 1.0,
-            'coefficient_appartement' => 0.85,
-            'temperature_reference' => 19.0,
-            'majoration_par_degre' => 7.0,
+            // Informations tarif appliqué
+            'abonnement_mensuel' => $couts['abo_mensuel'],
+            'prix_kwh_applique' => $couts['prix_kwh'],
             
-            // Limites
-            'surface_min_chauffage' => 15,
-            'nb_personnes_min' => 1
+            // Debug Excel
+            'debug_excel' => $this->debugMode ? array(
+                'formule_I9' => "VLOOKUP(commune, table_communes, 2)",
+                'formule_F11' => "SUM(C26:C28) = {$consommations['total']}",
+                'formule_J9' => "IF(type_gaz=propane, [logique_propane], [logique_naturel]) = {$tranche}",
+                'formule_K9' => "abonnement × 12 = {$couts['abonnement']}",
+                'formule_K10' => "consommation × prix_kwh = {$couts['consommation']}",
+                'formule_K11' => "K9 + K10 = {$couts['total']}"
+            ) : null
         );
         
-        $config = get_option('htic_simulateur_gaz_residentiel_data', $default_config);
-        return array_merge($default_config, $config);
+        return array('success' => true, 'data' => $results);
     }
     
     /**
-     * Calculer la consommation et le coût total
+     * ÉTAPE 1: Déterminer type de gaz (Excel I9)
+     * Formule Excel: =VLOOKUP(F5,$M$20:$N$38,2,FALSE)
      */
-    public function calculer($donnees_formulaire) {
-        try {
-            // Validation des données
-            $donnees_validees = $this->valider_donnees($donnees_formulaire);
-            
-            // Calculs détaillés
-            $resultats = array(
-                'donnees_utilisateur' => $donnees_validees,
-                'consommation' => $this->calculer_consommation($donnees_validees),
-                'cout' => array(),
-                'details' => array(),
-                'comparaisons' => array(),
-                'conseils' => array()
-            );
-            
-            // Calcul des coûts
-            $resultats['cout'] = $this->calculer_cout($resultats['consommation']);
-            
-            // Détails par usage
-            $resultats['details'] = $this->generer_details($donnees_validees, $resultats['consommation']);
-            
-            // Comparaisons et conseils
-            $resultats['comparaisons'] = $this->generer_comparaisons($donnees_validees, $resultats['consommation']);
-            $resultats['conseils'] = $this->generer_conseils($donnees_validees, $resultats['consommation']);
-            
-            return $resultats;
-            
-        } catch (Exception $e) {
-            return array(
-                'error' => true,
-                'message' => $e->getMessage(),
-                'details' => 'Erreur dans le calcul gaz résidentiel'
-            );
+    private function determineTypeGaz() {
+        $commune = strtoupper(trim($this->userData['commune'] ?? ''));
+        $communesGaz = $this->configData['communes_gaz'] ?? array();
+        $communesTypes = $this->configData['communes_types'] ?? array();
+        
+        // Recherche exacte dans la table des communes
+        if (isset($communesTypes[$commune])) {
+            return $communesTypes[$commune];
         }
+        
+        foreach ($communesGaz as $communeNom) {
+            if (strtoupper(trim($communeNom)) === $commune) {
+                return $communesTypes[$communeNom] ?? 'naturel';
+            }
+        }
+        
+        // Fallback sur choix utilisateur
+        if (($this->userData['offre'] ?? 'base') === 'propane') {
+            return 'propane';
+        }
+        
+        return 'naturel'; // Défaut
     }
     
     /**
-     * Valider les données du formulaire
+     * ÉTAPE 2: Calculer consommations (Excel C26, C27, C28)
      */
-    private function valider_donnees($donnees) {
-        $donnees_validees = array();
+    private function calculateConsommationsExcel() {
+        $nbPersonnes = max(1, intval($this->userData['nb_personnes'] ?? 1));
+        $superficie = max(1, intval($this->userData['superficie'] ?? 0));
         
-        // Données obligatoires
-        $donnees_validees['surface'] = max(10, floatval($donnees['surface'] ?? 100));
-        $donnees_validees['nb_personnes'] = max(1, intval($donnees['nb_personnes'] ?? 2));
-        $donnees_validees['type_logement'] = sanitize_text_field($donnees['type_logement'] ?? 'maison');
-        $donnees_validees['isolation'] = sanitize_text_field($donnees['isolation'] ?? 'apres_2000');
-        
-        // Usages (checkboxes)
-        $donnees_validees['usages'] = array();
-        if (isset($donnees['chauffage']) && $donnees['chauffage']) {
-            $donnees_validees['usages']['chauffage'] = true;
-        }
-        if (isset($donnees['eau_chaude']) && $donnees['eau_chaude']) {
-            $donnees_validees['usages']['eau_chaude'] = true;
-        }
-        if (isset($donnees['cuisson']) && $donnees['cuisson']) {
-            $donnees_validees['usages']['cuisson'] = true;
-        }
-        
-        // Paramètres optionnels
-        $donnees_validees['temperature_souhaitee'] = floatval($donnees['temperature_souhaitee'] ?? 19);
-        $donnees_validees['commune'] = sanitize_text_field($donnees['commune'] ?? '');
-        
-        return $donnees_validees;
-    }
-    
-    /**
-     * Calculer la consommation totale
-     */
-    private function calculer_consommation($donnees) {
-        $consommation = array(
+        $consommations = array(
             'chauffage' => 0,
             'eau_chaude' => 0,
             'cuisson' => 0,
             'total' => 0
         );
         
-        // CHAUFFAGE
-        if (isset($donnees['usages']['chauffage']) && $donnees['surface'] >= $this->config['surface_min_chauffage']) {
-            $conso_chauffage_m2 = $this->get_consommation_chauffage_par_isolation($donnees['isolation']);
-            
-            // Consommation de base par m²
-            $consommation['chauffage'] = $donnees['surface'] * $conso_chauffage_m2;
-            
-            // Coefficient type de logement
-            if ($donnees['type_logement'] === 'appartement') {
-                $consommation['chauffage'] *= $this->config['coefficient_appartement'];
-            } else {
-                $consommation['chauffage'] *= $this->config['coefficient_maison'];
-            }
-            
-            // Ajustement température
-            $ecart_temperature = $donnees['temperature_souhaitee'] - $this->config['temperature_reference'];
-            if ($ecart_temperature > 0) {
-                $majoration = 1 + ($ecart_temperature * $this->config['majoration_par_degre'] / 100);
-                $consommation['chauffage'] *= $majoration;
-            }
+        // CUISSON (C26) - Excel: IF(B26=TRUE,(C6*K28),0)
+        if (($this->userData['cuisson'] ?? 'autre') === 'gaz') {
+            $facteurCuisson = floatval($this->configData['gaz_cuisson_par_personne'] ?? 50);
+            $consommations['cuisson'] = $nbPersonnes * $facteurCuisson;
         }
         
-        // EAU CHAUDE SANITAIRE
-        if (isset($donnees['usages']['eau_chaude'])) {
-            $consommation['eau_chaude'] = $this->config['gaz_eau_chaude_base'];
-            $consommation['eau_chaude'] += ($donnees['nb_personnes'] * $this->config['gaz_eau_chaude_par_personne']);
+        // EAU CHAUDE (C27) - Excel: IF(B27=TRUE,(C6*K29),0)  
+        if (($this->userData['eau_chaude'] ?? 'autre') === 'gaz') {
+            $facteurEauChaude = floatval($this->configData['gaz_eau_chaude_par_personne'] ?? 400);
+            $consommations['eau_chaude'] = $nbPersonnes * $facteurEauChaude;
         }
         
-        // CUISSON
-        if (isset($donnees['usages']['cuisson'])) {
-            $consommation['cuisson'] = $this->config['gaz_cuisson_annuel'];
-            $consommation['cuisson'] += ($donnees['nb_personnes'] * $this->config['gaz_cuisson_par_personne']);
+        // CHAUFFAGE (C28) - Excel: IF(B28=TRUE,(A6*C29),0)
+        if (($this->userData['chauffage_gaz'] ?? 'non') === 'oui') {
+            $consommations['chauffage'] = $this->calculateChauffageExcel($superficie);
         }
         
-        // TOTAL
-        $consommation['total'] = $consommation['chauffage'] + $consommation['eau_chaude'] + $consommation['cuisson'];
+        // TOTAL (F11) - Excel: SUM(C26:C28)
+        $consommations['total'] = $consommations['chauffage'] + 
+                                  $consommations['eau_chaude'] + 
+                                  $consommations['cuisson'];
         
-        return $consommation;
+        return $consommations;
     }
     
     /**
-     * Obtenir la consommation de chauffage selon l'isolation
+     * Calcul chauffage selon isolation Excel (C28 = A6 * C29)
      */
-    private function get_consommation_chauffage_par_isolation($isolation) {
-        $consommations = array(
-            'avant_1980' => $this->config['gaz_chauffage_avant_1980'],
-            '1980_2000' => $this->config['gaz_chauffage_1980_2000'],
-            'apres_2000' => $this->config['gaz_chauffage_apres_2000'],
-            'renovation' => $this->config['gaz_chauffage_renovation']
-        );
+    private function calculateChauffageExcel($superficie) {
+        $isolation = $this->userData['isolation'] ?? 'avant_1980';
         
-        return $consommations[$isolation] ?? $consommations['apres_2000'];
+        // Mapping isolation utilisateur → niveau Excel
+        $niveauExcel = $this->mapIsolationToNiveau($isolation);
+        
+        // Consommation par m² selon niveau Excel (G28:H31)
+        $consoParM2 = $this->getConsoParM2Excel($niveauExcel);
+        
+        // Coefficient type logement
+        $coefficient = $this->getCoefficient();
+        
+        // Calcul final
+        $surfaceChauffee = $superficie * $coefficient;
+        return round($surfaceChauffee * $consoParM2);
     }
     
     /**
-     * Calculer les coûts
+     * Mapping isolation formulaire → niveau Excel
      */
-    private function calculer_cout($consommation) {
-        $cout_variable = $consommation['total'] * $this->config['gaz_prix_kwh'];
-        $cout_fixe_annuel = $this->config['gaz_abo_mensuel'] * 12;
+    private function mapIsolationToNiveau($isolation) {
+        switch ($isolation) {
+            case 'avant_1980': return 1;
+            case '1980_2000': return 2;  
+            case 'apres_2000': return 3;
+            case 'renovation': return 4;
+            default: return 1;
+        }
+    }
+    
+    /**
+     * Consommation par m² selon niveau Excel (G28:H31)
+     */
+    private function getConsoParM2Excel($niveau) {
+        $configKey = "gaz_chauffage_niveau_{$niveau}";
+        $defaults = array(1 => 160, 2 => 70, 3 => 110, 4 => 20);
+        return floatval($this->configData[$configKey] ?? $defaults[$niveau]);
+    }
+    
+    /**
+     * ÉTAPE 3: Déterminer tranche tarifaire (Excel J9)
+     * Formule complexe avec IF imbriqués
+     */
+    private function determineTrancheTarifaire($consommationTotale, $typeGaz) {
+        if ($typeGaz === 'propane') {
+            // Logique propane (5 tranches)
+            if ($consommationTotale < 1000) return 'P0';
+            if ($consommationTotale < 6000) return 'P1';
+            if ($consommationTotale < 30000) return 'P2';
+            if ($consommationTotale < 350000) return 'P3';
+            return 'P4';
+        } else {
+            // Logique gaz naturel (2 tranches)
+            $seuil = intval($this->configData['seuil_gom_naturel'] ?? 4000);
+            return ($consommationTotale < $seuil) ? 'GOM0' : 'GOM1';
+        }
+    }
+    
+    /**
+     * ÉTAPE 4: Calcul coûts Excel (K9, K10, K11)
+     */
+    private function calculateCostsExcel($consommations, $typeGaz, $tranche) {
+        // Récupérer tarifs selon tranche
+        $tarifs = $this->getTarifsForTranche($typeGaz, $tranche);
+        
+        // ABONNEMENT ANNUEL (K9) - Excel: abonnement_mensuel * 12
+        $abonnementAnnuel = $tarifs['abo_mensuel'] * 12;
+        
+        // COÛT CONSOMMATION (K10) - Excel: prix_kwh * consommation_totale
+        $coutConsommation = $tarifs['prix_kwh'] * $consommations['total'];
+        
+        // TOTAL (K11) - Excel: K9 + K10
+        $total = $abonnementAnnuel + $coutConsommation;
         
         return array(
-            'consommation_kwh' => round($consommation['total'], 0),
-            'cout_variable_annuel' => round($cout_variable, 2),
-            'cout_fixe_annuel' => round($cout_fixe_annuel, 2),
-            'cout_total_annuel' => round($cout_variable + $cout_fixe_annuel, 2),
-            'cout_mensuel_moyen' => round(($cout_variable + $cout_fixe_annuel) / 12, 2),
-            'prix_moyen_kwh' => $this->config['gaz_prix_kwh']
+            'abonnement' => round($abonnementAnnuel, 2),
+            'consommation' => round($coutConsommation, 2),
+            'total' => round($total, 2),
+            'abo_mensuel' => $tarifs['abo_mensuel'],
+            'prix_kwh' => $tarifs['prix_kwh']
         );
     }
     
     /**
-     * Générer les détails par usage
+     * Récupérer tarifs selon tranche
      */
-    private function generer_details($donnees, $consommation) {
-        $details = array();
-        
-        if ($consommation['chauffage'] > 0) {
-            $cout_chauffage = $consommation['chauffage'] * $this->config['gaz_prix_kwh'];
-            $details['chauffage'] = array(
-                'consommation_kwh' => round($consommation['chauffage'], 0),
-                'cout_annuel' => round($cout_chauffage, 2),
-                'pourcentage' => round(($consommation['chauffage'] / $consommation['total']) * 100, 1),
-                'consommation_par_m2' => round($consommation['chauffage'] / $donnees['surface'], 1)
+    private function getTarifsForTranche($typeGaz, $tranche) {
+        if ($typeGaz === 'propane') {
+            $tranches = array('P0' => 'p0', 'P1' => 'p1', 'P2' => 'p2', 'P3' => 'p3', 'P4' => 'p4');
+            $suffixe = $tranches[$tranche] ?? 'p0';
+            return array(
+                'abo_mensuel' => floatval($this->configData["gaz_propane_{$suffixe}_abo"] ?? 4.64),
+                'prix_kwh' => floatval($this->configData["gaz_propane_{$suffixe}_kwh"] ?? 0.12479)
             );
-        }
-        
-        if ($consommation['eau_chaude'] > 0) {
-            $cout_eau_chaude = $consommation['eau_chaude'] * $this->config['gaz_prix_kwh'];
-            $details['eau_chaude'] = array(
-                'consommation_kwh' => round($consommation['eau_chaude'], 0),
-                'cout_annuel' => round($cout_eau_chaude, 2),
-                'pourcentage' => round(($consommation['eau_chaude'] / $consommation['total']) * 100, 1),
-                'consommation_par_personne' => round($consommation['eau_chaude'] / $donnees['nb_personnes'], 0)
-            );
-        }
-        
-        if ($consommation['cuisson'] > 0) {
-            $cout_cuisson = $consommation['cuisson'] * $this->config['gaz_prix_kwh'];
-            $details['cuisson'] = array(
-                'consommation_kwh' => round($consommation['cuisson'], 0),
-                'cout_annuel' => round($cout_cuisson, 2),
-                'pourcentage' => round(($consommation['cuisson'] / $consommation['total']) * 100, 1)
-            );
-        }
-        
-        return $details;
-    }
-    
-    /**
-     * Générer des comparaisons
-     */
-    private function generer_comparaisons($donnees, $consommation) {
-        $comparaisons = array();
-        
-        // Comparaison avec une maison moyenne
-        $comparaisons['maison_moyenne'] = array(
-            'surface_reference' => 100,
-            'nb_personnes_reference' => 4,
-            'consommation_reference' => 15000, // kWh/an
-            'ecart_pourcentage' => round((($consommation['total'] - 15000) / 15000) * 100, 1)
-        );
-        
-        // Impact amélioration isolation
-        if ($donnees['isolation'] !== 'renovation') {
-            $conso_avec_renovation = $donnees['surface'] * $this->config['gaz_chauffage_renovation'];
-            if ($donnees['type_logement'] === 'appartement') {
-                $conso_avec_renovation *= $this->config['coefficient_appartement'];
-            }
-            
-            $economie_chauffage = $consommation['chauffage'] - $conso_avec_renovation;
-            $economie_cout = $economie_chauffage * $this->config['gaz_prix_kwh'];
-            
-            $comparaisons['avec_renovation'] = array(
-                'economie_kwh' => round($economie_chauffage, 0),
-                'economie_euros' => round($economie_cout, 2),
-                'economie_pourcentage' => round(($economie_chauffage / $consommation['chauffage']) * 100, 1)
-            );
-        }
-        
-        return $comparaisons;
-    }
-    
-    /**
-     * Générer des conseils personnalisés
-     */
-    private function generer_conseils($donnees, $consommation) {
-        $conseils = array();
-        
-        // Conseils selon l'isolation
-        switch ($donnees['isolation']) {
-            case 'avant_1980':
-                $conseils[] = array(
-                    'type' => 'isolation',
-                    'priorite' => 'haute',
-                    'titre' => 'Amélioration de l\'isolation prioritaire',
-                    'message' => 'Votre logement construit avant 1980 consomme beaucoup pour le chauffage. Une rénovation énergétique pourrait réduire votre facture de 60% à 80%.',
-                    'economie_potentielle' => round(($consommation['chauffage'] * 0.7 * $this->config['gaz_prix_kwh']), 2)
-                );
-                break;
-                
-            case '1980_2000':
-                $conseils[] = array(
-                    'type' => 'isolation',
-                    'priorite' => 'moyenne',
-                    'titre' => 'Isolation à améliorer',
-                    'message' => 'Des travaux d\'isolation (combles, murs) pourraient réduire significativement votre consommation de chauffage.',
-                    'economie_potentielle' => round(($consommation['chauffage'] * 0.4 * $this->config['gaz_prix_kwh']), 2)
-                );
-                break;
-        }
-        
-        // Conseils température
-        if ($donnees['temperature_souhaitee'] > 20) {
-            $economie = $consommation['chauffage'] * (($donnees['temperature_souhaitee'] - 19) * $this->config['majoration_par_degre'] / 100);
-            $conseils[] = array(
-                'type' => 'temperature',
-                'priorite' => 'faible',
-                'titre' => 'Optimisation de la température',
-                'message' => 'Baisser la température de 1°C permet d\'économiser environ 7% sur le chauffage.',
-                'economie_potentielle' => round($economie * $this->config['gaz_prix_kwh'], 2)
-            );
-        }
-        
-        // Conseils sur les usages
-        if ($consommation['eau_chaude'] > 3000) {
-            $conseils[] = array(
-                'type' => 'eau_chaude',
-                'priorite' => 'moyenne',
-                'titre' => 'Consommation d\'eau chaude élevée',
-                'message' => 'Installer un programmateur ou réduire la température du ballon peut diminuer la consommation.',
-                'economie_potentielle' => round($consommation['eau_chaude'] * 0.15 * $this->config['gaz_prix_kwh'], 2)
-            );
-        }
-        
-        return $conseils;
-    }
-    
-    /**
-     * Méthode publique pour traiter les requêtes AJAX
-     */
-    public static function traiter_requete_ajax() {
-        // Vérification de sécurité
-        check_ajax_referer('htic_simulateur_nonce', 'nonce');
-        
-        if (!isset($_POST['donnees_formulaire'])) {
-            wp_send_json_error('Données manquantes');
-        }
-        
-        $calculateur = new self();
-        $resultats = $calculateur->calculer($_POST['donnees_formulaire']);
-        
-        if (isset($resultats['error'])) {
-            wp_send_json_error($resultats['message']);
         } else {
-            wp_send_json_success($resultats);
+            $suffixe = strtolower($tranche); // gom0 ou gom1
+            return array(
+                'abo_mensuel' => floatval($this->configData["gaz_naturel_{$suffixe}_abo"] ?? 8.92),
+                'prix_kwh' => floatval($this->configData["gaz_naturel_{$suffixe}_kwh"] ?? 0.1265)
+            );
         }
+    }
+    
+    /**
+     * Coefficient logement
+     */
+    private function getCoefficient() {
+        $typeLogement = $this->userData['type_logement'] ?? 'maison';
+        if ($typeLogement === 'appartement') {
+            return floatval($this->configData['coefficient_appartement'] ?? 0.8);
+        }
+        return floatval($this->configData['coefficient_maison'] ?? 1.0);
+    }
+    
+    /**
+     * Validation données
+     */
+    private function validateUserData() {
+        $superficie = intval($this->userData['superficie'] ?? 0);
+        $nbPersonnes = intval($this->userData['nb_personnes'] ?? 0);
+        
+        return ($superficie >= 10 && $superficie <= 1000 && 
+                $nbPersonnes >= 1 && $nbPersonnes <= 20);
+    }
+    
+    /**
+     * Retour erreur
+     */
+    private function returnError($message) {
+        return array('success' => false, 'error' => $message);
     }
 }
-
-// Hook AJAX pour les calculs
-add_action('wp_ajax_calculer_gaz_residentiel', array('HticCalculateurGazResidentiel', 'traiter_requete_ajax'));
-add_action('wp_ajax_nopriv_calculer_gaz_residentiel', array('HticCalculateurGazResidentiel', 'traiter_requete_ajax'));

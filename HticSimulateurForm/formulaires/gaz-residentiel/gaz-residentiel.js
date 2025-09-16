@@ -3,519 +3,541 @@
  * Fichier: formulaires/gaz-residentiel/gaz-residentiel.js
  */
 
-(function ($) {
-    'use strict';
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('Initialisation du simulateur gaz résidentiel');
 
     // Variables globales
-    let currentStep = 1;
-    const totalSteps = 5;
-    let formData = {};
-    let calculationInProgress = false;
+    const communeSelect = document.getElementById('commune');
+    const nbPersonnesInput = document.getElementById('nb_personnes');
+    const chauffageRadios = document.querySelectorAll('input[name="chauffage_gaz"]');
+    const chauffageDetails = document.querySelector('.chauffage-details');
+    const autreCommuneDetails = document.getElementById('autre-commune-details');
+    const typeGazInfo = document.getElementById('type-gaz-info');
+    const typeGazText = document.getElementById('type-gaz-text');
 
-    // ===============================
-    // INITIALISATION
-    // ===============================
+    // Initialisation
+    init();
 
-    $(document).ready(function () {
-        console.log('🔥 Simulateur Gaz Résidentiel - Initialisation');
+    function init() {
+        // Charger les communes depuis le back-office
+        loadCommunesFromBackoffice();
 
-        initializeForm();
-        bindEvents();
-        updateProgressBar();
+        // Mettre à jour les estimations initiales
+        updateConsumptionEstimates();
 
-        console.log('✅ Simulateur Gaz Résidentiel - Prêt');
-    });
-
-    function initializeForm() {
-        // Masquer toutes les étapes sauf la première
-        $('.form-step').hide();
-        $('.form-step[data-step="1"]').show().addClass('active');
-
-        // Initialiser les données du formulaire
-        collectFormData();
-
-        // Gérer l'affichage conditionnel initial
+        // Gérer l'affichage conditionnel du chauffage
         toggleChauffageDetails();
+
+        // Events listeners
+        setupEventListeners();
     }
 
-    function bindEvents() {
-        // Navigation entre les étapes
-        $('.btn-next').on('click', handleNext);
-        $('.btn-prev').on('click', handlePrevious);
-        $('.btn-calculate').on('click', handleCalculation);
+    function setupEventListeners() {
+        // Changement du nombre de personnes
+        if (nbPersonnesInput) {
+            nbPersonnesInput.addEventListener('change', updateConsumptionEstimates);
+            nbPersonnesInput.addEventListener('input', updateConsumptionEstimates);
+        }
 
-        // Navigation directe via les étapes
-        $('.step').on('click', function () {
-            const targetStep = parseInt($(this).data('step'));
-            if (targetStep <= currentStep || $(this).hasClass('completed')) {
-                navigateToStep(targetStep);
-            }
+        // Changement de commune
+        if (communeSelect) {
+            communeSelect.addEventListener('change', handleCommuneSelection);
+        }
+
+        // Gestion du chauffage au gaz
+        chauffageRadios.forEach(radio => {
+            radio.addEventListener('change', toggleChauffageDetails);
         });
 
-        // Mise à jour en temps réel des données
-        $('.simulateur-form input, .simulateur-form select').on('change', function () {
-            collectFormData();
-            updateProgressBar();
+        // Boutons navigation (si vous avez un système d'étapes)
+        setupNavigationButtons();
+
+        // Bouton calcul
+        const btnCalculate = document.querySelector('.btn-calculate');
+        if (btnCalculate) {
+            btnCalculate.addEventListener('click', calculateGazEstimation);
+        }
+    }
+
+    function setupNavigationButtons() {
+        // Gestion des boutons suivant/précédent si vous les implémentez
+        const btnNext = document.querySelectorAll('.btn-next');
+        const btnPrev = document.querySelectorAll('.btn-prev');
+
+        btnNext.forEach(btn => {
+            btn.addEventListener('click', function () {
+                // Logique de navigation entre étapes
+                console.log('Étape suivante');
+            });
         });
 
-        // Gestion de l'affichage conditionnel
-        $('input[name="chauffage_gaz"]').on('change', toggleChauffageDetails);
-
-        // Validation des champs numériques
-        $('input[type="number"]').on('input', validateNumericInput);
-
-        // Gestion des erreurs
-        $(document).on('click', '.error-container', hideError);
+        btnPrev.forEach(btn => {
+            btn.addEventListener('click', function () {
+                // Logique de navigation entre étapes
+                console.log('Étape précédente');
+            });
+        });
     }
 
-    // ===============================
-    // NAVIGATION ENTRE LES ÉTAPES
-    // ===============================
+    // ================================
+    // GESTION DES COMMUNES
+    // ================================
 
-    function handleNext() {
-        console.log('📍 Navigation: Étape suivante demandée');
+    function loadCommunesFromBackoffice() {
+        console.log('Chargement des communes depuis le back-office...');
 
-        if (validateCurrentStep()) {
-            if (currentStep < totalSteps) {
-                navigateToStep(currentStep + 1);
+        // Vérifier si hticSimulateur est disponible
+        if (typeof hticSimulateur === 'undefined') {
+            console.warn('hticSimulateur non disponible, utilisation des communes par défaut');
+            populateDefaultCommunes();
+            return;
+        }
+
+        // Appel AJAX pour récupérer les communes configurées dans l'admin
+        fetch(hticSimulateur.ajaxUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'htic_get_communes_gaz',
+                nonce: hticSimulateur.nonce
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Réponse AJAX communes:', data);
+
+                if (data.success && data.data && data.data.communes) {
+                    console.log('Communes récupérées:', data.data.communes);
+                    populateCommunesSelect(data.data.communes);
+                } else {
+                    console.log('Pas de communes en base, utilisation des valeurs par défaut');
+                    populateDefaultCommunes();
+                }
+            })
+            .catch(error => {
+                console.error('Erreur chargement communes:', error);
+                populateDefaultCommunes();
+            });
+    }
+
+    function populateCommunesSelect(communes) {
+        console.log('Remplissage du select avec', communes.length, 'communes');
+
+        if (!communeSelect) {
+            console.error('Select commune non trouvé');
+            return;
+        }
+
+        const groupeNaturel = document.getElementById('communes-naturel');
+        const groupePropane = document.getElementById('communes-propane');
+
+        if (!groupeNaturel || !groupePropane) {
+            console.error('Groupes communes non trouvés');
+            return;
+        }
+
+        // Vider les groupes existants
+        groupeNaturel.innerHTML = '';
+        groupePropane.innerHTML = '';
+
+        // Trier les communes par type et nom
+        const communesNaturel = communes.filter(c => c.type === 'naturel').sort((a, b) => a.nom.localeCompare(b.nom));
+        const communesPropane = communes.filter(c => c.type === 'propane').sort((a, b) => a.nom.localeCompare(b.nom));
+
+        // Ajouter les communes gaz naturel
+        communesNaturel.forEach(commune => {
+            const option = document.createElement('option');
+            option.value = commune.nom;
+            option.textContent = commune.nom;
+            option.setAttribute('data-type', 'naturel');
+            groupeNaturel.appendChild(option);
+        });
+
+        // Ajouter les communes gaz propane
+        communesPropane.forEach(commune => {
+            const option = document.createElement('option');
+            option.value = commune.nom;
+            option.textContent = commune.nom;
+            option.setAttribute('data-type', 'propane');
+            groupePropane.appendChild(option);
+        });
+
+        console.log('Select rempli:', communesNaturel.length, 'naturel +', communesPropane.length, 'propane');
+    }
+
+    function populateDefaultCommunes() {
+        console.log('Utilisation des communes par défaut Excel');
+
+        const defaultCommunes = [
+            // Communes Gaz Naturel (données Excel exactes)
+            { nom: 'AIRE SUR L\'ADOUR', type: 'naturel' },
+            { nom: 'BARCELONNE DU GERS', type: 'naturel' },
+            { nom: 'GAAS', type: 'naturel' },
+            { nom: 'LABATUT', type: 'naturel' },
+            { nom: 'LALUQUE', type: 'naturel' },
+            { nom: 'MISSON', type: 'naturel' },
+            { nom: 'POUILLON', type: 'naturel' },
+
+            // Communes Gaz Propane (données Excel exactes)
+            { nom: 'BASCONS', type: 'propane' },
+            { nom: 'BENESSE LES DAX', type: 'propane' },
+            { nom: 'CAMPAGNE', type: 'propane' },
+            { nom: 'CARCARES SAINTE CROIX', type: 'propane' },
+            { nom: 'GEAUNE', type: 'propane' },
+            { nom: 'MAZEROLLES', type: 'propane' },
+            { nom: 'MEILHAN', type: 'propane' },
+            { nom: 'PONTONX SUR L\'ADOUR', type: 'propane' },
+            { nom: 'SAINT MAURICE', type: 'propane' },
+            { nom: 'SOUPROSSE', type: 'propane' },
+            { nom: 'TETHIEU', type: 'propane' },
+            { nom: 'YGOS SAINT SATURNIN', type: 'propane' }
+        ];
+
+        populateCommunesSelect(defaultCommunes);
+    }
+
+    function handleCommuneSelection() {
+        const selectedOption = communeSelect.options[communeSelect.selectedIndex];
+        const selectedValue = selectedOption.value;
+
+        console.log('Commune sélectionnée:', selectedValue);
+
+        if (selectedValue === 'autre') {
+            // Afficher la section "Autre commune"
+            if (autreCommuneDetails) {
+                autreCommuneDetails.style.display = 'block';
+            }
+
+            // Masquer l'info type de gaz
+            if (typeGazInfo) {
+                typeGazInfo.style.display = 'none';
+            }
+        } else if (selectedValue && selectedValue !== '') {
+            // Masquer la section "Autre commune"
+            if (autreCommuneDetails) {
+                autreCommuneDetails.style.display = 'none';
+            }
+
+            // Afficher le type de gaz détecté
+            showTypeGazInfo(selectedOption);
+        } else {
+            // Aucune commune sélectionnée
+            if (autreCommuneDetails) {
+                autreCommuneDetails.style.display = 'none';
+            }
+            if (typeGazInfo) {
+                typeGazInfo.style.display = 'none';
             }
         }
     }
 
-    function handlePrevious() {
-        console.log('📍 Navigation: Étape précédente demandée');
+    function showTypeGazInfo(selectedOption) {
+        const typeGaz = selectedOption.getAttribute('data-type');
+        if (!typeGaz || !typeGazInfo || !typeGazText) return;
 
-        if (currentStep > 1) {
-            navigateToStep(currentStep - 1);
+        const typeText = typeGaz === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
+        const icon = typeGaz === 'naturel' ? '🌱' : '⛽';
+
+        typeGazText.innerHTML = `${icon} <strong>${typeText}</strong> disponible dans cette commune`;
+        typeGazInfo.style.display = 'block';
+    }
+
+    // ================================
+    // GESTION DES ESTIMATIONS
+    // ================================
+
+    function updateConsumptionEstimates() {
+        const nbPersonnes = parseInt(nbPersonnesInput?.value) || 5;
+
+        // Eau chaude : 400 kWh/personne/an (valeur Excel K29)
+        const eauChaudeConsommation = nbPersonnes * 400;
+        const eauChaudeEl = document.getElementById('eau-chaude-estimation');
+        if (eauChaudeEl) {
+            eauChaudeEl.textContent = `${eauChaudeConsommation} kWh/an`;
+        }
+
+        // Cuisson : 50 kWh/personne/an (valeur Excel K28)
+        const cuissonConsommation = nbPersonnes * 50;
+        const cuissonEl = document.getElementById('cuisson-estimation');
+        if (cuissonEl) {
+            cuissonEl.textContent = `${cuissonConsommation} kWh/an`;
+        }
+
+        console.log('Estimations mises à jour:', {
+            personnes: nbPersonnes,
+            eauChaude: eauChaudeConsommation,
+            cuisson: cuissonConsommation
+        });
+    }
+
+    function toggleChauffageDetails() {
+        const chauffageOui = document.getElementById('chauffage_oui');
+
+        if (chauffageOui && chauffageDetails) {
+            chauffageDetails.style.display = chauffageOui.checked ? 'block' : 'none';
         }
     }
 
-    function navigateToStep(stepNumber) {
-        console.log('🔄 Navigation vers l\'étape:', stepNumber);
+    // ================================
+    // CALCUL ET VALIDATION
+    // ================================
 
-        // Masquer l'étape actuelle
-        $('.form-step.active').removeClass('active').fadeOut(200);
+    function calculateGazEstimation() {
+        console.log('Début du calcul de l\'estimation gaz...');
 
-        // Mettre à jour les indicateurs
-        updateStepIndicators(stepNumber);
+        // Récupérer toutes les données du formulaire
+        const formData = new FormData(document.getElementById('simulateur-gaz-residentiel'));
 
-        // Afficher la nouvelle étape
-        setTimeout(function () {
-            $(`.form-step[data-step="${stepNumber}"]`).addClass('active').fadeIn(300);
-            currentStep = stepNumber;
-            updateProgressBar();
+        // Validation de base
+        if (!validateForm(formData)) {
+            return;
+        }
 
-            // Scroll vers le haut
-            $('html, body').animate({ scrollTop: 0 }, 300);
-        }, 200);
+        // Préparer les données pour l'envoi
+        const userData = prepareUserData(formData);
+
+        console.log('Données utilisateur préparées:', userData);
+
+        // Afficher un indicateur de chargement
+        showLoadingState();
+
+        // Appel AJAX vers le calculateur (à implémenter)
+        sendCalculationRequest(userData);
     }
 
-    function updateStepIndicators(stepNumber) {
-        $('.step').removeClass('active completed');
+    function validateForm(formData) {
+        const communeValue = formData.get('commune');
 
-        for (let i = 1; i <= totalSteps; i++) {
-            const $step = $(`.step[data-step="${i}"]`);
+        // Vérifier la commune
+        if (!communeValue) {
+            showError('Veuillez sélectionner votre commune');
+            return false;
+        }
 
-            if (i < stepNumber) {
-                $step.addClass('completed');
-            } else if (i === stepNumber) {
-                $step.addClass('active');
+        // Si "Autre" est sélectionné, vérifier les champs supplémentaires
+        if (communeValue === 'autre') {
+            const nomCommune = formData.get('nom_commune_autre');
+            const typeGaz = formData.get('type_gaz_autre');
+
+            if (!nomCommune || !nomCommune.trim()) {
+                showError('Veuillez saisir le nom de votre commune');
+                return false;
+            }
+
+            if (!typeGaz) {
+                showError('Veuillez sélectionner le type de gaz disponible');
+                return false;
             }
         }
-    }
 
-    function updateProgressBar() {
-        const progress = (currentStep / totalSteps) * 100;
-        $('.progress-fill').css('width', progress + '%');
-        $('.progress-fill').attr('data-progress', Math.round(progress));
-    }
-
-    // ===============================
-    // VALIDATION DES ÉTAPES
-    // ===============================
-
-    function validateCurrentStep() {
-        const $currentStepForm = $(`.form-step[data-step="${currentStep}"]`);
-        let isValid = true;
-        let errorMessage = '';
-
-        // Validation selon l'étape
-        switch (currentStep) {
-            case 1:
-                // Validation étape logement
-                const superficie = parseInt($('#superficie').val());
-                const nbPersonnes = parseInt($('#nb_personnes').val());
-
-                if (!superficie || superficie < 20 || superficie > 500) {
-                    errorMessage = 'Veuillez saisir une superficie entre 20 et 500 m²';
-                    isValid = false;
-                } else if (!nbPersonnes || nbPersonnes < 1 || nbPersonnes > 10) {
-                    errorMessage = 'Veuillez saisir un nombre de personnes entre 1 et 10';
-                    isValid = false;
-                }
-                break;
-
-            case 2:
-                // Validation étape chauffage
-                if (!$('input[name="chauffage_gaz"]:checked').length) {
-                    errorMessage = 'Veuillez indiquer si vous utilisez le gaz pour le chauffage';
-                    isValid = false;
-                } else if ($('input[name="chauffage_gaz"]:checked').val() === 'oui' &&
-                    !$('input[name="isolation"]:checked').length) {
-                    errorMessage = 'Veuillez sélectionner le niveau d\'isolation de votre logement';
-                    isValid = false;
-                }
-                break;
-
-            case 3:
-                // Validation étape eau chaude
-                if (!$('input[name="eau_chaude"]:checked').length) {
-                    errorMessage = 'Veuillez indiquer le mode de production d\'eau chaude';
-                    isValid = false;
-                }
-                break;
-
-            case 4:
-                // Validation étape cuisson
-                if (!$('input[name="cuisson"]:checked').length) {
-                    errorMessage = 'Veuillez indiquer si vous utilisez le gaz pour la cuisson';
-                    isValid = false;
-                } else if (!$('input[name="offre"]:checked').length) {
-                    errorMessage = 'Veuillez sélectionner le type d\'offre souhaité';
-                    isValid = false;
-                }
-                break;
+        // Autres validations
+        const superficie = formData.get('superficie');
+        if (!superficie || parseInt(superficie) < 20) {
+            showError('Veuillez saisir une superficie valide (minimum 20 m²)');
+            return false;
         }
 
-        if (!isValid) {
-            showError(errorMessage);
+        const nbPersonnes = formData.get('nb_personnes');
+        if (!nbPersonnes || parseInt(nbPersonnes) < 1) {
+            showError('Veuillez saisir un nombre de personnes valide');
             return false;
         }
 
         return true;
     }
 
-    function validateNumericInput() {
-        const $input = $(this);
-        const value = parseFloat($input.val());
-        const min = parseFloat($input.attr('min'));
-        const max = parseFloat($input.attr('max'));
+    function prepareUserData(formData) {
+        const communeValue = formData.get('commune');
+        let communeFinale, typeGazFinal;
 
-        if (value < min) {
-            $input.val(min);
-        } else if (value > max) {
-            $input.val(max);
-        }
-
-        collectFormData();
-    }
-
-    // ===============================
-    // GESTION DES DONNÉES DU FORMULAIRE
-    // ===============================
-
-    function collectFormData() {
-        formData = {
-            // Étape 1 : Logement
-            superficie: parseInt($('#superficie').val()) || 150,
-            nb_personnes: parseInt($('#nb_personnes').val()) || 5,
-            commune: $('#commune').val() || 'BASCONS',
-            type_logement: $('input[name="type_logement"]:checked').val() || 'maison',
-
-            // Étape 2 : Chauffage
-            chauffage_gaz: $('input[name="chauffage_gaz"]:checked').val() || 'oui',
-            isolation: $('input[name="isolation"]:checked').val() || 'avant_1980',
-
-            // Étape 3 : Eau chaude
-            eau_chaude: $('input[name="eau_chaude"]:checked').val() || 'gaz',
-
-            // Étape 4 : Cuisson et offre
-            cuisson: $('input[name="cuisson"]:checked').val() || 'gaz',
-            offre: $('input[name="offre"]:checked').val() || 'base'
-        };
-
-        console.log('📋 Données du formulaire mises à jour:', formData);
-    }
-
-    // ===============================
-    // AFFICHAGE CONDITIONNEL
-    // ===============================
-
-    function toggleChauffageDetails() {
-        const chauffageGaz = $('input[name="chauffage_gaz"]:checked').val();
-        const $details = $('.chauffage-details');
-
-        if (chauffageGaz === 'oui') {
-            $details.slideDown(300);
+        if (communeValue === 'autre') {
+            // Pour les communes "autre"
+            communeFinale = formData.get('nom_commune_autre')?.trim().toUpperCase() || '';
+            typeGazFinal = formData.get('type_gaz_autre') || 'naturel';
         } else {
-            $details.slideUp(300);
+            // Pour les communes pré-configurées
+            communeFinale = communeValue;
+            const selectedOption = communeSelect.options[communeSelect.selectedIndex];
+            typeGazFinal = selectedOption?.getAttribute('data-type') || 'naturel';
         }
+
+        return {
+            // Logement
+            commune: communeFinale,
+            type_gaz: typeGazFinal,
+            superficie: parseInt(formData.get('superficie')) || 150,
+            nb_personnes: parseInt(formData.get('nb_personnes')) || 5,
+            type_logement: formData.get('type_logement') || 'maison',
+
+            // Usages
+            chauffage_gaz: formData.get('chauffage_gaz') || 'oui',
+            isolation: formData.get('isolation') || 'niveau_1',
+            eau_chaude: formData.get('eau_chaude') || 'gaz',
+            cuisson: formData.get('cuisson') || 'gaz',
+            offre: formData.get('offre') || 'base',
+
+            // Métadonnées
+            timestamp: new Date().toISOString(),
+            user_agent: navigator.userAgent
+        };
     }
 
-    // ===============================
-    // CALCUL ET AFFICHAGE DES RÉSULTATS
-    // ===============================
-
-    function handleCalculation() {
-        console.log('🧮 Démarrage du calcul de l\'estimation');
-
-        if (!validateCurrentStep()) {
+    function sendCalculationRequest(userData) {
+        // Vérifier si hticSimulateur est disponible
+        if (typeof hticSimulateur === 'undefined') {
+            showError('Configuration manquante. Veuillez recharger la page.');
+            hideLoadingState();
             return;
         }
 
-        if (calculationInProgress) {
-            console.log('⏳ Calcul déjà en cours...');
-            return;
-        }
-
-        collectFormData();
-        calculateEstimation();
-    }
-
-    function calculateEstimation() {
-        calculationInProgress = true;
-        showLoading();
-
-        console.log('📊 Envoi des données pour calcul:', formData);
-
-        $.ajax({
-            url: hticSimulateurUnifix.ajaxUrl,
-            type: 'POST',
-            data: {
+        // Appel AJAX vers le calculateur
+        fetch(hticSimulateur.ajaxUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
                 action: 'htic_calculate_estimation',
-                nonce: hticSimulateurUnifix.calculateNonce,
+                nonce: hticSimulateur.nonce,
                 type: 'gaz-residentiel',
-                data: formData
-            },
-            timeout: 30000,
-            success: function (response) {
-                console.log('✅ Réponse du calcul reçue:', response);
-                hideLoading();
+                user_data: JSON.stringify(userData),
+                config_data: '' // Sera récupéré côté serveur
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                hideLoadingState();
 
-                if (response.success && response.data) {
-                    displayResults(response.data);
-                    navigateToStep(5);
+                if (data.success) {
+                    displayResults(data.data);
                 } else {
-                    const errorMsg = response.data?.message || 'Erreur lors du calcul';
-                    displayError(errorMsg);
+                    showError(data.data || 'Erreur lors du calcul');
                 }
-            },
-            error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX:', { xhr, status, error });
-                hideLoading();
-
-                let errorMessage = 'Une erreur est survenue lors du calcul.';
-
-                if (xhr.status === 0) {
-                    errorMessage = 'Problème de connexion. Vérifiez votre connexion internet.';
-                } else if (xhr.status === 500) {
-                    errorMessage = 'Erreur interne du serveur. Contactez l\'administrateur.';
-                } else if (status === 'timeout') {
-                    errorMessage = 'Le calcul prend trop de temps. Réessayez.';
-                }
-
-                displayError(errorMessage);
-            },
-            complete: function () {
-                calculationInProgress = false;
-            }
-        });
+            })
+            .catch(error => {
+                console.error('Erreur calcul:', error);
+                hideLoadingState();
+                showError('Erreur technique. Veuillez réessayer.');
+            });
     }
 
-    // ===============================
+    // ================================
     // AFFICHAGE DES RÉSULTATS
-    // ===============================
+    // ================================
 
     function displayResults(results) {
-        console.log('📊 Affichage des résultats:', results);
+        console.log('Affichage des résultats:', results);
 
-        if (!results || typeof results.total_annuel === 'undefined') {
-            displayError('Données de résultats incomplètes');
-            return;
-        }
+        const calculContainer = document.getElementById('calcul-container');
+        if (!calculContainer) return;
 
-        const totalAnnuel = parseFloat(results.total_annuel) || 0;
-        const totalMensuel = Math.round(totalAnnuel / 12);
-
-        const resultatsHTML = `
-            <div class="resultats-content">
-                <!-- Estimation principale -->
-                <div class="estimation-principale">
-                    <h3>💰 Votre budget gaz estimé</h3>
-                    <div class="montant-annuel">${formatPrice(totalAnnuel)}</div>
-                    <div class="montant-mensuel">Soit environ ${formatPrice(totalMensuel)}/mois</div>
-                    <p>Estimation basée sur vos réponses et les tarifs actuels</p>
+        // Créer l'affichage des résultats
+        calculContainer.innerHTML = `
+            <div class="results-summary">
+                <div class="result-card main-result">
+                    <div class="result-icon">🔥</div>
+                    <h3>Votre estimation gaz</h3>
+                    <div class="big-number">${results.consommation_totale || 0} <span>kWh/an</span></div>
+                    <div class="result-price">${results.cout_annuel_ttc || 0}€ <span>/an TTC</span></div>
                 </div>
                 
-                <!-- Détail de la consommation -->
-                <div class="details-consommation">
-                    <h4>🔍 Détail de votre consommation</h4>
-                    <div class="conso-grid">
-                        ${results.detail_chauffage ? `
-                        <div class="conso-item">
-                            <span class="conso-label">🏠 Chauffage</span>
-                            <span class="conso-valeur">${results.detail_chauffage} kWh/an</span>
-                        </div>` : ''}
-                        
-                        ${results.detail_eau_chaude ? `
-                        <div class="conso-item">
-                            <span class="conso-label">🚿 Eau chaude</span>
-                            <span class="conso-valeur">${results.detail_eau_chaude} kWh/an</span>
-                        </div>` : ''}
-                        
-                        ${results.detail_cuisson ? `
-                        <div class="conso-item">
-                            <span class="conso-label">🍳 Cuisson</span>
-                            <span class="conso-valeur">${results.detail_cuisson} kWh/an</span>
-                        </div>` : ''}
-                        
-                        <div class="conso-item">
-                            <span class="conso-label">⚡ Total</span>
-                            <span class="conso-valeur">${results.consommation_totale || 0} kWh/an</span>
-                        </div>
+                <div class="result-breakdown">
+                    <h4>Répartition de votre consommation</h4>
+                    <div class="breakdown-items">
+                        ${results.repartition ? Object.entries(results.repartition).map(([key, value]) => `
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">${formatUsageLabel(key)}</span>
+                                <span class="breakdown-value">${value} kWh/an</span>
+                            </div>
+                        `).join('') : ''}
                     </div>
                 </div>
-                
-                <!-- Informations complémentaires -->
-                <div class="informations-complementaires">
-                    <h4>ℹ️ À savoir</h4>
-                    <ul>
-                        <li>Cette estimation est basée sur des moyennes statistiques</li>
-                        <li>Votre consommation réelle peut varier selon vos habitudes</li>
-                        <li>Les prix incluent l'abonnement et les taxes</li>
-                        ${results.offre === 'propane' ? '<li>Tarifs gaz propane approximatifs (variables selon fournisseur)</li>' : ''}
-                    </ul>
-                </div>
-                
-                <!-- Conseils personnalisés -->
-                ${generatePersonalizedTips()}
             </div>
         `;
 
-        $('#resultats-container').html(resultatsHTML);
-
-        // Animation d'apparition
-        $('.resultats-content').hide().fadeIn(600);
+        // Afficher les actions
+        const calculActions = document.getElementById('calcul-actions');
+        if (calculActions) {
+            calculActions.style.display = 'block';
+        }
     }
 
-    function generatePersonalizedTips() {
-        let tips = '<div class="conseils-personnalises"><h4>💡 Conseils pour économiser</h4><ul>';
-
-        // Conseils basés sur les données du formulaire
-        if (formData.superficie > 200) {
-            tips += '<li>Logement spacieux : pensez à la programmation du chauffage par zones</li>';
-        }
-
-        if (formData.isolation === 'avant_1980') {
-            tips += '<li>Isolation ancienne : des travaux d\'isolation pourraient réduire votre facture de 30%</li>';
-        }
-
-        if (formData.nb_personnes > 4) {
-            tips += '<li>Famille nombreuse : optimisez les heures de cuisson et d\'eau chaude</li>';
-        }
-
-        if (formData.chauffage_gaz === 'oui') {
-            tips += '<li>Réduisez la température de 1°C pour économiser environ 7% sur le chauffage</li>';
-        }
-
-        tips += '<li>Entretenez régulièrement vos appareils gaz pour optimiser leur rendement</li>';
-        tips += '</ul></div>';
-
-        return tips;
+    function formatUsageLabel(key) {
+        const labels = {
+            'chauffage': '🔥 Chauffage',
+            'eau_chaude': '🚿 Eau chaude',
+            'cuisson': '🍳 Cuisson'
+        };
+        return labels[key] || key;
     }
 
-    // ===============================
+    // ================================
     // UTILITAIRES
-    // ===============================
-
-    function formatPrice(amount) {
-        return new Intl.NumberFormat('fr-FR', {
-            style: 'currency',
-            currency: 'EUR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount);
-    }
-
-    function showLoading() {
-        $('#loading-overlay').fadeIn(200);
-        $('.btn-calculate').prop('disabled', true).addClass('loading');
-    }
-
-    function hideLoading() {
-        $('#loading-overlay').fadeOut(200);
-        $('.btn-calculate').prop('disabled', false).removeClass('loading');
-    }
+    // ================================
 
     function showError(message) {
-        hideError();
+        console.error('Erreur formulaire:', message);
 
-        $('.error-text').text(message);
-        $('#error-container').fadeIn(300);
+        const errorContainer = document.getElementById('error-container');
+        const errorText = document.querySelector('.error-text');
 
-        // Masquer automatiquement après 5 secondes
-        setTimeout(hideError, 5000);
+        if (errorContainer && errorText) {
+            errorText.textContent = message;
+            errorContainer.style.display = 'block';
 
-        console.warn('⚠️ Erreur affichée:', message);
+            // Masquer après 5 secondes
+            setTimeout(() => {
+                errorContainer.style.display = 'none';
+            }, 5000);
+        } else {
+            // Fallback avec alert
+            alert(message);
+        }
     }
 
-    function hideError() {
-        $('#error-container').fadeOut(200);
+    function showLoadingState() {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
+
+        // Désactiver le bouton de calcul
+        const btnCalculate = document.querySelector('.btn-calculate');
+        if (btnCalculate) {
+            btnCalculate.disabled = true;
+            btnCalculate.textContent = 'Calcul en cours...';
+        }
     }
 
-    function displayError(message) {
-        showError(message);
+    function hideLoadingState() {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
 
-        // Scroll vers le haut pour voir l'erreur
-        $('html, body').animate({ scrollTop: 0 }, 300);
+        // Réactiver le bouton de calcul
+        const btnCalculate = document.querySelector('.btn-calculate');
+        if (btnCalculate) {
+            btnCalculate.disabled = false;
+            btnCalculate.innerHTML = '<span class="btn-icon">🔍</span> Calculer mon estimation';
+        }
     }
 
-    // ===============================
-    // GESTION DES RACCOURCIS CLAVIER
-    // ===============================
+    // ================================
+    // FONCTIONS PUBLIQUES
+    // ================================
 
-    $(document).on('keydown', function (e) {
-        // Échap pour masquer les erreurs
-        if (e.key === 'Escape') {
-            hideError();
-        }
-
-        // Flèches pour navigation
-        if (e.altKey) {
-            if (e.key === 'ArrowRight' && currentStep < totalSteps) {
-                e.preventDefault();
-                handleNext();
-            } else if (e.key === 'ArrowLeft' && currentStep > 1) {
-                e.preventDefault();
-                handlePrevious();
-            }
-        }
-
-        // Entrée pour action principale
-        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
-            const $activeBtn = $('.form-step.active .btn-primary:visible');
-            if ($activeBtn.length) {
-                e.preventDefault();
-                $activeBtn.click();
-            }
-        }
-    });
-
-    // ===============================
-    // EXPOSITION DES FONCTIONS GLOBALES
-    // ===============================
-
-    // Exposer certaines fonctions pour utilisation externe
-    window.gazResidentielSimulateur = {
-        navigateToStep: navigateToStep,
-        getCurrentStep: function () { return currentStep; },
-        getFormData: function () { return formData; },
-        recalculate: function () {
-            collectFormData();
-            calculateEstimation();
+    // Exposer certaines fonctions globalement si nécessaire
+    window.hticGazResidentiel = {
+        calculateEstimation: calculateGazEstimation,
+        updateEstimates: updateConsumptionEstimates,
+        validateForm: function () {
+            const formData = new FormData(document.getElementById('simulateur-gaz-residentiel'));
+            return validateForm(formData);
         }
     };
 
-    console.log('🔥 JavaScript Gaz Résidentiel - Chargé');
-
-})(jQuery);
+    console.log('Simulateur gaz résidentiel initialisé');
+});

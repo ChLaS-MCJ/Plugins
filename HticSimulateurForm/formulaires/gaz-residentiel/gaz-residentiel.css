@@ -1,0 +1,764 @@
+/**
+ * Styles pour le formulaire Gaz Résidentiel
+ * Fichier: formulaires/gaz-residentiel/gaz-residentiel.css
+ */
+
+/* ========================================
+   VARIABLES CSS POUR LE GAZ
+   ======================================== */
+:root {
+    --primary-gaz: #82C720;
+    --primary-gaz-50: #fdfffb;
+    --primary-gaz-100: #fdfffb;
+    --primary-gaz-200: #fdfffb;
+    --primary-gaz-500: #82C720;
+    --primary-gaz-600: #82C720;
+    --primary-gaz-700: #82C720;
+
+    --secondary-gaz: #2d3748;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --white: #ffffff;
+
+    --success: #82C720;
+    --success-50: #ecfdf5;
+    --success-100: #d1fae5;
+    --success-200: #a7f3d0;
+    --success-700: #047857;
+
+    --warning: #f59e0b;
+    --warning-50: #fffbeb;
+
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+    --space-xl: 1.5rem;
+    --space-2xl: 2rem;
+    --space-3xl: 3rem;
+
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    --transition: all 0.2s ease;
+}
+
+/* ========================================
+   STYLES GÉNÉRAUX - GAZ
+   ======================================== */
+.htic-simulateur-wrapper[data-type="gaz-residentiel"] {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--space-xl);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    color: var(--gray-700);
+}
+
+/* ========================================
+   EN-TÊTE DU SIMULATEUR
+   ======================================== */
+.simulateur-header {
+    text-align: center;
+    margin-bottom: var(--space-3xl);
+    padding: var(--space-2xl);
+    background: linear-gradient(135deg, var(--primary-gaz-50) 0%, var(--white) 100%);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--primary-gaz-200);
+}
+
+.header-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-lg);
+    display: block;
+}
+
+.simulateur-header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-md) 0;
+}
+
+.simulateur-header p {
+    font-size: 1.25rem;
+    color: var(--gray-600);
+    margin: 0;
+}
+
+/* ========================================
+   INDICATEUR DE PROGRESSION
+   ======================================== */
+.progress-container {
+    margin-bottom: var(--space-3xl);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--gray-200);
+    border-radius: 4px;
+    margin-bottom: var(--space-xl);
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-gaz), var(--primary-gaz-600));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 20%;
+}
+
+.progress-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0.5;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.step.active,
+.step.completed {
+    opacity: 1;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: var(--space-sm);
+    transition: var(--transition);
+}
+
+.step.active .step-number {
+    background: var(--primary-gaz);
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+.step.completed .step-number {
+    background: var(--success);
+    color: white;
+}
+
+.step-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-600);
+    text-align: center;
+}
+
+.step.active .step-label {
+    color: var(--primary-gaz);
+    font-weight: 600;
+}
+
+/* ========================================
+   FORMULAIRE PRINCIPAL
+   ======================================== */
+.simulateur-form {
+    position: relative;
+}
+
+.form-step {
+    display: none;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--gray-200);
+}
+
+.form-step.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   EN-TÊTE DES ÉTAPES
+   ======================================== */
+.step-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    padding-bottom: var(--space-xl);
+    border-bottom: 2px solid var(--gray-100);
+}
+
+.step-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-md) 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-lg);
+}
+
+.step-header p {
+    font-size: 1.125rem;
+    color: var(--gray-600);
+    margin: 0;
+}
+
+/* ========================================
+   GRILLE DE FORMULAIRE
+   ======================================== */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-2xl);
+}
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-lg);
+    }
+}
+
+/* ========================================
+   GROUPES DE CHAMPS
+   ======================================== */
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: var(--space-md);
+    display: block;
+}
+
+/* ========================================
+   CHAMPS DE SAISIE
+   ======================================== */
+.input-group {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.input-group input {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+}
+
+.input-suffix {
+    background: var(--gray-50);
+    border: 2px solid var(--gray-200);
+    border-left: none;
+    padding: 0.50rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-600);
+    border-top-right-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+    white-space: nowrap;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 10px 0px 0px 10px;
+    font-size: 1rem;
+    background: var(--white);
+    transition: var(--transition);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary-gaz);
+    box-shadow: 0 0 0 3px var(--primary-gaz-100);
+}
+
+.field-help {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    margin-top: var(--space-sm);
+    line-height: 1.4;
+}
+
+/* ========================================
+   GROUPES DE RADIO BUTTONS
+   ======================================== */
+.radio-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+}
+
+.radio-group.radio-column {
+    grid-template-columns: 1fr;
+}
+
+@media (max-width: 768px) {
+    .radio-group {
+        grid-template-columns: 1fr;
+    }
+}
+
+.radio-card {
+    transition: var(--transition);
+}
+
+.radio-card input[type="radio"] {
+    display: none;
+}
+
+.radio-content {
+    display: flex;
+    align-items: center;
+    padding: var(--space-xl);
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: var(--transition);
+    min-height: 100px;
+}
+
+.radio-content:hover {
+    border-color: var(--primary-gaz-200);
+    background: var(--primary-gaz-50);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.radio-card input:checked~.radio-content {
+    border-color: var(--primary-gaz);
+    background: var(--primary-gaz-50);
+    box-shadow: var(--shadow-lg);
+}
+
+.radio-icon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    border-radius: var(--radius-lg);
+    margin-right: var(--space-lg);
+    transition: var(--transition);
+}
+
+.radio-card input:checked~.radio-content .radio-icon {
+    background: var(--primary-gaz);
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+.radio-text {
+    flex: 1;
+}
+
+.radio-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--space-sm);
+}
+
+.radio-subtitle {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    margin-bottom: var(--space-xs);
+}
+
+.radio-details {
+    font-size: 0.75rem;
+    color: var(--primary-gaz-600);
+    font-weight: 500;
+    background: var(--primary-gaz-100);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-md);
+    display: inline-block;
+    margin-top: var(--space-sm);
+}
+
+/* ========================================
+   BOUTONS D'ACTION
+   ======================================== */
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-top: var(--space-2xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--gray-200);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--radius-lg);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: var(--primary-gaz);
+    color: white;
+    border-color: var(--primary-gaz);
+}
+
+.btn-primary:hover {
+    background: var(--primary-gaz-600);
+    border-color: var(--primary-gaz-600);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+    background: var(--white);
+    color: var(--gray-700);
+    border-color: var(--gray-300);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+.btn-success:hover {
+    background: var(--success-700);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-calculate {
+    background: linear-gradient(135deg, var(--primary-gaz), var(--primary-gaz-600));
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-calculate:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-icon {
+    font-size: 1.25rem;
+    transition: var(--transition);
+}
+
+.btn:hover .btn-icon {
+    transform: scale(1.1);
+}
+
+/* ========================================
+   AFFICHAGE CONDITIONNEL
+   ======================================== */
+.chauffage-details {
+    display: none;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+
+    to {
+        opacity: 1;
+        max-height: 500px;
+    }
+}
+
+/* ========================================
+   MESSAGES D'ERREUR
+   ======================================== */
+.error-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    max-width: 400px;
+}
+
+.error-message {
+    background: #fee;
+    border: 1px solid #fcc;
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    box-shadow: var(--shadow-lg);
+}
+
+.error-icon {
+    font-size: 1.5rem;
+    color: #d32f2f;
+}
+
+.error-text {
+    color: #d32f2f;
+    font-weight: 500;
+}
+
+/* ========================================
+   INDICATEUR DE CHARGEMENT
+   ======================================== */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid var(--primary-gaz-200);
+    border-top: 4px solid var(--primary-gaz);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: var(--space-lg);
+}
+
+/* ========================================
+   RÉSULTATS
+   ======================================== */
+#resultats-container {
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-600);
+    font-size: 1.125rem;
+}
+
+.resultats-content {
+    animation: fadeIn 0.5s ease;
+}
+
+.estimation-principale {
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary-gaz-50), var(--white));
+    border: 2px solid var(--primary-gaz-200);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    margin-bottom: var(--space-2xl);
+}
+
+.montant-annuel {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--primary-gaz);
+    margin: var(--space-lg) 0;
+    display: block;
+}
+
+.montant-mensuel {
+    font-size: 1.25rem;
+    color: var(--gray-600);
+    margin-bottom: var(--space-lg);
+}
+
+.details-consommation {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    box-shadow: var(--shadow);
+    margin-bottom: var(--space-xl);
+}
+
+.details-consommation h4 {
+    color: var(--gray-900);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: var(--space-lg);
+    text-align: center;
+}
+
+.conso-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+}
+
+@media (max-width: 768px) {
+    .conso-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.conso-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-md);
+}
+
+.conso-label {
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.conso-valeur {
+    font-weight: 600;
+    color: var(--primary-gaz);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 768px) {
+    .htic-simulateur-wrapper[data-type="gaz-residentiel"] {
+        padding: var(--space-lg);
+    }
+
+    .simulateur-header h1 {
+        font-size: 2rem;
+    }
+
+    .simulateur-header p {
+        font-size: 1rem;
+    }
+
+    .step-header h2 {
+        font-size: 1.5rem;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .form-step {
+        padding: var(--space-lg);
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .montant-annuel {
+        font-size: 2.5rem;
+    }
+}
+
+/* ========================================
+   IMPRESSION
+   ======================================== */
+@media print {
+
+    .form-actions,
+    .progress-container,
+    .btn {
+        display: none !important;
+    }
+
+    .form-step {
+        display: block !important;
+        box-shadow: none;
+        border: 1px solid #ccc;
+        break-inside: avoid;
+        margin-bottom: 20px;
+    }
+
+    .step-header {
+        border-bottom: 2px solid #000;
+    }
+
+    body {
+        font-size: 12pt;
+        line-height: 1.4;
+    }
+}

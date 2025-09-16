@@ -25,7 +25,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
     <!-- Indicateur de progression -->
     <div class="progress-container">
         <div class="progress-bar">
-            <div class="progress-fill" data-progress="14"></div>
+            <div class="progress-fill" data-progress="12.5"></div>
         </div>
         <div class="progress-steps">
             <div class="step active" data-step="1">
@@ -54,6 +54,10 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
             <div class="step" data-step="7">
                 <span class="step-number">7</span>
+                <span class="step-label">Contact</span>
+            </div>
+            <div class="step" data-step="8">
+                <span class="step-number">8</span>
                 <span class="step-label">Résultats</span>
             </div>
         </div>
@@ -605,17 +609,137 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 7: Résultats -->
+        <!-- ÉTAPE 7: Informations client -->
         <div class="form-step" data-step="7">
             <div class="step-header">
-                <h2>Vos résultats personnalisés</h2>
+                <h2>📧 Vos coordonnées</h2>
+                <p>Pour recevoir votre simulation personnalisée et être recontacté si vous le souhaitez</p>
+            </div>
+            
+            <div class="form-grid">
+                <!-- Nom -->
+                <div class="form-group">
+                    <label for="client_nom" class="form-label">Nom *</label>
+                    <input type="text" 
+                        id="client_nom" 
+                        name="client_nom" 
+                        required 
+                        class="form-input"
+                        placeholder="Votre nom">
+                </div>
+                
+                <!-- Prénom -->
+                <div class="form-group">
+                    <label for="client_prenom" class="form-label">Prénom *</label>
+                    <input type="text" 
+                        id="client_prenom" 
+                        name="client_prenom" 
+                        required 
+                        class="form-input"
+                        placeholder="Votre prénom">
+                </div>
+                
+                <!-- Email -->
+                <div class="form-group">
+                    <label for="client_email" class="form-label">Email *</label>
+                    <input type="email" 
+                        id="client_email" 
+                        name="client_email" 
+                        required 
+                        class="form-input"
+                        placeholder="exemple@email.com">
+                    <small class="form-help">Pour recevoir votre simulation</small>
+                </div>
+                
+                <!-- Téléphone -->
+                <div class="form-group">
+                    <label for="client_telephone" class="form-label">Téléphone *</label>
+                    <input type="tel" 
+                        id="client_telephone" 
+                        name="client_telephone" 
+                        required 
+                        class="form-input"
+                        placeholder="06 XX XX XX XX">
+                    <small class="form-help">Pour être recontacté si besoin</small>
+                </div>
+                
+                <!-- Adresse -->
+                <div class="form-group full-width">
+                    <label for="client_adresse" class="form-label">Adresse complète (optionnel)</label>
+                    <input type="text" 
+                        id="client_adresse" 
+                        name="client_adresse" 
+                        class="form-input"
+                        placeholder="Numéro et nom de rue">
+                </div>
+                
+                <!-- Code postal et Ville sur la même ligne -->
+                <div class="form-group">
+                    <label for="client_code_postal" class="form-label">Code postal (optionnel)</label>
+                    <input type="text" 
+                        id="client_code_postal" 
+                        name="client_code_postal" 
+                        pattern="[0-9]{5}"
+                        maxlength="5"
+                        class="form-input"
+                        placeholder="40000">
+                </div>
+                
+                <div class="form-group">
+                    <label for="client_ville" class="form-label">Ville (optionnel)</label>
+                    <input type="text" 
+                        id="client_ville" 
+                        name="client_ville" 
+                        class="form-input"
+                        placeholder="Votre ville">
+                </div>
+                
+                <!-- Information RGPD avec le même style que les autres info-box -->
+                <div class="form-group full-width">
+                    <div class="info-box">
+                        <div class="info-icon">🔒</div>
+                        <div class="info-content">
+                            <h4>Vos données sont protégées</h4>
+                            <p><strong>Envoi immédiat :</strong> Vos résultats détaillés seront envoyés directement à notre adresse email.</p>
+                            <p><strong>Confidentialité :</strong> Aucune donnée n'est conservée sur nos serveurs après l'envoi.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-step" data-step="8">
+            <div class="step-header">
+                <h2>📊 Vos résultats personnalisés</h2>
                 <p>Estimation basée sur vos informations</p>
             </div>
             
+            <!-- Container des résultats -->
             <div id="results-container">
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Calcul en cours...</p>
+                <!-- Les résultats seront injectés ici par JavaScript -->
+            </div>
+            
+            <!-- NOUVELLE SECTION : Actions après résultats -->
+            <div class="results-actions" style="display: none;">
+                <div class="actions-grid">
+                    <!-- Bouton télécharger PDF -->
+                    <button type="button" class="btn btn-secondary" id="btn-download-pdf">
+                        <span class="btn-icon">📄</span>
+                        Télécharger le PDF
+                    </button>
+                    
+                    <!-- Bouton envoyer par mail -->
+                    <button type="button" class="btn btn-primary" id="btn-send-email">
+                        <span class="btn-icon">✉️</span>
+                        Recevoir par email
+                    </button>
+                    
+                </div>
+                
+                <!-- Message de confirmation (caché par défaut) -->
+                <div class="confirmation-message" id="email-confirmation" style="display: none;">
+                    <div class="success-icon">✅</div>
+                    <p>Votre simulation a été envoyée avec succès à <strong id="email-display"></strong></p>
                 </div>
             </div>
         </div>

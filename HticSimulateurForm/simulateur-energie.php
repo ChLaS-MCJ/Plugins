@@ -671,15 +671,32 @@ class HticSimulateurEnergieAdmin {
     }
     
     public function get_default_gaz_residentiel() {
-        return array(
-            'gaz_abo_base' => 102.12, 
-            'gaz_kwh_base' => 0.0878,
-            'gaz_chauffage_avant_1980' => 180, 
-            'gaz_chauffage_1980_2000' => 120,
-            'gaz_chauffage_apres_2000' => 80, 
-            'gaz_chauffage_renovation' => 60,
-            'gaz_eau_chaude' => 1200, 
-            'gaz_cuisson' => 365
+       return array(
+            // Tarification
+            'gaz_abo_mensuel' => 102.12,
+            'gaz_prix_kwh' => 0.0878,
+            
+            // Consommations de base
+            'gaz_cuisson_annuel' => 250,
+            'gaz_eau_chaude_base' => 2000,
+            'gaz_eau_chaude_par_personne' => 400,
+            'gaz_cuisson_par_personne' => 50,
+            
+            // Chauffage par isolation (kWh/m²/an)
+            'gaz_chauffage_avant_1980' => 160,
+            'gaz_chauffage_1980_2000' => 70,
+            'gaz_chauffage_apres_2000' => 110,
+            'gaz_chauffage_renovation' => 20, 
+            
+            // Coefficients
+            'coefficient_maison' => 1.0,
+            'coefficient_appartement' => 0.85,
+            'temperature_reference' => 19.0,
+            'majoration_par_degre' => 7.0,
+            
+            // Limites
+            'surface_min_chauffage' => 15,
+            'nb_personnes_min' => 1
         );
     }
     

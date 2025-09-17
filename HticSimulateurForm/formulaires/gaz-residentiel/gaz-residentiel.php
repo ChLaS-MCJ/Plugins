@@ -17,7 +17,7 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
     
     <!-- En-tête du simulateur -->
     <div class="simulateur-header">
-        <div class="header-icon">⚡</div>
+        <div class="header-icon">🔥</div>
         <h1>Simulateur Gaz Résidentiel</h1>
         <p>Estimez votre consommation et trouvez le meilleur tarif pour votre logement</p>
     </div>

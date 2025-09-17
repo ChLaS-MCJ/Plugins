@@ -72,7 +72,7 @@
     text-align: center;
     margin-bottom: var(--space-3xl);
     padding: var(--space-2xl);
-    background: linear-gradient(135deg, var(--primary-gaz-50) 0%, var(--white) 100%);
+    background: linear-gradient(135deg, #222F46 0%, #57709d 100%);
     border-radius: var(--radius-xl);
     border: 1px solid var(--primary-gaz-200);
 }
@@ -86,13 +86,13 @@
 .simulateur-header h1 {
     font-size: 2.5rem;
     font-weight: 800;
-    color: var(--gray-900);
+    color: #ffffff;
     margin: 0 0 var(--space-md) 0;
 }
 
 .simulateur-header p {
     font-size: 1.25rem;
-    color: var(--gray-600);
+    color: #ffffff;
     margin: 0;
 }
 
@@ -114,10 +114,11 @@
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--primary-gaz), var(--primary-gaz-600));
+    background: linear-gradient(90deg, #82C720, #d0e9ab);
     border-radius: 4px;
     transition: width 0.3s ease;
-    width: 20%;
+    width: 33.33%;
+    box-shadow: 0 2px 4px rgba(30, 64, 175, 0.2);
 }
 
 .progress-steps {
@@ -182,15 +183,15 @@
    ======================================== */
 .simulateur-form {
     position: relative;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
 }
 
 .form-step {
     display: none;
-    background: var(--white);
-    border-radius: var(--radius-xl);
     padding: var(--space-2xl);
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--gray-200);
 }
 
 .form-step.active {
@@ -484,14 +485,14 @@ select {
 }
 
 .btn-secondary {
-    background: var(--white);
-    color: var(--gray-700);
-    border-color: var(--gray-300);
+    background: #ffffff;
+    color: #334155;
+    border-color: #cbd5e1;
 }
 
 .btn-secondary:hover {
-    background: var(--gray-50);
-    border-color: var(--gray-400);
+    background: #334155;
+    border-color: #334155;
 }
 
 .btn-success {
@@ -670,8 +671,11 @@ select {
 
 .form-navigation {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    padding-top: 25px;
+    padding: 2rem 2.5rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
 }
 
 #resultats-container {
@@ -1019,7 +1023,7 @@ select {
     text-align: center;
     color: white;
     margin-bottom: 32px;
-    box-shadow: 0 8px 32px rgba(255, 107, 53, 0.25);
+    box-shadow: 0 8px 32px rgba(57, 57, 57, 0.25);
     position: relative;
     overflow: hidden;
 }
@@ -1306,4 +1310,11 @@ select {
         height: 42px;
         font-size: 1.6rem;
     }
+}
+
+
+.results-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
 }

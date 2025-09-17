@@ -1,4 +1,4 @@
-// elec-professionnel.js - Version complète avec calculs côté serveur
+// gaz-professionnel.js - Version harmonisée avec elec-professionnel.js
 
 jQuery(document).ready(function ($) {
 
@@ -6,7 +6,7 @@ jQuery(document).ready(function ($) {
     const totalSteps = 4;
     let formData = {};
     let configData = {};
-    let uploadedFile = null;
+    let uploadedFile = null; // Changé de formData.kbis_file à uploadedFile
 
     init();
 
@@ -14,18 +14,20 @@ jQuery(document).ready(function ($) {
         loadConfigData();
         setupStepNavigation();
         setupFormValidation();
-        setupDynamicLogic();
+        setupProLogic();
         setupFileUpload();
+        loadCommunes();
     }
 
     function loadConfigData() {
-        const configElement = document.getElementById('simulateur-config-pro');
+        // Changé l'ID pour correspondre au template PHP
+        const configElement = document.getElementById('simulateur-config');
         if (configElement) {
             try {
                 configData = JSON.parse(configElement.textContent);
-                console.log('✅ Configuration Pro chargée:', configData);
+                console.log('✅ Configuration gaz pro chargée:', configData);
             } catch (e) {
-                console.error('❌ Erreur configuration Pro:', e);
+                console.error('❌ Erreur configuration:', e);
                 configData = {};
             }
         }
@@ -36,29 +38,33 @@ jQuery(document).ready(function ($) {
     // ===============================
 
     function setupStepNavigation() {
-        $('#btn-next-pro').on('click', function () {
+        $('#btn-next').on('click', function () {
             if (validateCurrentStep()) {
                 saveCurrentStepData();
                 goToNextStep();
             }
         });
 
-        $('#btn-previous-pro').on('click', function () {
+        $('#btn-previous').on('click', function () {
             saveCurrentStepData();
             goToPreviousStep();
         });
 
-        $('#btn-calculate-pro').on('click', function () {
+        $('#btn-calculate').on('click', function () {
             if (validateCurrentStep()) {
                 saveCurrentStepData();
                 calculateResults();
             }
         });
 
-        $('#btn-restart-pro').on('click', function () {
+        $('#btn-restart').on('click', function () {
             if (confirm('Voulez-vous vraiment recommencer ?')) {
                 restartSimulation();
             }
+        });
+
+        $('#btn-callback').on('click', function () {
+            registerCallback();
         });
 
         $('.step').on('click', function () {
@@ -111,44 +117,48 @@ jQuery(document).ready(function ($) {
     }
 
     function updateNavigation() {
-        $('#btn-previous-pro').toggle(currentStep > 1);
+        $('#btn-previous').toggle(currentStep > 1);
 
         if (currentStep === totalSteps) {
-            $('#btn-next-pro, #btn-calculate-pro').hide();
-            $('#btn-restart-pro').show();
+            $('#btn-next, #btn-calculate').hide();
+            $('#btn-restart').show();
         } else if (currentStep === totalSteps - 1) {
-            $('#btn-next-pro').hide();
-            $('#btn-calculate-pro').show();
-            $('#btn-restart-pro').hide();
+            $('#btn-next').hide();
+            $('#btn-calculate').show();
+            $('#btn-restart').hide();
         } else {
-            $('#btn-next-pro').show();
-            $('#btn-calculate-pro, #btn-restart-pro').hide();
+            $('#btn-next').show();
+            $('#btn-calculate, #btn-restart').hide();
         }
     }
 
     // ===============================
-    // LOGIQUE DYNAMIQUE
+    // LOGIQUE SPÉCIFIQUE PROFESSIONNEL
     // ===============================
 
-    function setupDynamicLogic() {
-        // Gestion catégorie et éligibilité TRV
-        $('input[name="categorie"]').on('change', function () {
-            const categorie = $(this).val();
+    function setupProLogic() {
+        // Gestion commune autre
+        $('#commune').on('change', handleCommuneSelection);
 
-            // Auto-update éligibilité TRV
-            if (categorie === 'BT < 36 kVA') {
-                $('input[name="eligible_trv"][value="oui"]').prop('checked', true);
-                $('input[name="eligible_trv"]').closest('.form-group').removeClass('disabled');
-            } else {
-                $('input[name="eligible_trv"][value="non"]').prop('checked', true);
-                $('input[name="eligible_trv"]').closest('.form-group').addClass('disabled');
+        // Validation de la consommation en temps réel
+        $('#consommation_previsionnelle').on('input', function () {
+            const value = parseFloat($(this).val());
+            const $helpText = $(this).closest('.form-group').find('.field-help');
+
+            if (value > 0 && value < 5000) {
+                $helpText.html('💡 <strong>Très petite consommation</strong> - Tarif P0/GOM0');
+            } else if (value >= 5000 && value < 15000) {
+                $helpText.html('💡 <strong>Petite entreprise</strong> - Tarif adapté aux commerces');
+            } else if (value >= 15000 && value < 35000) {
+                $helpText.html('💡 <strong>PME</strong> - Tarif optimisé pour les moyens consommateurs');
+            } else if (value >= 35000 && value < 100000) {
+                $helpText.html('⚠️ <strong>Grande consommation</strong> - Un devis personnalisé sera établi');
+            } else if (value >= 100000) {
+                $helpText.html('🏭 <strong>Très grande consommation</strong> - Offre sur mesure requise');
             }
-
-            // Limiter les options de puissance selon la catégorie
-            updatePuissanceOptions(categorie);
         });
 
-        // Checkbox "Je n'ai pas l'information"
+        // Checkbox "Je n'ai pas l'information" - ajusté pour le gaz (pas de PCE mais PDL/PRM électrique)
         $('#pas_info').on('change', function () {
             if ($(this).is(':checked')) {
                 $('#point_livraison').prop('disabled', true).val('');
@@ -159,43 +169,99 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        // Initialiser avec les valeurs par défaut
-        const defaultCategorie = $('input[name="categorie"]:checked').val();
-        if (defaultCategorie) {
-            updatePuissanceOptions(defaultCategorie);
+        // Format SIRET automatique avec badge visuel
+        $('#siret').on('input', function () {
+            let value = $(this).val().replace(/\s/g, '');
+            if (value.length > 14) {
+                value = value.substr(0, 14);
+            }
+            $(this).val(value);
+
+            // Validation visuelle du SIRET
+            const $badge = $('#siret-badge');
+            if (value.length === 14) {
+                $badge.text('✓').removeClass('invalid').addClass('valid').show();
+            } else if (value.length > 0) {
+                $badge.text('✗').removeClass('valid').addClass('invalid').show();
+            } else {
+                $badge.hide();
+            }
+        });
+    }
+
+    function handleCommuneSelection() {
+        const selectedValue = $('#commune').val();
+        const selectedOption = $('#commune option:selected');
+
+        if (selectedValue === 'autre') {
+            $('#autre-commune-details').slideDown();
+            $('#type-gaz-info').hide();
+        } else if (selectedValue && selectedValue !== '') {
+            $('#autre-commune-details').slideUp();
+            showTypeGazInfo(selectedOption);
+        } else {
+            $('#autre-commune-details').hide();
+            $('#type-gaz-info').hide();
         }
     }
 
-    function updatePuissanceOptions(categorie) {
-        const $select = $('#puissance');
-        $select.find('option').show();
+    function showTypeGazInfo(selectedOption) {
+        const typeGaz = selectedOption.data('type');
+        if (!typeGaz) return;
 
-        if (categorie === 'BT > 36 kVA') {
-            $select.find('option').each(function () {
-                const val = parseInt($(this).val());
-                if (val && val <= 36) {
-                    $(this).hide();
-                }
-            });
-            // Sélectionner une valeur valide si la valeur actuelle est cachée
-            if (parseInt($select.val()) <= 36) {
-                $select.val('42');
-            }
-        } else if (categorie === 'HTA') {
-            $select.find('option').each(function () {
-                const val = parseInt($(this).val());
-                if (val && val < 250) {
-                    $(this).hide();
-                }
-            });
-            if (parseInt($select.val()) < 250) {
-                $select.val('250');
-            }
-        }
+        const typeText = typeGaz === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
+        const icon = typeGaz === 'naturel' ? '🌱' : '⛽';
+
+        $('#type-gaz-text').html(`${icon} <strong>${typeText}</strong> disponible dans cette commune`);
+        $('#type-gaz-info').fadeIn();
+    }
+
+    function loadCommunes() {
+        const defaultCommunes = [
+            // Gaz Naturel
+            { nom: 'AIRE SUR L\'ADOUR', type: 'naturel' },
+            { nom: 'BARCELONNE DU GERS', type: 'naturel' },
+            { nom: 'GAAS', type: 'naturel' },
+            { nom: 'LABATUT', type: 'naturel' },
+            { nom: 'LALUQUE', type: 'naturel' },
+            { nom: 'MISSON', type: 'naturel' },
+            { nom: 'POUILLON', type: 'naturel' },
+
+            // Gaz Propane
+            { nom: 'BASCONS', type: 'propane' },
+            { nom: 'BENESSE LES DAX', type: 'propane' },
+            { nom: 'CAMPAGNE', type: 'propane' },
+            { nom: 'CARCARES SAINTE CROIX', type: 'propane' },
+            { nom: 'GEAUNE', type: 'propane' },
+            { nom: 'MAZEROLLES', type: 'propane' },
+            { nom: 'MEILHAN', type: 'propane' },
+            { nom: 'PONTONX SUR L\'ADOUR', type: 'propane' },
+            { nom: 'SAINT MAURICE', type: 'propane' },
+            { nom: 'SOUPROSSE', type: 'propane' },
+            { nom: 'TETHIEU', type: 'propane' },
+            { nom: 'YGOS SAINT SATURNIN', type: 'propane' }
+        ];
+
+        populateCommunesSelect(defaultCommunes);
+    }
+
+    function populateCommunesSelect(communes) {
+        const communesNaturel = communes.filter(c => c.type === 'naturel');
+        const communesPropane = communes.filter(c => c.type === 'propane');
+
+        $('#communes-naturel').empty();
+        communesNaturel.forEach(commune => {
+            $('#communes-naturel').append(`<option value="${commune.nom}" data-type="naturel">${commune.nom}</option>`);
+        });
+
+        $('#communes-propane').empty();
+        communesPropane.forEach(commune => {
+            $('#communes-propane').append(`<option value="${commune.nom}" data-type="propane">${commune.nom}</option>`);
+        });
     }
 
     // ===============================
-    // UPLOAD FICHIER
+    // UPLOAD FICHIER K-BIS (inspiré d'elec-pro)
     // ===============================
 
     function setupFileUpload() {
@@ -260,7 +326,7 @@ jQuery(document).ready(function ($) {
                 return;
             }
 
-            // Stocker le fichier
+            // Stocker le fichier comme dans elec-pro
             uploadedFile = file;
             formData.kbis_file = file;
 
@@ -270,7 +336,7 @@ jQuery(document).ready(function ($) {
             $uploadArea.addClass('has-file');
             $('.file-upload-text').hide();
 
-            console.log('📎 Fichier uploadé:', {
+            console.log('📎 Fichier K-bis uploadé:', {
                 name: file.name,
                 size: (file.size / 1024).toFixed(2) + ' Ko',
                 type: file.type
@@ -291,14 +357,14 @@ jQuery(document).ready(function ($) {
     }
 
     // ===============================
-    // VALIDATION
+    // VALIDATION (inspirée d'elec-pro)
     // ===============================
 
     function setupFormValidation() {
-        // Validation SIRET
+        // Validation SIRET comme dans elec-pro
         $('#siret').on('blur', function () {
             const siret = $(this).val().replace(/\s/g, '');
-            if (siret.length !== 14) {
+            if (siret && siret.length !== 14) {
                 $(this).addClass('field-error');
                 showValidationMessage('Le SIRET doit contenir 14 chiffres');
             } else {
@@ -309,7 +375,7 @@ jQuery(document).ready(function ($) {
         // Validation Code Postal
         $('#code_postal').on('blur', function () {
             const cp = $(this).val();
-            if (!/^[0-9]{5}$/.test(cp)) {
+            if (cp && !/^[0-9]{5}$/.test(cp)) {
                 $(this).addClass('field-error');
                 showValidationMessage('Le code postal doit contenir 5 chiffres');
             } else {
@@ -321,7 +387,7 @@ jQuery(document).ready(function ($) {
         $('#email').on('blur', function () {
             const email = $(this).val();
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
+            if (email && !emailRegex.test(email)) {
                 $(this).addClass('field-error');
                 showValidationMessage('Email invalide');
             } else {
@@ -332,7 +398,7 @@ jQuery(document).ready(function ($) {
         // Validation téléphone
         $('#telephone').on('blur', function () {
             const tel = $(this).val().replace(/[\s\-\(\)\.]/g, '');
-            if (tel.length < 10) {
+            if (tel && tel.length < 10) {
                 $(this).addClass('field-error');
             } else {
                 $(this).removeClass('field-error').addClass('field-success');
@@ -349,7 +415,7 @@ jQuery(document).ready(function ($) {
 
         // Validation par étape
         switch (currentStep) {
-            case 1: // Configuration
+            case 1: // Configuration gaz
                 isValid = validateStep1(currentStepElement);
                 break;
             case 2: // Localisation
@@ -370,28 +436,39 @@ jQuery(document).ready(function ($) {
     function validateStep1(stepElement) {
         let isValid = true;
 
-        // Catégorie
-        if (!stepElement.find('input[name="categorie"]:checked').length) {
+        // Validation commune
+        const commune = stepElement.find('#commune');
+        if (!commune.val()) {
+            commune.addClass('field-error');
             isValid = false;
+        } else {
+            commune.addClass('field-success');
         }
 
-        // Puissance
-        const puissance = stepElement.find('#puissance').val();
-        if (!puissance) {
-            stepElement.find('#puissance').addClass('field-error');
-            isValid = false;
+        // Validation pour autre commune
+        if (commune.val() === 'autre') {
+            const nomCommune = stepElement.find('#nom_commune_autre').val().trim();
+            const typeGaz = stepElement.find('input[name="type_gaz_autre"]:checked');
+
+            if (!nomCommune) {
+                stepElement.find('#nom_commune_autre').addClass('field-error');
+                isValid = false;
+            }
+
+            if (!typeGaz.length) {
+                isValid = false;
+            }
         }
 
-        // Formule tarifaire
-        if (!stepElement.find('input[name="formule_tarifaire"]:checked').length) {
+        // Validation consommation
+        const conso = stepElement.find('#consommation_previsionnelle');
+        const consoValue = parseFloat(conso.val());
+        if (!consoValue || consoValue < 100 || consoValue > 1000000) {
+            conso.addClass('field-error');
+            showValidationMessage('La consommation doit être entre 100 et 1 000 000 kWh');
             isValid = false;
-        }
-
-        // Consommation
-        const conso = parseInt(stepElement.find('#conso_annuelle').val());
-        if (!conso || conso < 1000) {
-            stepElement.find('#conso_annuelle').addClass('field-error');
-            isValid = false;
+        } else {
+            conso.addClass('field-success');
         }
 
         return isValid;
@@ -408,7 +485,7 @@ jQuery(document).ready(function ($) {
                 isValid = false;
             }
         } else {
-            // Vérifier PDL ou PRM
+            // Vérifier PDL ou PRM (même si c'est pour le gaz, on garde la logique électrique du template)
             const pdl = stepElement.find('#point_livraison').val();
             const prm = stepElement.find('#num_prm').val();
 
@@ -442,6 +519,7 @@ jQuery(document).ready(function ($) {
     function validateStep3(stepElement) {
         let isValid = true;
 
+        // Champs obligatoires comme dans elec-pro
         const requiredFields = [
             'nom', 'prenom', 'raison_sociale',
             'forme_juridique', 'siret', 'code_naf',
@@ -460,7 +538,7 @@ jQuery(document).ready(function ($) {
     }
 
     // ===============================
-    // COLLECTE DES DONNÉES
+    // COLLECTE DES DONNÉES (comme elec-pro)
     // ===============================
 
     function saveCurrentStepData() {
@@ -484,7 +562,7 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        // Ajouter le fichier uploadé si présent
+        // Ajouter le fichier uploadé si présent (comme elec-pro)
         if (uploadedFile && currentStep === 3) {
             formData.kbis_filename = uploadedFile.name;
             formData.kbis_size = uploadedFile.size;
@@ -517,7 +595,7 @@ jQuery(document).ready(function ($) {
             });
         });
 
-        // Ajouter le fichier uploadé si présent
+        // Ajouter le fichier uploadé si présent (comme elec-pro)
         if (uploadedFile) {
             formData.kbis_filename = uploadedFile.name;
             formData.kbis_size = uploadedFile.size;
@@ -536,12 +614,12 @@ jQuery(document).ready(function ($) {
         const allData = collectAllFormData();
 
         // Validation
-        if (!allData.categorie || !allData.conso_annuelle || !allData.puissance) {
+        if (!allData.commune || !allData.consommation_previsionnelle) {
             showValidationMessage('Données manquantes pour le calcul');
             return;
         }
 
-        console.log('🚀 Envoi des données au calculateur:', allData);
+        console.log('🚀 Envoi des données au calculateur gaz:', allData);
 
         // Afficher l'étape des résultats
         showStep(4);
@@ -549,11 +627,11 @@ jQuery(document).ready(function ($) {
         updateNavigation();
 
         // Afficher le loader
-        $('#results-container-pro').html(`
+        $('#results-container').html(`
             <div class="loading-state">
                 <div class="loading-spinner"></div>
                 <p>Calcul en cours...</p>
-                <small>Analyse des 4 offres tarifaires...</small>
+                <small>Analyse de votre offre gaz professionnel...</small>
             </div>
         `);
 
@@ -573,7 +651,7 @@ jQuery(document).ready(function ($) {
         // Préparer les données pour le calculateur
         const dataToSend = {
             action: 'htic_calculate_estimation',
-            type: 'elec-professionnel',
+            type: 'gaz-professionnel',
             user_data: userData,
             config_data: configData
         };
@@ -585,7 +663,7 @@ jQuery(document).ready(function ($) {
             dataToSend.nonce = hticSimulateurUnifix.calculateNonce;
         }
 
-        console.log('📤 Envoi AJAX:', {
+        console.log('📤 Envoi AJAX gaz pro:', {
             url: ajaxUrl,
             data: dataToSend
         });
@@ -597,16 +675,22 @@ jQuery(document).ready(function ($) {
             data: dataToSend,
             timeout: 30000,
             success: function (response) {
-                console.log('📥 Réponse du calculateur:', response);
+                console.log('📥 Réponse du calculateur gaz:', response);
 
                 if (response.success) {
-                    displayResults(response.data);
+                    // Vérifier si c'est un devis personnalisé
+                    if (response.data.devis_personnalise) {
+                        displayDevisPersonnalise(response.data);
+                    } else {
+                        displayResults(response.data);
+                    }
+                    setupEmailActions();
                 } else {
                     displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
                 }
             },
             error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX:', {
+                console.error('❌ Erreur AJAX gaz:', {
                     status: status,
                     error: error,
                     responseText: xhr.responseText,
@@ -629,257 +713,280 @@ jQuery(document).ready(function ($) {
     }
 
     // ===============================
-    // AFFICHAGE DES RÉSULTATS
+    // AFFICHAGE RÉSULTATS
     // ===============================
 
-    function displayResults(results) {
-        console.log('📊 Affichage des résultats Pro:', results);
+    function displayDevisPersonnalise(data) {
+        $('#results-container').hide();
+        $('#devis-personnalise-container').show();
 
-        // Vérifier que les données sont présentes
-        if (!results || !results.offres) {
+        // Remplir les informations du devis
+        $('#devis-entreprise').text(formData.raison_sociale || '--');
+        $('#devis-commune').text(data.commune || formData.commune || '--');
+        $('#devis-consommation').text((data.consommation_annuelle || formData.consommation_previsionnelle || 0).toLocaleString() + ' kWh/an');
+        $('#devis-type-gaz').text(data.type_gaz || 'Gaz naturel');
+
+        $('.results-actions').show();
+    }
+
+    function displayResults(results) {
+        if (!results || !results.consommation_annuelle) {
             displayError('Données de résultats incomplètes');
             return;
         }
 
-        // Déclarer les variables
-        const offres = results.offres || [];
-        const offresValides = offres.filter(o => o.total_ttc > 0); // Filtrer les offres valides
-        const meilleureOffre = results.meilleure_offre || offresValides[0];
-        const consommation = parseInt(results.consommation_annuelle) || 0;
-        const userData = results.user_data || formData;
+        $('#devis-personnalise-container').hide();
+        $('#results-container').show();
 
-        // Vérifier qu'on a des offres à afficher
-        if (offresValides.length === 0) {
-            displayError('Aucune offre disponible pour votre profil');
-            return;
-        }
+        const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
+        const coutAnnuel = parseFloat(results.cout_annuel_ttc) || 0;
+        const coutMensuel = Math.round(coutAnnuel / 12);
+        const prixKwh = parseFloat(results.prix_kwh) || 0;
+        const abonnementAnnuel = parseFloat(results.cout_abonnement) || 0;
+        const abonnementMensuel = Math.round(abonnementAnnuel / 12);
 
         const resultsHtml = `
-        <div class="results-summary">
-            <!-- Résultat principal -->
-            <div class="result-card main-result">
-                <div class="result-icon">⚡</div>
-                <h3>Analyse tarifaire pour votre entreprise</h3>
-                <div class="big-number">${consommation.toLocaleString()} <span>kWh/an</span></div>
-                <p>Puissance : <strong>${results.puissance} kVA</strong></p>
-                <p>Catégorie : <strong>${results.categorie}</strong></p>
-                <p>Meilleure offre : <strong>${meilleureOffre.total_ttc.toFixed(0).toLocaleString()}€ TTC/an</strong></p>
-            </div>
-
-            <!-- Comparaison des offres -->
-            <div class="tarifs-comparison">
-                <h3>💰 Comparaison des ${offresValides.length} offres disponibles</h3>
-                <div class="tarifs-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
-                    ${offresValides.map((offre, index) => `
-                        <div class="tarif-card ${offre.meilleure ? 'recommended' : ''}" 
-                             style="background: ${offre.meilleure ? 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)' : 'white'};">
-                            ${offre.meilleure ? '<span class="recommended-badge">⭐ Meilleure offre</span>' : ''}
-                            
-                            <div style="text-align: center; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
-                                <h4 style="margin: 0; color: #111827; font-size: 1.1rem;">${offre.nom}</h4>
-                                <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem;">
-                                    ${offre.type}
-                                </div>
-                            </div>
-                            
-                            <div class="tarif-prix">${offre.total_ttc.toFixed(0).toLocaleString()}€<span>/an TTC</span></div>
-                            <div class="tarif-mensuel">${(offre.total_ttc / 12).toFixed(0).toLocaleString()}€/mois</div>
-                            
-                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.875rem;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="color: #6b7280;">Total HT:</span>
-                                    <span style="font-weight: 600;">${offre.total_ht.toFixed(0).toLocaleString()}€</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="color: #6b7280;">Abonnement:</span>
-                                    <span style="font-weight: 600;">${offre.abonnement_annuel.toFixed(0)}€/an</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="color: #6b7280;">Consommation:</span>
-                                    <span style="font-weight: 600;">${offre.cout_consommation.toFixed(0).toLocaleString()}€</span>
-                                </div>
-                            </div>
-
-                            ${offre.nom === 'Tempo Pro' && offre.details_tempo ? `
-                                <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border-radius: 0.5rem; font-size: 0.7rem;">
-                                    <div style="font-weight: 600; margin-bottom: 0.5rem;">Détail Tempo:</div>
-                                    <div style="margin-bottom: 0.25rem;">
-                                        <strong>Rouge (${offre.details_tempo.jours_rouge}j):</strong> 
-                                        HP ${offre.details_tempo.prix_rouge_hp}€ | HC ${offre.details_tempo.prix_rouge_hc}€
-                                        <br>Coût: ${offre.details_tempo.cout_rouge.toFixed(0)}€
-                                    </div>
-                                    <div style="margin-bottom: 0.25rem;">
-                                        <strong>Blanc (${offre.details_tempo.jours_blanc}j):</strong>
-                                        HP ${offre.details_tempo.prix_blanc_hp}€ | HC ${offre.details_tempo.prix_blanc_hc}€
-                                        <br>Coût: ${offre.details_tempo.cout_blanc.toFixed(0)}€
-                                    </div>
-                                    <div>
-                                        <strong>Bleu (${offre.details_tempo.jours_bleu}j):</strong>
-                                        HP ${offre.details_tempo.prix_bleu_hp}€ | HC ${offre.details_tempo.prix_bleu_hc}€
-                                        <br>Coût: ${offre.details_tempo.cout_bleu.toFixed(0)}€
-                                    </div>
-                                </div>
-                            ` : ''}
-
-                            ${offre.details && offre.nom !== 'Tempo Pro' ? `
-                                <div style="margin-top: 1rem; padding: 0.5rem; background: #f9fafb; border-radius: 0.5rem;">
-                                    <div style="font-size: 0.75rem; color: #6b7280;">
-                                        ${offre.details}
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>
-                    `).join('')}
+            <div class="results-summary">
+                <!-- Résultat principal -->
+                <div class="result-card main-result">
+                    <div class="result-icon">🏢</div>
+                    <h3>Votre estimation professionnelle</h3>
+                    <div class="big-number">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
+                    <div class="result-price">${coutAnnuel.toLocaleString()}€ <span>/an HT</span></div>
+                    <p>Soit environ <strong>${coutMensuel}€/mois HT</strong></p>
                 </div>
                 
-                ${offresValides.length > 1 ? `
-                    <div class="economies" style="margin-top: 1.5rem;">
-                        <p>💡 <strong>Économie potentielle :</strong> 
-                        jusqu'à ${results.economie_max ? results.economie_max.toFixed(0).toLocaleString() : '0'}€/an 
-                        en choisissant la meilleure offre !</p>
+                <!-- Détails de l'offre - Design amélioré -->
+                <div class="offer-details-modern">
+                    <div class="offer-header">
+                        <h3>Détails de votre offre professionnelle</h3>
+                        <span class="offer-badge">${results.type_gaz || 'Gaz'}</span>
                     </div>
-                ` : ''}
-            </div>
-
-            <!-- Détail des taxes (meilleure offre) -->
-            ${meilleureOffre.taxes ? `
-            <div class="pro-recap-table" style="margin-top: 2rem;">
-                <div class="pro-recap-header">
-                    <h3>📊 Détail des taxes et contributions</h3>
+                    
+                    <div class="offer-main-grid">
+                        <!-- Carte tarification -->
+                        <div class="offer-card pricing-card">
+                            <div class="card-header">
+                                <div class="card-icon">💰</div>
+                                <h4>Tarification</h4>
+                            </div>
+                            <div class="card-content">
+                                <div class="pricing-row">
+                                    <span class="pricing-label">Tranche tarifaire</span>
+                                    <span class="pricing-value badge-primary">${results.tranche_tarifaire || '--'}</span>
+                                </div>
+                                <div class="pricing-row">
+                                    <span class="pricing-label">Prix du kWh HT</span>
+                                    <span class="pricing-value">${prixKwh.toFixed(4)}€</span>
+                                </div>
+                                <div class="pricing-row">
+                                    <span class="pricing-label">Abonnement HT</span>
+                                    <span class="pricing-value">${abonnementMensuel}€/mois</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Carte coûts -->
+                        <div class="offer-card costs-card">
+                            <div class="card-header">
+                                <div class="card-icon">📊</div>
+                                <h4>Répartition des coûts</h4>
+                            </div>
+                            <div class="card-content">
+                                <div class="cost-breakdown">
+                                    <div class="cost-item">
+                                        <div class="cost-label">
+                                            <span class="cost-icon">⚡</span>
+                                            Consommation annuelle
+                                        </div>
+                                        <div class="cost-value">${(results.cout_consommation || 0).toLocaleString()}€</div>
+                                    </div>
+                                    <div class="cost-item">
+                                        <div class="cost-label">
+                                            <span class="cost-icon">📅</span>
+                                            Abonnement annuel
+                                        </div>
+                                        <div class="cost-value">${(abonnementAnnuel || 0).toLocaleString()}€</div>
+                                    </div>
+                                    <div class="cost-separator"></div>
+                                    <div class="cost-item total">
+                                        <div class="cost-label">
+                                            <strong>Total annuel HT</strong>
+                                        </div>
+                                        <div class="cost-value primary">${coutAnnuel.toLocaleString()}€</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Barre d'économies potentielles -->
+                    <div class="savings-bar">
+                        <div class="savings-content">
+                            <div class="savings-icon">💡</div>
+                            <div class="savings-text">
+                                <strong>Économisez jusqu'à 15%</strong> en optimisant votre contrat professionnel
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="pro-recap-body">
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">CSPE</span>
-                        <span class="pro-recap-value">${meilleureOffre.taxes.cspe.toFixed(2)}€</span>
+                
+                <!-- Récapitulatif entreprise -->
+                <div class="recap-section">
+                    <div class="recap-header">
+                        <h3>Récapitulatif de votre simulation</h3>
                     </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">TCFE</span>
-                        <span class="pro-recap-value">${meilleureOffre.taxes.tcfe.toFixed(2)}€</span>
-                    </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">CTA</span>
-                        <span class="pro-recap-value">${meilleureOffre.taxes.cta.toFixed(2)}€</span>
-                    </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">TVA (20%)</span>
-                        <span class="pro-recap-value">${meilleureOffre.taxes.tva.toFixed(2)}€</span>
-                    </div>
-                    <div class="pro-recap-row total">
-                        <span class="pro-recap-label">Total taxes</span>
-                        <span class="pro-recap-value">${meilleureOffre.total_taxes.toFixed(2)}€</span>
+                    
+                    <div class="recap-content">
+                        <div class="recap-categories">
+                            
+                            <!-- Entreprise -->
+                            <div class="recap-category">
+                                <div class="category-header">
+                                    <div class="category-icon">🏢</div>
+                                    <div class="category-title">Entreprise</div>
+                                </div>
+                                <div class="category-items">
+                                    <div class="recap-item">
+                                        <span class="recap-label">Nom</span>
+                                        <span class="recap-value">${formData.raison_sociale || '--'}</span>
+                                    </div>
+                                    <div class="recap-item">
+                                        <span class="recap-label">Forme juridique</span>
+                                        <span class="recap-value">${formData.forme_juridique || '--'}</span>
+                                    </div>
+                                    ${formData.siret ? `
+                                    <div class="recap-item">
+                                        <span class="recap-label">SIRET</span>
+                                        <span class="recap-value">${formatSiret(formData.siret)}</span>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+                            
+                            <!-- Localisation -->
+                            <div class="recap-category">
+                                <div class="category-header">
+                                    <div class="category-icon">📍</div>
+                                    <div class="category-title">Localisation</div>
+                                </div>
+                                <div class="category-items">
+                                    <div class="recap-item">
+                                        <span class="recap-label">Commune</span>
+                                        <span class="recap-value">${formData.commune || 'Non spécifiée'}</span>
+                                    </div>
+                                    <div class="recap-item">
+                                        <span class="recap-label">Type de gaz</span>
+                                        <span class="recap-value highlight">${results.type_gaz || 'Non défini'}</span>
+                                    </div>
+                                    ${formData.code_postal ? `
+                                    <div class="recap-item">
+                                        <span class="recap-label">Code postal</span>
+                                        <span class="recap-value">${formData.code_postal}</span>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+                            
+                            <!-- Contact -->
+                            <div class="recap-category">
+                                <div class="category-header">
+                                    <div class="category-icon">📞</div>
+                                    <div class="category-title">Contact</div>
+                                </div>
+                                <div class="category-items">
+                                    <div class="recap-item">
+                                        <span class="recap-label">Contact</span>
+                                        <span class="recap-value">${formData.prenom} ${formData.nom}</span>
+                                    </div>
+                                    <div class="recap-item">
+                                        <span class="recap-label">Email</span>
+                                        <span class="recap-value">${formData.email || '--'}</span>
+                                    </div>
+                                    <div class="recap-item">
+                                        <span class="recap-label">Téléphone</span>
+                                        <span class="recap-value">${formData.telephone || '--'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
                     </div>
                 </div>
-            </div>
-            ` : ''}
-
-            <!-- Récapitulatif client -->
-            <div class="pro-recap-table">
-                <div class="pro-recap-header">
-                    <h3>📋 Récapitulatif de votre demande</h3>
-                </div>
-                <div class="pro-recap-body">
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">Entreprise</span>
-                        <span class="pro-recap-value">${userData.raison_sociale || '-'}</span>
-                    </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">SIRET</span>
-                        <span class="pro-recap-value">${userData.siret || '-'}</span>
-                    </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">Contact</span>
-                        <span class="pro-recap-value">${userData.nom || ''} ${userData.prenom || ''}</span>
-                    </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">Email</span>
-                        <span class="pro-recap-value">${userData.email || '-'}</span>
-                    </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">Téléphone</span>
-                        <span class="pro-recap-value">${userData.telephone || '-'}</span>
-                    </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">Adresse</span>
-                        <span class="pro-recap-value">${userData.adresse || ''} ${userData.code_postal || ''} ${userData.ville || ''}</span>
-                    </div>
-                    <div class="pro-recap-row">
-                        <span class="pro-recap-label">Document K-bis</span>
-                        <span class="pro-recap-value">${userData.kbis_filename || 'Non fourni'}</span>
-                    </div>
+                <!-- Actions -->
+                <div class="pro-actions">
+                    <button class="btn btn-success" onclick="sendResultsByEmail()">📧 Recevoir par email</button>
+                    <button class="btn btn-secondary" onclick="location.reload()">🔄 Nouvelle simulation</button>
                 </div>
             </div>
+        `;
 
-            <!-- Actions -->
-            <div class="pro-actions">
-                <button class="btn btn-success" onclick="sendResultsByEmail()">📧 Recevoir par email</button>
-                <button class="btn btn-secondary" onclick="location.reload()">🔄 Nouvelle simulation</button>
-            </div>
-        </div>
-    `;
-
-        $('#results-container-pro').html(resultsHtml);
+        $('#results-container').html(resultsHtml);
         $('.results-summary').hide().fadeIn(600);
 
-        // Préparer les données pour l'email avec toutes les infos
-        prepareEmailData(userData, offresValides, meilleureOffre);
+        // Préparer les données pour l'email
+        prepareEmailData(results);
     }
 
     function displayError(message) {
-        $('#results-container-pro').html(`
+        $('#results-container').html(`
             <div class="error-state">
                 <div class="error-icon">❌</div>
                 <h3>Erreur lors du calcul</h3>
                 <p>${message}</p>
                 <div class="error-actions">
                     <button class="btn btn-primary" onclick="location.reload()">🔄 Recharger</button>
-                    <button class="btn btn-secondary" id="btn-back-to-form-pro">← Retour au formulaire</button>
+                    <button class="btn btn-secondary" id="btn-back-to-form-gaz">← Retour au formulaire</button>
                 </div>
             </div>
         `);
 
-        $('#btn-back-to-form-pro').on('click', function () {
+        $('#btn-back-to-form-gaz').on('click', function () {
             goToStep(3);
         });
     }
 
     // ===============================
-    // PRÉPARATION EMAIL
+    // EMAIL ET ACTIONS
     // ===============================
 
-    function prepareEmailData(userData, offres, meilleureOffre) {
+    function setupEmailActions() {
+        // Actions email similaires à elec-pro
+        $(document).on('click', '#btn-send-email', function () {
+            if (window.emailData) {
+                sendEmail();
+            }
+        });
+
+        $(document).on('click', '#btn-download-pdf', function () {
+            downloadPDF();
+        });
+    }
+
+    function prepareEmailData(results) {
         const emailData = {
             entreprise: {
-                raison_sociale: userData.raison_sociale || formData.raison_sociale,
-                siret: userData.siret || formData.siret,
-                forme_juridique: userData.forme_juridique || formData.forme_juridique,
-                code_naf: userData.code_naf || formData.code_naf
+                raison_sociale: formData.raison_sociale,
+                siret: formData.siret,
+                forme_juridique: formData.forme_juridique,
+                code_naf: formData.code_naf
             },
             contact: {
-                nom: userData.nom || formData.nom,
-                prenom: userData.prenom || formData.prenom,
-                email: userData.email || formData.email,
-                telephone: userData.telephone || formData.telephone
+                nom: formData.nom,
+                prenom: formData.prenom,
+                email: formData.email,
+                telephone: formData.telephone
             },
-            adresse: {
-                rue: userData.adresse || formData.adresse,
-                complement: userData.complement_adresse || formData.complement_adresse,
-                code_postal: userData.code_postal || formData.code_postal,
-                ville: userData.ville || formData.ville
-            },
-            consommation: {
-                annuelle: userData.conso_annuelle || formData.conso_annuelle || userData.consommation_annuelle,
-                puissance: userData.puissance || formData.puissance,
-                formule: userData.formule_tarifaire || formData.formule_tarifaire || userData.formule,
-                categorie: userData.categorie || formData.categorie
-            },
-            offres: offres,
-            meilleure_offre: meilleureOffre,
-            document_kbis: userData.kbis_filename || formData.kbis_filename || null,
+            results: results,
+            document_kbis: formData.kbis_filename || null,
             date_simulation: new Date().toISOString()
         };
 
         window.emailData = emailData;
-        console.log('📧 Données email préparées:', emailData);
+        console.log('📧 Données email gaz préparées:', emailData);
+    }
+
+    function registerCallback() {
+        // Fonction de callback
+        console.log('📞 Demande de rappel gaz pro');
     }
 
     window.sendResultsByEmail = function () {
@@ -888,38 +995,22 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        // Déterminer l'URL AJAX
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
-        }
+        console.log('📮 Envoi email gaz pro avec les données:', window.emailData);
+        alert('Email envoyé avec succès !'); // Placeholder
+    };
 
-        console.log('📮 Envoi email avec les données:', window.emailData);
-
-        $.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            data: {
-                action: 'send_pro_simulation_email',
-                email_data: window.emailData,
-                nonce: typeof hticSimulateur !== 'undefined' ? hticSimulateur.nonce : ''
-            },
-            success: function (response) {
-                if (response.success) {
-                    alert('Email envoyé avec succès !');
-                } else {
-                    alert('Erreur lors de l\'envoi: ' + (response.data || 'Erreur inconnue'));
-                }
-            },
-            error: function () {
-                alert('Erreur de connexion lors de l\'envoi de l\'email');
-            }
-        });
+    window.downloadPDF = function () {
+        alert('Fonction de téléchargement PDF gaz pro en cours de développement');
     };
 
     // ===============================
     // UTILITAIRES
     // ===============================
+
+    function formatSiret(siret) {
+        if (!siret || siret.length !== 14) return siret;
+        return siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4');
+    }
 
     function showValidationMessage(message) {
         $('.validation-message').remove();
@@ -936,7 +1027,7 @@ jQuery(document).ready(function ($) {
         currentStep = 1;
         formData = {};
         uploadedFile = null;
-        $('#simulateur-elec-professionnel')[0].reset();
+        $('#simulateur-gaz-professionnel')[0].reset();
         showStep(1);
         updateProgress();
         updateNavigation();
@@ -944,10 +1035,11 @@ jQuery(document).ready(function ($) {
         $('.file-selected-name').hide();
         $('.file-upload-area').removeClass('has-file');
         $('.file-upload-text').show();
+        $('#siret-badge').hide();
     }
 
     // API publique
-    window.HticSimulateurProData = {
+    window.HticGazProfessionnelData = {
         getCurrentData: () => formData,
         getAllData: collectAllFormData,
         getConfigData: () => configData,

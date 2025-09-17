@@ -1,12 +1,12 @@
-// gaz-professionnel.js - JavaScript pour collecte de données et calcul professionnel
+// gaz-professionnel.js - Version harmonisée avec elec-professionnel.js
 
 jQuery(document).ready(function ($) {
 
     let currentStep = 1;
-    const totalSteps = 3; // Seulement 3 étapes pour pro
+    const totalSteps = 4;
     let formData = {};
     let configData = {};
-    let calculationResults = null;
+    let uploadedFile = null; // Changé de formData.kbis_file à uploadedFile
 
     init();
 
@@ -15,14 +15,17 @@ jQuery(document).ready(function ($) {
         setupStepNavigation();
         setupFormValidation();
         setupProLogic();
+        setupFileUpload();
         loadCommunes();
     }
 
     function loadConfigData() {
+        // Changé l'ID pour correspondre au template PHP
         const configElement = document.getElementById('simulateur-config');
         if (configElement) {
             try {
                 configData = JSON.parse(configElement.textContent);
+                console.log('✅ Configuration gaz pro chargée:', configData);
             } catch (e) {
                 console.error('❌ Erreur configuration:', e);
                 configData = {};
@@ -55,7 +58,7 @@ jQuery(document).ready(function ($) {
         });
 
         $('#btn-restart').on('click', function () {
-            if (confirm('Voulez-vous vraiment recommencer la simulation ?')) {
+            if (confirm('Voulez-vous vraiment recommencer ?')) {
                 restartSimulation();
             }
         });
@@ -114,28 +117,23 @@ jQuery(document).ready(function ($) {
     }
 
     function updateNavigation() {
-        // Bouton Précédent
         $('#btn-previous').toggle(currentStep > 1);
 
-        // Gestion des boutons pour 3 étapes
-        if (currentStep === 3) { // Étape résultats
+        if (currentStep === totalSteps) {
             $('#btn-next, #btn-calculate').hide();
             $('#btn-restart').show();
-            $('.results-actions').show();
-        } else if (currentStep === 2) { // Étape contact
+        } else if (currentStep === totalSteps - 1) {
             $('#btn-next').hide();
             $('#btn-calculate').show();
             $('#btn-restart').hide();
-            $('.results-actions').hide();
-        } else if (currentStep === 1) { // Étape 1
+        } else {
             $('#btn-next').show();
             $('#btn-calculate, #btn-restart').hide();
-            $('.results-actions').hide();
         }
     }
 
     // ===============================
-    // LOGIQUE SPÉCIFIQUE PRO
+    // LOGIQUE SPÉCIFIQUE PROFESSIONNEL
     // ===============================
 
     function setupProLogic() {
@@ -147,7 +145,6 @@ jQuery(document).ready(function ($) {
             const value = parseFloat($(this).val());
             const $helpText = $(this).closest('.form-group').find('.field-help');
 
-            // Afficher une aide contextuelle selon la valeur
             if (value > 0 && value < 5000) {
                 $helpText.html('💡 <strong>Très petite consommation</strong> - Tarif P0/GOM0');
             } else if (value >= 5000 && value < 15000) {
@@ -155,19 +152,40 @@ jQuery(document).ready(function ($) {
             } else if (value >= 15000 && value < 35000) {
                 $helpText.html('💡 <strong>PME</strong> - Tarif optimisé pour les moyens consommateurs');
             } else if (value >= 35000 && value < 100000) {
-                $helpText.html('⚠️ <strong>Grande consommation</strong> - Un devis personnalisé sera établi pour le gaz naturel');
+                $helpText.html('⚠️ <strong>Grande consommation</strong> - Un devis personnalisé sera établi');
             } else if (value >= 100000) {
                 $helpText.html('🏭 <strong>Très grande consommation</strong> - Offre sur mesure requise');
             }
         });
 
-        // Format SIRET automatique
-        $('#entreprise_siret').on('input', function () {
+        // Checkbox "Je n'ai pas l'information" - ajusté pour le gaz (pas de PCE mais PDL/PRM électrique)
+        $('#pas_info').on('change', function () {
+            if ($(this).is(':checked')) {
+                $('#point_livraison').prop('disabled', true).val('');
+                $('#num_prm').prop('disabled', true).val('');
+            } else {
+                $('#point_livraison').prop('disabled', false);
+                $('#num_prm').prop('disabled', false);
+            }
+        });
+
+        // Format SIRET automatique avec badge visuel
+        $('#siret').on('input', function () {
             let value = $(this).val().replace(/\s/g, '');
             if (value.length > 14) {
                 value = value.substr(0, 14);
             }
             $(this).val(value);
+
+            // Validation visuelle du SIRET
+            const $badge = $('#siret-badge');
+            if (value.length === 14) {
+                $badge.text('✓').removeClass('invalid').addClass('valid').show();
+            } else if (value.length > 0) {
+                $badge.text('✗').removeClass('valid').addClass('invalid').show();
+            } else {
+                $badge.hide();
+            }
         });
     }
 
@@ -199,7 +217,6 @@ jQuery(document).ready(function ($) {
     }
 
     function loadCommunes() {
-        // Communes par défaut (identiques au résidentiel)
         const defaultCommunes = [
             // Gaz Naturel
             { nom: 'AIRE SUR L\'ADOUR', type: 'naturel' },
@@ -232,13 +249,11 @@ jQuery(document).ready(function ($) {
         const communesNaturel = communes.filter(c => c.type === 'naturel');
         const communesPropane = communes.filter(c => c.type === 'propane');
 
-        // Remplir le groupe naturel
         $('#communes-naturel').empty();
         communesNaturel.forEach(commune => {
             $('#communes-naturel').append(`<option value="${commune.nom}" data-type="naturel">${commune.nom}</option>`);
         });
 
-        // Remplir le groupe propane
         $('#communes-propane').empty();
         communesPropane.forEach(commune => {
             $('#communes-propane').append(`<option value="${commune.nom}" data-type="propane">${commune.nom}</option>`);
@@ -246,16 +261,148 @@ jQuery(document).ready(function ($) {
     }
 
     // ===============================
-    // VALIDATION
+    // UPLOAD FICHIER K-BIS (inspiré d'elec-pro)
+    // ===============================
+
+    function setupFileUpload() {
+        const $fileInput = $('#kbis');
+        const $uploadArea = $('#upload-area');
+        const $fileName = $('.file-name-text');
+        const $fileSelected = $('.file-selected-name');
+        const $fileRemove = $('.file-remove');
+
+        // Click sur la zone d'upload
+        $uploadArea.on('click', function (e) {
+            if (!$(e.target).hasClass('file-remove')) {
+                $fileInput.trigger('click');
+            }
+        });
+
+        // Drag & Drop
+        $uploadArea.on('dragover', function (e) {
+            e.preventDefault();
+            $(this).addClass('drag-over');
+        });
+
+        $uploadArea.on('dragleave', function (e) {
+            e.preventDefault();
+            $(this).removeClass('drag-over');
+        });
+
+        $uploadArea.on('drop', function (e) {
+            e.preventDefault();
+            $(this).removeClass('drag-over');
+
+            const files = e.originalEvent.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // Sélection de fichier
+        $fileInput.on('change', function () {
+            if (this.files && this.files[0]) {
+                handleFileSelect(this.files[0]);
+            }
+        });
+
+        // Supprimer le fichier
+        $fileRemove.on('click', function (e) {
+            e.stopPropagation();
+            removeFile();
+        });
+
+        function handleFileSelect(file) {
+            // Vérifier le type
+            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+            if (!allowedTypes.includes(file.type)) {
+                showValidationMessage('Format non supporté. Utilisez PDF, JPG ou PNG.');
+                return;
+            }
+
+            // Vérifier la taille (5 Mo max)
+            if (file.size > 5 * 1024 * 1024) {
+                showValidationMessage('Le fichier est trop lourd (max 5 Mo)');
+                return;
+            }
+
+            // Stocker le fichier comme dans elec-pro
+            uploadedFile = file;
+            formData.kbis_file = file;
+
+            // Afficher le nom
+            $fileName.text(file.name);
+            $fileSelected.show();
+            $uploadArea.addClass('has-file');
+            $('.file-upload-text').hide();
+
+            console.log('📎 Fichier K-bis uploadé:', {
+                name: file.name,
+                size: (file.size / 1024).toFixed(2) + ' Ko',
+                type: file.type
+            });
+        }
+
+        function removeFile() {
+            uploadedFile = null;
+            delete formData.kbis_file;
+            $fileInput.val('');
+            $fileName.text('');
+            $fileSelected.hide();
+            $uploadArea.removeClass('has-file');
+            $('.file-upload-text').show();
+
+            console.log('🗑️ Fichier supprimé');
+        }
+    }
+
+    // ===============================
+    // VALIDATION (inspirée d'elec-pro)
     // ===============================
 
     function setupFormValidation() {
-        $('input[required], select[required]').on('blur', function () {
-            validateField($(this));
+        // Validation SIRET comme dans elec-pro
+        $('#siret').on('blur', function () {
+            const siret = $(this).val().replace(/\s/g, '');
+            if (siret && siret.length !== 14) {
+                $(this).addClass('field-error');
+                showValidationMessage('Le SIRET doit contenir 14 chiffres');
+            } else {
+                $(this).removeClass('field-error').addClass('field-success');
+            }
         });
 
-        $('input[type="number"]').on('input', function () {
-            validateNumberField($(this));
+        // Validation Code Postal
+        $('#code_postal').on('blur', function () {
+            const cp = $(this).val();
+            if (cp && !/^[0-9]{5}$/.test(cp)) {
+                $(this).addClass('field-error');
+                showValidationMessage('Le code postal doit contenir 5 chiffres');
+            } else {
+                $(this).removeClass('field-error').addClass('field-success');
+            }
+        });
+
+        // Validation Email
+        $('#email').on('blur', function () {
+            const email = $(this).val();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (email && !emailRegex.test(email)) {
+                $(this).addClass('field-error');
+                showValidationMessage('Email invalide');
+            } else {
+                $(this).removeClass('field-error').addClass('field-success');
+            }
+        });
+
+        // Validation téléphone
+        $('#telephone').on('blur', function () {
+            const tel = $(this).val().replace(/[\s\-\(\)\.]/g, '');
+            if (tel && tel.length < 10) {
+                $(this).addClass('field-error');
+            } else {
+                $(this).removeClass('field-error').addClass('field-success');
+            }
         });
     }
 
@@ -263,19 +410,24 @@ jQuery(document).ready(function ($) {
         const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
         let isValid = true;
 
-        currentStepElement.find('.field-error, .field-success').removeClass('field-error field-success');
+        // Retirer les classes d'erreur existantes
+        currentStepElement.find('.field-error').removeClass('field-error');
 
+        // Validation par étape
         switch (currentStep) {
-            case 1:
+            case 1: // Configuration gaz
                 isValid = validateStep1(currentStepElement);
                 break;
-            case 2:
+            case 2: // Localisation
                 isValid = validateStep2(currentStepElement);
+                break;
+            case 3: // Titulaire
+                isValid = validateStep3(currentStepElement);
                 break;
         }
 
         if (!isValid) {
-            showValidationMessage('Veuillez remplir tous les champs obligatoires avant de continuer.');
+            showValidationMessage('Veuillez remplir tous les champs obligatoires');
         }
 
         return isValid;
@@ -324,231 +476,179 @@ jQuery(document).ready(function ($) {
 
     function validateStep2(stepElement) {
         let isValid = true;
-        let errors = [];
 
-        // Champs obligatoires entreprise
+        // Si "Je n'ai pas l'information" est coché, on skip certaines validations
+        if ($('#pas_info').is(':checked')) {
+            // Vérifier juste l'adresse principale
+            if (!stepElement.find('#adresse').val()) {
+                stepElement.find('#adresse').addClass('field-error');
+                isValid = false;
+            }
+        } else {
+            // Vérifier PDL ou PRM (même si c'est pour le gaz, on garde la logique électrique du template)
+            const pdl = stepElement.find('#point_livraison').val();
+            const prm = stepElement.find('#num_prm').val();
+
+            if (!pdl && !prm) {
+                stepElement.find('#point_livraison, #num_prm').addClass('field-error');
+                isValid = false;
+            }
+        }
+
+        // Adresse obligatoire
+        if (!stepElement.find('#adresse').val()) {
+            stepElement.find('#adresse').addClass('field-error');
+            isValid = false;
+        }
+
+        // Code postal obligatoire
+        if (!stepElement.find('#code_postal').val()) {
+            stepElement.find('#code_postal').addClass('field-error');
+            isValid = false;
+        }
+
+        // Ville obligatoire
+        if (!stepElement.find('#ville').val()) {
+            stepElement.find('#ville').addClass('field-error');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    function validateStep3(stepElement) {
+        let isValid = true;
+
+        // Champs obligatoires comme dans elec-pro
         const requiredFields = [
-            { id: 'entreprise_nom', label: 'Nom de l\'entreprise' },
-            { id: 'entreprise_secteur', label: 'Secteur d\'activité' },
-            { id: 'contact_nom', label: 'Nom du contact' },
-            { id: 'contact_prenom', label: 'Prénom du contact' },
-            { id: 'contact_email', label: 'Email' },
-            { id: 'contact_telephone', label: 'Téléphone' }
+            'nom', 'prenom', 'raison_sociale',
+            'forme_juridique', 'siret', 'code_naf',
+            'email', 'telephone'
         ];
 
         requiredFields.forEach(field => {
-            const $field = stepElement.find(`#${field.id}`);
-            const value = $field.val().trim();
-
-            if (!value) {
-                isValid = false;
-                errors.push(`Le champ "${field.label}" est requis`);
+            const $field = stepElement.find(`#${field}`);
+            if (!$field.val()) {
                 $field.addClass('field-error');
-            } else {
-                $field.removeClass('field-error').addClass('field-success');
+                isValid = false;
             }
         });
 
-        // Validation SIRET si rempli
-        const siret = stepElement.find('#entreprise_siret').val().trim();
-        if (siret && !/^[0-9]{14}$/.test(siret)) {
-            isValid = false;
-            errors.push('Le SIRET doit contenir exactement 14 chiffres');
-            stepElement.find('#entreprise_siret').addClass('field-error');
-        }
-
-        // Validation email
-        const email = stepElement.find('#contact_email').val().trim();
-        if (email && !isValidEmail(email)) {
-            isValid = false;
-            errors.push('L\'adresse email n\'est pas valide');
-            stepElement.find('#contact_email').addClass('field-error');
-        }
-
-        // Validation téléphone
-        const phone = stepElement.find('#contact_telephone').val().trim();
-        if (phone && !isValidPhone(phone)) {
-            isValid = false;
-            errors.push('Le numéro de téléphone n\'est pas valide');
-            stepElement.find('#contact_telephone').addClass('field-error');
-        }
-
-        // Validation code postal
-        const codePostal = stepElement.find('#entreprise_code_postal').val().trim();
-        if (codePostal && !/^[0-9]{5}$/.test(codePostal)) {
-            isValid = false;
-            errors.push('Le code postal doit contenir 5 chiffres');
-            stepElement.find('#entreprise_code_postal').addClass('field-error');
-        }
-
-        if (!isValid && errors.length > 0) {
-            showValidationMessage(errors.join('<br>'));
-        }
-
         return isValid;
     }
 
-    function isValidEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
-    }
-
-    function isValidPhone(phone) {
-        const re = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
-        return re.test(phone.replace(/\s/g, ''));
-    }
-
     // ===============================
-    // COLLECTE DES DONNÉES
-    // ===============================
-
-    function collectEntrepriseData() {
-        return {
-            entreprise_nom: $('#entreprise_nom').val().trim(),
-            entreprise_siret: $('#entreprise_siret').val().trim(),
-            entreprise_secteur: $('#entreprise_secteur').val(),
-            entreprise_adresse: $('#entreprise_adresse').val().trim(),
-            entreprise_code_postal: $('#entreprise_code_postal').val().trim(),
-            entreprise_ville: $('#entreprise_ville').val().trim(),
-            contact_nom: $('#contact_nom').val().trim(),
-            contact_prenom: $('#contact_prenom').val().trim(),
-            contact_fonction: $('#contact_fonction').val().trim(),
-            contact_email: $('#contact_email').val().trim(),
-            contact_telephone: $('#contact_telephone').val().trim(),
-            contact_horaire: $('#contact_horaire').val()
-        };
-    }
-
-    function validateField($field) {
-        const fieldType = $field.attr('type');
-        const fieldName = $field.attr('name');
-        let isValid = true;
-
-        $field.removeClass('field-error field-success');
-
-        if (fieldType === 'radio') {
-            isValid = $(`input[name="${fieldName}"]:checked`).length > 0;
-        } else if ($field.is('select')) {
-            isValid = $field.val() !== '' && $field.val() !== null;
-        } else {
-            isValid = $field.val().trim() !== '';
-        }
-
-        $field.addClass(isValid ? 'field-success' : 'field-error');
-        return isValid;
-    }
-
-    function validateNumberField($field) {
-        const min = parseFloat($field.attr('min'));
-        const max = parseFloat($field.attr('max'));
-        const value = parseFloat($field.val());
-
-        $field.removeClass('field-error field-success');
-
-        if (isNaN(value)) {
-            $field.addClass('field-error');
-            return false;
-        }
-
-        if (!isNaN(min) && value < min) {
-            $field.addClass('field-error');
-            showValidationMessage(`La valeur minimum est ${min}`);
-            return false;
-        }
-
-        if (!isNaN(max) && value > max) {
-            $field.addClass('field-error');
-            showValidationMessage(`La valeur maximum est ${max}`);
-            return false;
-        }
-
-        $field.addClass('field-success');
-        return true;
-    }
-
-    // ===============================
-    // SAUVEGARDE DES DONNÉES
+    // COLLECTE DES DONNÉES (comme elec-pro)
     // ===============================
 
     function saveCurrentStepData() {
         const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
 
-        currentStepElement.find('input, select, textarea').each(function () {
+        currentStepElement.find('input, select').each(function () {
             const $field = $(this);
             const name = $field.attr('name');
             const type = $field.attr('type');
 
-            if (!name) return;
+            if (!name || type === 'file') return;
 
             if (type === 'radio') {
                 if ($field.is(':checked')) {
                     formData[name] = $field.val();
                 }
+            } else if (type === 'checkbox') {
+                formData[name] = $field.is(':checked');
             } else {
                 formData[name] = $field.val();
             }
         });
+
+        // Ajouter le fichier uploadé si présent (comme elec-pro)
+        if (uploadedFile && currentStep === 3) {
+            formData.kbis_filename = uploadedFile.name;
+            formData.kbis_size = uploadedFile.size;
+            formData.kbis_type = uploadedFile.type;
+        }
+
+        console.log('📝 Données sauvegardées étape', currentStep, ':', formData);
     }
 
     function collectAllFormData() {
         formData = {};
 
         $('.form-step').each(function () {
-            const $step = $(this);
-
-            $step.find('input, select, textarea').each(function () {
+            $(this).find('input, select').each(function () {
                 const $field = $(this);
                 const name = $field.attr('name');
                 const type = $field.attr('type');
 
-                if (!name) return;
+                if (!name || type === 'file') return;
 
                 if (type === 'radio') {
                     if ($field.is(':checked')) {
                         formData[name] = $field.val();
                     }
+                } else if (type === 'checkbox') {
+                    formData[name] = $field.is(':checked');
                 } else {
                     formData[name] = $field.val();
                 }
             });
         });
 
+        // Ajouter le fichier uploadé si présent (comme elec-pro)
+        if (uploadedFile) {
+            formData.kbis_filename = uploadedFile.name;
+            formData.kbis_size = uploadedFile.size;
+            formData.kbis_type = uploadedFile.type;
+        }
+
+        console.log('📊 Données complètes collectées:', formData);
         return formData;
     }
 
     // ===============================
-    // CALCUL - SIMULATION PRO
+    // CALCUL DES RÉSULTATS (côté serveur)
     // ===============================
 
     function calculateResults() {
         const allData = collectAllFormData();
-        const entrepriseData = collectEntrepriseData();
 
-        // Validation des données essentielles
+        // Validation
         if (!allData.commune || !allData.consommation_previsionnelle) {
-            showValidationMessage('Des informations obligatoires sont manquantes.');
+            showValidationMessage('Données manquantes pour le calcul');
             return;
         }
 
-        showStep(3);
+        console.log('🚀 Envoi des données au calculateur gaz:', allData);
+
+        // Afficher l'étape des résultats
+        showStep(4);
         updateProgress();
         updateNavigation();
 
+        // Afficher le loader
         $('#results-container').html(`
             <div class="loading-state">
                 <div class="loading-spinner"></div>
-                <p>Calcul de votre estimation professionnelle...</p>
+                <p>Calcul en cours...</p>
+                <small>Analyse de votre offre gaz professionnel...</small>
             </div>
         `);
 
-        sendDataToCalculator(allData, configData, entrepriseData);
+        // Envoyer au calculateur PHP
+        sendToCalculator(allData);
     }
 
-    // ===============================
-    // ENVOI DONNÉES AU CALCULATEUR
-    // ===============================
+    function sendToCalculator(userData) {
+        // Déterminer l'URL AJAX
+        let ajaxUrl = '/wp-admin/admin-ajax.php';
+        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+            ajaxUrl = hticSimulateur.ajaxUrl;
+        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.ajaxUrl) {
+            ajaxUrl = hticSimulateurUnifix.ajaxUrl;
+        }
 
-    function sendDataToCalculator(userData, configData, entrepriseData) {
+        // Préparer les données pour le calculateur
         const dataToSend = {
             action: 'htic_calculate_estimation',
             type: 'gaz-professionnel',
@@ -556,18 +656,17 @@ jQuery(document).ready(function ($) {
             config_data: configData
         };
 
+        // Ajouter le nonce si disponible
         if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
             dataToSend.nonce = hticSimulateur.nonce;
         } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.calculateNonce) {
             dataToSend.nonce = hticSimulateurUnifix.calculateNonce;
         }
 
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
-        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.ajaxUrl) {
-            ajaxUrl = hticSimulateurUnifix.ajaxUrl;
-        }
+        console.log('📤 Envoi AJAX gaz pro:', {
+            url: ajaxUrl,
+            data: dataToSend
+        });
 
         $.ajax({
             url: ajaxUrl,
@@ -576,25 +675,22 @@ jQuery(document).ready(function ($) {
             data: dataToSend,
             timeout: 30000,
             success: function (response) {
-                if (response.success) {
-                    window.calculationResults = response.data;
-                    window.entrepriseData = entrepriseData;
-                    window.simulationData = userData;
+                console.log('📥 Réponse du calculateur gaz:', response);
 
+                if (response.success) {
                     // Vérifier si c'est un devis personnalisé
                     if (response.data.devis_personnalise) {
-                        displayDevisPersonnalise(response.data, entrepriseData);
+                        displayDevisPersonnalise(response.data);
                     } else {
                         displayResults(response.data);
                     }
-
                     setupEmailActions();
                 } else {
                     displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
                 }
             },
             error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX:', {
+                console.error('❌ Erreur AJAX gaz:', {
                     status: status,
                     error: error,
                     responseText: xhr.responseText,
@@ -617,151 +713,21 @@ jQuery(document).ready(function ($) {
     }
 
     // ===============================
-    // GESTION EMAIL ET RAPPEL
+    // AFFICHAGE RÉSULTATS
     // ===============================
 
-    function setupEmailActions() {
-        // Bouton envoyer par email
-        $(document).on('click', '#btn-send-email', function () {
-            const $btn = $(this);
-            const originalText = $btn.html();
-
-            $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
-
-            const emailData = {
-                action: 'htic_send_simulation_email',
-                type: 'gaz-professionnel',
-                results: calculationResults,
-                entreprise: entrepriseData || formData
-            };
-
-            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
-                emailData.nonce = hticSimulateur.nonce;
-            }
-
-            let ajaxUrl = '/wp-admin/admin-ajax.php';
-            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-                ajaxUrl = hticSimulateur.ajaxUrl;
-            }
-
-            $.ajax({
-                url: ajaxUrl,
-                type: 'POST',
-                data: emailData,
-                success: function (response) {
-                    if (response.success) {
-                        $('#email-confirmation').slideDown();
-                        $('#email-display').text(formData.contact_email);
-
-                        setTimeout(() => {
-                            $('#email-confirmation').slideUp();
-                        }, 5000);
-
-                        showNotification('✅ Email envoyé avec succès !', 'success');
-                    } else {
-                        showNotification('❌ Erreur lors de l\'envoi', 'error');
-                    }
-                },
-                error: function () {
-                    showNotification('❌ Erreur de connexion', 'error');
-                },
-                complete: function () {
-                    $btn.prop('disabled', false).html(originalText);
-                }
-            });
-        });
-    }
-
-    function registerCallback() {
-        const $btn = $('#btn-callback');
-        const originalText = $btn.html();
-
-        $btn.prop('disabled', true).html('<span class="spinner"></span> Enregistrement...');
-
-        const callbackData = {
-            action: 'htic_register_callback',
-            type: 'gaz-professionnel',
-            entreprise: entrepriseData || formData,
-            horaire: formData.contact_horaire
-        };
-
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
-            callbackData.nonce = hticSimulateur.nonce;
-        }
-
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
-        }
-
-        $.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            data: callbackData,
-            success: function (response) {
-                if (response.success) {
-                    $('#callback-confirmation').slideDown();
-                    setTimeout(() => {
-                        $('#callback-confirmation').slideUp();
-                    }, 5000);
-                    showNotification('☎️ Demande de rappel enregistrée', 'success');
-                } else {
-                    showNotification('❌ Erreur lors de l\'enregistrement', 'error');
-                }
-            },
-            error: function () {
-                showNotification('❌ Erreur de connexion', 'error');
-            },
-            complete: function () {
-                $btn.prop('disabled', false).html(originalText);
-            }
-        });
-    }
-
-    // Fonction de notification
-    function showNotification(message, type = 'info') {
-        $('.notification').remove();
-
-        const $notification = $(`
-            <div class="notification notification-${type}">
-                ${message}
-            </div>
-        `);
-
-        $('body').append($notification);
-
-        setTimeout(() => {
-            $notification.addClass('show');
-        }, 100);
-
-        setTimeout(() => {
-            $notification.removeClass('show');
-            setTimeout(() => {
-                $notification.remove();
-            }, 300);
-        }, 4000);
-    }
-
-    // ===============================
-    // AFFICHAGE DEVIS PERSONNALISÉ
-    // ===============================
-
-    function displayDevisPersonnalise(data, entrepriseData) {
+    function displayDevisPersonnalise(data) {
         $('#results-container').hide();
         $('#devis-personnalise-container').show();
 
         // Remplir les informations du devis
-        $('#devis-entreprise').text(entrepriseData.entreprise_nom || formData.entreprise_nom);
-        $('#devis-commune').text(data.commune || formData.commune);
-        $('#devis-consommation').text((data.consommation_annuelle || 0).toLocaleString() + ' kWh/an');
+        $('#devis-entreprise').text(formData.raison_sociale || '--');
+        $('#devis-commune').text(data.commune || formData.commune || '--');
+        $('#devis-consommation').text((data.consommation_annuelle || formData.consommation_previsionnelle || 0).toLocaleString() + ' kWh/an');
         $('#devis-type-gaz').text(data.type_gaz || 'Gaz naturel');
 
         $('.results-actions').show();
     }
-
-    // ===============================
-    // AFFICHAGE RÉSULTATS NORMAUX
-    // ===============================
 
     function displayResults(results) {
         if (!results || !results.consommation_annuelle) {
@@ -883,16 +849,16 @@ jQuery(document).ready(function ($) {
                                 <div class="category-items">
                                     <div class="recap-item">
                                         <span class="recap-label">Nom</span>
-                                        <span class="recap-value">${formData.entreprise_nom || '--'}</span>
+                                        <span class="recap-value">${formData.raison_sociale || '--'}</span>
                                     </div>
                                     <div class="recap-item">
-                                        <span class="recap-label">Secteur</span>
-                                        <span class="recap-value">${getSecteurLabel(formData.entreprise_secteur)}</span>
+                                        <span class="recap-label">Forme juridique</span>
+                                        <span class="recap-value">${formData.forme_juridique || '--'}</span>
                                     </div>
-                                    ${formData.entreprise_siret ? `
+                                    ${formData.siret ? `
                                     <div class="recap-item">
                                         <span class="recap-label">SIRET</span>
-                                        <span class="recap-value">${formatSiret(formData.entreprise_siret)}</span>
+                                        <span class="recap-value">${formatSiret(formData.siret)}</span>
                                     </div>` : ''}
                                 </div>
                             </div>
@@ -912,10 +878,10 @@ jQuery(document).ready(function ($) {
                                         <span class="recap-label">Type de gaz</span>
                                         <span class="recap-value highlight">${results.type_gaz || 'Non défini'}</span>
                                     </div>
-                                    ${formData.entreprise_code_postal ? `
+                                    ${formData.code_postal ? `
                                     <div class="recap-item">
                                         <span class="recap-label">Code postal</span>
-                                        <span class="recap-value">${formData.entreprise_code_postal}</span>
+                                        <span class="recap-value">${formData.code_postal}</span>
                                     </div>` : ''}
                                 </div>
                             </div>
@@ -929,20 +895,15 @@ jQuery(document).ready(function ($) {
                                 <div class="category-items">
                                     <div class="recap-item">
                                         <span class="recap-label">Contact</span>
-                                        <span class="recap-value">${formData.contact_prenom} ${formData.contact_nom}</span>
+                                        <span class="recap-value">${formData.prenom} ${formData.nom}</span>
                                     </div>
-                                    ${formData.contact_fonction ? `
-                                    <div class="recap-item">
-                                        <span class="recap-label">Fonction</span>
-                                        <span class="recap-value">${formData.contact_fonction}</span>
-                                    </div>` : ''}
                                     <div class="recap-item">
                                         <span class="recap-label">Email</span>
-                                        <span class="recap-value">${formData.contact_email || '--'}</span>
+                                        <span class="recap-value">${formData.email || '--'}</span>
                                     </div>
                                     <div class="recap-item">
                                         <span class="recap-label">Téléphone</span>
-                                        <span class="recap-value">${formData.contact_telephone || '--'}</span>
+                                        <span class="recap-value">${formData.telephone || '--'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -957,29 +918,9 @@ jQuery(document).ready(function ($) {
         $('#results-container').html(resultsHtml);
         $('.results-summary').hide().fadeIn(600);
         $('.results-actions').show();
-    }
 
-    // ===============================
-    // FONCTIONS UTILITAIRES PRO
-    // ===============================
-
-    function getSecteurLabel(code) {
-        const labels = {
-            'commerce': 'Commerce',
-            'restaurant': 'Restaurant/Hôtellerie',
-            'industrie': 'Industrie',
-            'bureau': 'Bureaux/Services',
-            'sante': 'Santé',
-            'education': 'Éducation',
-            'agriculture': 'Agriculture',
-            'autre': 'Autre'
-        };
-        return labels[code] || code;
-    }
-
-    function formatSiret(siret) {
-        if (!siret || siret.length !== 14) return siret;
-        return siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4');
+        // Préparer les données pour l'email
+        prepareEmailData(results);
     }
 
     function displayError(message) {
@@ -990,55 +931,111 @@ jQuery(document).ready(function ($) {
                 <p>${message}</p>
                 <div class="error-actions">
                     <button class="btn btn-primary" onclick="location.reload()">🔄 Recharger</button>
-                    <button class="btn btn-secondary" id="btn-back-to-form">← Retour au formulaire</button>
+                    <button class="btn btn-secondary" id="btn-back-to-form-gaz">← Retour au formulaire</button>
                 </div>
             </div>
         `);
 
-        $('#btn-back-to-form').on('click', function () {
-            goToStep(2);
+        $('#btn-back-to-form-gaz').on('click', function () {
+            goToStep(3);
         });
+    }
+
+    // ===============================
+    // EMAIL ET ACTIONS
+    // ===============================
+
+    function setupEmailActions() {
+        // Actions email similaires à elec-pro
+        $(document).on('click', '#btn-send-email', function () {
+            if (window.emailData) {
+                sendEmail();
+            }
+        });
+
+        $(document).on('click', '#btn-download-pdf', function () {
+            downloadPDF();
+        });
+    }
+
+    function prepareEmailData(results) {
+        const emailData = {
+            entreprise: {
+                raison_sociale: formData.raison_sociale,
+                siret: formData.siret,
+                forme_juridique: formData.forme_juridique,
+                code_naf: formData.code_naf
+            },
+            contact: {
+                nom: formData.nom,
+                prenom: formData.prenom,
+                email: formData.email,
+                telephone: formData.telephone
+            },
+            results: results,
+            document_kbis: formData.kbis_filename || null,
+            date_simulation: new Date().toISOString()
+        };
+
+        window.emailData = emailData;
+        console.log('📧 Données email gaz préparées:', emailData);
+    }
+
+    function registerCallback() {
+        // Fonction de callback
+        console.log('📞 Demande de rappel gaz pro');
+    }
+
+    window.sendResultsByEmail = function () {
+        if (!window.emailData) {
+            alert('Aucune donnée à envoyer');
+            return;
+        }
+
+        console.log('📮 Envoi email gaz pro avec les données:', window.emailData);
+        alert('Email envoyé avec succès !'); // Placeholder
+    };
+
+    window.downloadPDF = function () {
+        alert('Fonction de téléchargement PDF gaz pro en cours de développement');
+    };
+
+    // ===============================
+    // UTILITAIRES
+    // ===============================
+
+    function formatSiret(siret) {
+        if (!siret || siret.length !== 14) return siret;
+        return siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4');
     }
 
     function showValidationMessage(message) {
         $('.validation-message').remove();
 
         const $message = $(`<div class="validation-message">${message}</div>`);
-        const activeStep = $('.form-step.active');
-        const stepHeader = activeStep.find('.step-header');
-
-        stepHeader.after($message);
-        $message.hide().slideDown(300);
+        $('.form-step.active .step-header').after($message);
 
         setTimeout(() => {
-            $message.slideUp(300, () => $message.remove());
-        }, 5000);
+            $message.fadeOut(() => $message.remove());
+        }, 3000);
     }
 
     function restartSimulation() {
         currentStep = 1;
         formData = {};
-        calculationResults = null;
-        entrepriseData = null;
-
+        uploadedFile = null;
         $('#simulateur-gaz-professionnel')[0].reset();
-
         showStep(1);
         updateProgress();
         updateNavigation();
-
         $('.field-error, .field-success').removeClass('field-error field-success');
+        $('.file-selected-name').hide();
+        $('.file-upload-area').removeClass('has-file');
+        $('.file-upload-text').show();
+        $('#siret-badge').hide();
     }
 
-    // ===============================
-    // FONCTIONS GLOBALES
-    // ===============================
-
-    window.downloadPDF = function () {
-        alert('Fonction de téléchargement PDF en cours de développement');
-    };
-
-    // API publique pour récupérer les données
+    // API publique
     window.HticGazProfessionnelData = {
         getCurrentData: () => formData,
         getAllData: collectAllFormData,

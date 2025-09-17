@@ -17,27 +17,31 @@ $config_data = get_option('htic_simulateur_gaz_professionnel_data', array());
     
     <!-- En-tête du simulateur -->
     <div class="simulateur-header">
-        <div class="header-icon">🏢</div>
-        <h1>Simulateur Gaz Professionnel</h1>
-        <p>Estimez votre budget énergétique pour votre entreprise</p>
+        <div class="header-icon">🔥</div>
+        <h1>Formulaire de souscription gaz professionnel</h1>
+        <p>Remplissez tous les champs du formulaire pour passer à l'étape suivante</p>
     </div>
     
     <!-- Indicateur de progression -->
     <div class="progress-container">
         <div class="progress-bar">
-            <div class="progress-fill" data-progress="33"></div>
+            <div class="progress-fill" data-progress="25"></div>
         </div>
         <div class="progress-steps">
             <div class="step active" data-step="1">
                 <span class="step-number">1</span>
-                <span class="step-label">Localisation</span>
+                <span class="step-label">Configuration</span>
             </div>
             <div class="step" data-step="2">
                 <span class="step-number">2</span>
-                <span class="step-label">Contact</span>
+                <span class="step-label">Localisation</span>
             </div>
             <div class="step" data-step="3">
                 <span class="step-number">3</span>
+                <span class="step-label">Titulaire</span>
+            </div>
+            <div class="step" data-step="4">
+                <span class="step-number">4</span>
                 <span class="step-label">Résultats</span>
             </div>
         </div>
@@ -46,11 +50,11 @@ $config_data = get_option('htic_simulateur_gaz_professionnel_data', array());
     <!-- Formulaire principal -->
     <form id="simulateur-gaz-professionnel" class="simulateur-form">
         
-        <!-- ÉTAPE 1: Localisation et Consommation -->
+        <!-- ÉTAPE 1: Configuration gaz -->
         <div class="form-step active" data-step="1">
             <div class="step-header">
-                <h2>📍 Localisation et consommation de votre entreprise</h2>
-                <p>Indiquez votre commune et votre consommation annuelle prévisionnelle</p>
+                <h2>🔥 Configuration gaz</h2>
+                <p>Informations sur votre consommation de gaz professionnel</p>
             </div>
             
             <div class="form-content">
@@ -72,7 +76,43 @@ $config_data = get_option('htic_simulateur_gaz_professionnel_data', array());
                                 <!-- Sera rempli par JavaScript -->
                             </optgroup>
                             
+                            <optgroup label="🗺️ Autres">
+                                <option value="autre" data-type="autre">Autre commune (saisie libre)</option>
+                            </optgroup>
                         </select>
+                        
+                        <!-- Section conditionnelle pour "Autre commune" -->
+                        <div id="autre-commune-details" class="conditional-section" style="display: none;">
+                            <div class="form-subgroup">
+                                <label for="nom_commune_autre">Nom de votre commune</label>
+                                <input type="text" id="nom_commune_autre" name="nom_commune_autre" placeholder="Saisissez le nom de votre commune">
+                                
+                                <label>Type de gaz disponible</label>
+                                <div class="radio-group">
+                                    <div class="radio-card">
+                                        <input type="radio" id="type_gaz_naturel_autre" name="type_gaz_autre" value="naturel" checked>
+                                        <label for="type_gaz_naturel_autre" class="radio-content">
+                                            <div class="radio-icon">🌱</div>
+                                            <div class="radio-text">
+                                                <div class="radio-title">Gaz naturel</div>
+                                                <div class="radio-subtitle">Réseau GRDF</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="radio-card">
+                                        <input type="radio" id="type_gaz_propane_autre" name="type_gaz_autre" value="propane">
+                                        <label for="type_gaz_propane_autre" class="radio-content">
+                                            <div class="radio-icon">⛽</div>
+                                            <div class="radio-text">
+                                                <div class="radio-title">Gaz propane</div>
+                                                <div class="radio-subtitle">Citerne GPL</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Affichage du type de gaz détecté -->
                         <div id="type-gaz-info" class="info-box" style="display: none;">
@@ -117,166 +157,321 @@ $config_data = get_option('htic_simulateur_gaz_professionnel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 2: Informations entreprise -->
-        <div class="form-step" data-step="2">
+        <!-- ÉTAPE 2: Localisation (reprise de elec-pro) -->
+         <div class="form-step" data-step="2">
             <div class="step-header">
-                <h2>📧 Coordonnées de votre entreprise</h2>
-                <p>Pour recevoir votre simulation personnalisée et être recontacté</p>
+                <h2>📍 Localisation</h2>
+                <p>Adresse du point de livraison électrique</p>
             </div>
             
-            <div class="form-grid">
-                <!-- Nom entreprise -->
-                <div class="form-group full-width">
-                    <label for="entreprise_nom" class="form-label">Nom de l'entreprise *</label>
-                    <input type="text" 
-                        id="entreprise_nom" 
-                        name="entreprise_nom" 
-                        required 
-                        class="form-input"
-                        placeholder="Société ABC">
+            <!-- Section Point de Livraison -->
+            <div class="localisation-section">
+                <div class="localisation-header">
+                    <div class="localisation-icon">🔌</div>
+                    <div class="localisation-title">
+                        <h3>Identification du point de livraison</h3>
+                        <div class="localisation-subtitle">Ces informations se trouvent sur votre facture d'électricité</div>
+                    </div>
                 </div>
                 
-                <!-- SIRET -->
-                <div class="form-group">
-                    <label for="entreprise_siret" class="form-label">N° SIRET</label>
-                    <input type="text" 
-                        id="entreprise_siret" 
-                        name="entreprise_siret" 
-                        pattern="[0-9]{14}"
-                        maxlength="14"
-                        class="form-input"
-                        placeholder="12345678901234">
-                    <small class="form-help">14 chiffres</small>
+                <div class="pdl-section">
+                    <div class="pdl-info">
+                        <div class="pdl-info-icon">ℹ️</div>
+                        <div class="pdl-info-text">
+                            Le Point de Livraison (PDL) ou Point de Référence Mesure (PRM) est un numéro unique qui identifie votre compteur électrique. 
+                            Vous le trouverez en haut à gauche de votre facture d'électricité ou sur l'écran n°6 de votre compteur Linky.
+                        </div>
+                    </div>
+                    
+                    <div class="pdl-inputs">
+                        <div class="form-group">
+                            <label for="point_livraison" class="form-label">
+                                Point de livraison (PDL)
+                                <span class="field-tooltip" data-tooltip="Format: BT4000100001">?</span>
+                            </label>
+                            <div class="input-with-icon">
+                                <span class="input-icon">🔌</span>
+                                <input type="text" 
+                                    id="point_livraison" 
+                                    name="point_livraison" 
+                                    placeholder="Ex: BT4000100001"
+                                    pattern="[A-Z]{2}[0-9]{10}"
+                                    class="form-input">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="num_prm" class="form-label">
+                                OU N° PRM (14 chiffres)
+                                <span class="field-tooltip" data-tooltip="14 chiffres sur votre compteur Linky">?</span>
+                            </label>
+                            <div class="input-with-icon">
+                                <span class="input-icon">📟</span>
+                                <input type="text" 
+                                    id="num_prm" 
+                                    name="num_prm" 
+                                    placeholder="Ex: 12345678901234"
+                                    pattern="[0-9]{14}"
+                                    maxlength="14"
+                                    class="form-input">
+                            </div>
+                        </div>
+                        
+                        <div class="pdl-checkbox">
+                            <input type="checkbox" id="pas_info" name="pas_info">
+                            <label for="pas_info">Je n'ai pas cette information pour le moment</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Section Adresse -->
+            <div class="localisation-section">
+                <div class="localisation-header">
+                    <div class="localisation-icon">🏢</div>
+                    <div class="localisation-title">
+                        <h3>Adresse du site</h3>
+                        <div class="localisation-subtitle">Adresse complète du point de livraison</div>
+                    </div>
                 </div>
                 
-                <!-- Secteur activité -->
-                <div class="form-group">
-                    <label for="entreprise_secteur" class="form-label">Secteur d'activité *</label>
-                    <select id="entreprise_secteur" name="entreprise_secteur" required class="form-input">
-                        <option value="">-- Sélectionnez --</option>
-                        <option value="commerce">Commerce</option>
-                        <option value="restaurant">Restaurant/Hôtellerie</option>
-                        <option value="industrie">Industrie</option>
-                        <option value="bureau">Bureaux/Services</option>
-                        <option value="sante">Santé</option>
-                        <option value="education">Éducation</option>
-                        <option value="agriculture">Agriculture</option>
-                        <option value="autre">Autre</option>
-                    </select>
+                <div class="address-grid">
+                    <div class="form-group">
+                        <label for="adresse" class="form-label">Adresse *</label>
+                        <input type="text" 
+                            id="adresse" 
+                            name="adresse" 
+                            placeholder="Numéro et nom de rue"
+                            required
+                            class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="complement_adresse" class="form-label">Complément d'adresse</label>
+                        <input type="text" 
+                            id="complement_adresse" 
+                            name="complement_adresse" 
+                            placeholder="Bâtiment, étage, etc."
+                            class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="code_postal" class="form-label">Code postal *</label>
+                        <input type="text" 
+                            id="code_postal" 
+                            name="code_postal" 
+                            placeholder="00000"
+                            pattern="[0-9]{5}"
+                            maxlength="5"
+                            required
+                            class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ville" class="form-label">Ville *</label>
+                        <input type="text" 
+                            id="ville" 
+                            name="ville" 
+                            placeholder="Ville"
+                            required
+                            class="form-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ÉTAPE 3: Titulaire du contrat (reprise de elec-pro) -->
+        <div class="form-step" data-step="3">
+            <div class="step-header">
+                <h2>👤 Titulaire du contrat</h2>
+                <p>Informations légales de l'entreprise</p>
+            </div>
+            
+            <div class="titulaire-sections">
+                <!-- Section Responsable -->
+                <div class="responsable-section">
+                    <div class="section-header">
+                        <div class="section-icon">👤</div>
+                        <div class="section-title">
+                            <h4>Responsable du contrat</h4>
+                            <p>Personne signataire du contrat</p>
+                        </div>
+                    </div>
+                    
+                    <div class="identity-grid">
+                        <div class="form-group">
+                            <label for="nom" class="form-label">Nom *</label>
+                            <input type="text" 
+                                id="nom" 
+                                name="nom" 
+                                placeholder="Nom de famille"
+                                required
+                                class="form-input">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prenom" class="form-label">Prénom *</label>
+                            <input type="text" 
+                                id="prenom" 
+                                name="prenom" 
+                                placeholder="Prénom"
+                                required
+                                class="form-input">
+                        </div>
+                    </div>
                 </div>
                 
-                <!-- Contact -->
-                <div class="form-group">
-                    <label for="contact_nom" class="form-label">Nom du contact *</label>
-                    <input type="text" 
-                        id="contact_nom" 
-                        name="contact_nom" 
-                        required 
-                        class="form-input"
-                        placeholder="Votre nom">
+                <!-- Section Entreprise -->
+                <div class="entreprise-section">
+                    <div class="section-header">
+                        <div class="section-icon">🏢</div>
+                        <div class="section-title">
+                            <h4>Informations entreprise</h4>
+                            <p>Données légales de votre société</p>
+                        </div>
+                    </div>
+                    
+                    <div class="company-grid">
+                        <div class="form-group">
+                            <label for="raison_sociale" class="form-label">Raison Sociale *</label>
+                            <input type="text" 
+                                id="raison_sociale" 
+                                name="raison_sociale" 
+                                placeholder="Nom de l'entreprise"
+                                required
+                                class="form-input">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="forme_juridique" class="form-label">Forme Juridique *</label>
+                            <select id="forme_juridique" name="forme_juridique" required class="form-select">
+                                <option value="">Sélectionner...</option>
+                                <option value="SARL">SARL</option>
+                                <option value="SAS">SAS</option>
+                                <option value="SA">SA</option>
+                                <option value="EURL">EURL</option>
+                                <option value="SASU">SASU</option>
+                                <option value="SCI">SCI</option>
+                                <option value="Association">Association</option>
+                                <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="siret" class="form-label">
+                                Numéro SIRET *
+                                <span class="validation-badge" id="siret-badge" style="display:none;"></span>
+                            </label>
+                            <input type="text" 
+                                id="siret" 
+                                name="siret" 
+                                placeholder="00000000000000"
+                                pattern="[0-9]{14}"
+                                maxlength="14"
+                                required
+                                class="form-input">
+                            <small class="form-help">14 chiffres sans espaces</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="code_naf" class="form-label">Code NAF/APE *</label>
+                            <input type="text" 
+                                id="code_naf" 
+                                name="code_naf" 
+                                placeholder="0000A"
+                                pattern="[0-9]{4}[A-Z]"
+                                maxlength="5"
+                                required
+                                class="form-input">
+                            <small class="form-help">4 chiffres + 1 lettre</small>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="contact_prenom" class="form-label">Prénom du contact *</label>
-                    <input type="text" 
-                        id="contact_prenom" 
-                        name="contact_prenom" 
-                        required 
-                        class="form-input"
-                        placeholder="Votre prénom">
+                <!-- Section Contact -->
+                <div class="contact-section">
+                    <div class="section-header">
+                        <div class="section-icon">📧</div>
+                        <div class="section-title">
+                            <h4>Coordonnées de contact</h4>
+                            <p>Pour la gestion de votre contrat</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-grid">
+                        <div class="form-group">
+                            <label for="email" class="form-label">Email professionnel *</label>
+                            <div class="input-with-icon">
+                                <span class="input-icon">📧</span>
+                                <input type="email" 
+                                    id="email" 
+                                    name="email" 
+                                    placeholder="contact@entreprise.fr"
+                                    required
+                                    class="form-input">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="telephone" class="form-label">Téléphone *</label>
+                            <div class="input-with-icon">
+                                <span class="input-icon">📞</span>
+                                <input type="tel" 
+                                    id="telephone" 
+                                    name="telephone" 
+                                    placeholder="01 23 45 67 89"
+                                    pattern="[0-9\s\-\+\(\)]{10,}"
+                                    required
+                                    class="form-input">
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="contact_fonction" class="form-label">Fonction</label>
-                    <input type="text" 
-                        id="contact_fonction" 
-                        name="contact_fonction" 
-                        class="form-input"
-                        placeholder="Directeur, Gérant, Responsable énergie...">
-                </div>
-                
-                <!-- Email -->
-                <div class="form-group">
-                    <label for="contact_email" class="form-label">Email professionnel *</label>
-                    <input type="email" 
-                        id="contact_email" 
-                        name="contact_email" 
-                        required 
-                        class="form-input"
-                        placeholder="contact@entreprise.fr">
-                    <small class="form-help">Pour recevoir votre simulation</small>
-                </div>
-                
-                <!-- Téléphone -->
-                <div class="form-group">
-                    <label for="contact_telephone" class="form-label">Téléphone *</label>
-                    <input type="tel" 
-                        id="contact_telephone" 
-                        name="contact_telephone" 
-                        required 
-                        class="form-input"
-                        placeholder="05 XX XX XX XX">
-                    <small class="form-help">Pour être recontacté</small>
-                </div>
-                
-                <!-- Adresse -->
-                <div class="form-group full-width">
-                    <label for="entreprise_adresse" class="form-label">Adresse de l'entreprise</label>
-                    <input type="text" 
-                        id="entreprise_adresse" 
-                        name="entreprise_adresse" 
-                        class="form-input"
-                        placeholder="Numéro et nom de rue">
-                </div>
-                
-                <!-- Code postal et Ville -->
-                <div class="form-group">
-                    <label for="entreprise_code_postal" class="form-label">Code postal</label>
-                    <input type="text" 
-                        id="entreprise_code_postal" 
-                        name="entreprise_code_postal" 
-                        pattern="[0-9]{5}"
-                        maxlength="5"
-                        class="form-input"
-                        placeholder="40000">
-                </div>
-                
-                <div class="form-group">
-                    <label for="entreprise_ville" class="form-label">Ville</label>
-                    <input type="text" 
-                        id="entreprise_ville" 
-                        name="entreprise_ville" 
-                        class="form-input"
-                        placeholder="Votre ville">
-                </div>
-                
-                <!-- Meilleur moment pour contact -->
-                <div class="form-group full-width">
-                    <label for="contact_horaire" class="form-label">Meilleur moment pour vous contacter</label>
-                    <select id="contact_horaire" name="contact_horaire" class="form-input">
-                        <option value="">-- Indifférent --</option>
-                        <option value="matin">Matin (9h-12h)</option>
-                        <option value="apres-midi">Après-midi (14h-18h)</option>
-                        <option value="fin-journee">Fin de journée (17h-19h)</option>
-                    </select>
-                </div>
-                
-                <!-- Information RGPD -->
-                <div class="form-group full-width">
-                    <div class="info-box">
-                        <div class="info-icon">🔒</div>
+                <!-- Section Document -->
+                <div class="document-section">
+                    <div class="section-header">
+                        <div class="section-icon">📄</div>
+                        <div class="section-title">
+                            <h4>Document justificatif</h4>
+                            <p>Extrait K-bis de moins de 3 mois</p>
+                        </div>
+                    </div>
+                    
+                    <div class="file-upload-area" id="upload-area">
+                        <input type="file" 
+                            id="kbis" 
+                            name="kbis" 
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            class="file-input"
+                            style="display: none;">
+                        
+                        <div class="file-upload-icon">📤</div>
+                        <div class="file-upload-text">
+                            <div class="file-upload-label">Glissez votre fichier ici</div>
+                            <div class="file-upload-help">ou cliquez pour parcourir</div>
+                        </div>
+                        <label for="kbis" class="file-button">Choisir un fichier</label>
+                        
+                        <div class="file-selected-name" style="display: none;">
+                            <span class="file-name-text"></span>
+                            <span class="file-remove">✕</span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box-pro">
+                        <div class="info-icon">ℹ️</div>
                         <div class="info-content">
-                            <h4>Vos données sont protégées</h4>
-                            <p><strong>Utilisation professionnelle :</strong> Vos données sont utilisées uniquement pour établir votre devis personnalisé.</p>
-                            <p><strong>Confidentialité :</strong> Nous respectons le RGPD et vos informations ne sont jamais vendues à des tiers.</p>
+                            <p>Formats acceptés : PDF, JPG, PNG (max 5 Mo)</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ÉTAPE 3: Résultat -->
-        <div class="form-step" data-step="3">
+        <!-- ÉTAPE 4: Résultat -->
+        <div class="form-step" data-step="4">
             <div class="step-header">
                 <h2>📊 Votre estimation tarifaire professionnelle</h2>
                 <p>Estimation basée sur votre consommation prévisionnelle</p>
@@ -321,15 +516,17 @@ $config_data = get_option('htic_simulateur_gaz_professionnel_data', array());
             
             <!-- Actions après résultats -->
             <div class="results-actions" style="display: none;">
-                <div class="actions-grid">
+
                     <!-- Bouton envoyer par mail -->
                     <button type="button" class="btn btn-primary" id="btn-send-email">
                         <span class="btn-icon">✉️</span>
                         Recevoir par email
                     </button>
 
-                </div>
-                
+                    <button type="button" class="btn btn-secondary" onclick="location.reload()">
+                        <span class="btn-icon">🔄</span>
+                        Nouvelle simulation
+                    </button>
                 <!-- Message de confirmation (caché par défaut) -->
                 <div class="confirmation-message" id="email-confirmation" style="display: none;">
                     <div class="success-icon">✅</div>

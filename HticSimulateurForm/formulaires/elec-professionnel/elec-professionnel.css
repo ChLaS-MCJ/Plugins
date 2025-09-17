@@ -5,20 +5,20 @@
    ======================================== */
 :root {
     /* Couleurs principales */
-    --primary: #2563eb;
-    --primary-light: #3b82f6;
-    --primary-dark: #1d4ed8;
-    --primary-50: #eff6ff;
-    --primary-100: #dbeafe;
-    --primary-200: #bfdbfe;
-    --primary-600: #2563eb;
-    --primary-700: #1d4ed8;
+    --primary: #82C720;
+    --primary-light: #fdfffb;
+    --primary-dark: #fdfffb;
+    --primary-50: #fdfffb;
+    --primary-100: #82C720;
+    --primary-200: #d0e9ab;
+    --primary-600: #82C720;
+    --primary-700: #82C720;
 
     /* Couleurs d'état */
     --success: #82C720;
     --success-50: #f0fdf4;
-    --success-200: #bbf7d0;
-    --success-700: #15803d;
+    --success-200: #91d630;
+    --success-700: #82C720;
     --warning: #f59e0b;
     --error: #ef4444;
 
@@ -168,12 +168,6 @@
     font-weight: 600;
     margin-bottom: 0.5rem;
     transition: var(--transition);
-}
-
-.step.active .step-number {
-    background: var(--primary);
-    color: white;
-    box-shadow: var(--shadow-md);
 }
 
 .step-label {
@@ -482,8 +476,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 2rem 2.5rem;
-    background: var(--gray-50);
-    border-top: 1px solid var(--gray-200);
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
 }
 
 .nav-spacer {
@@ -524,14 +518,14 @@
 }
 
 .btn-secondary {
-    background: var(--gray-600);
-    color: white;
-    border-color: var(--gray-600);
+    background: #ffffff;
+    color: #334155;
+    border-color: #cbd5e1;
 }
 
 .btn-secondary:hover {
-    background: var(--gray-700);
-    border-color: var(--gray-700);
+    background: #334155;
+    border-color: #334155;
 }
 
 .btn-success {
@@ -2359,9 +2353,11 @@
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
-    border-radius: 2px;
-    transition: width 0.4s ease;
+    background: linear-gradient(90deg, #82C720, #d0e9ab);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 33.33%;
+    box-shadow: 0 2px 4px rgba(30, 64, 175, 0.2);
 }
 
 .progress-steps {
@@ -2402,9 +2398,11 @@
 }
 
 .step.active .step-number {
-    background: #2563eb;
+    background: var(--primary);
     color: white;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-600);
+    transform: scale(1.1);
 }
 
 .step-label {
@@ -2415,7 +2413,7 @@
 }
 
 .step.active .step-label {
-    color: #2563eb;
+    color: var(--primary);
     font-weight: 600;
 }
 
@@ -2591,38 +2589,6 @@
 
     .step:hover .step-label {
         color: #374151;
-    }
-}
-
-/* Mode sombre (optionnel) */
-@media (prefers-color-scheme: dark) {
-    .progress-bar {
-        background: #374151;
-    }
-
-    .step-number {
-        background: #4b5563;
-        color: #e5e7eb;
-        border: 1px solid #6b7280;
-    }
-
-    .step.active .step-number {
-        background: #3b82f6;
-        color: white;
-        border-color: #3b82f6;
-    }
-
-    .step-label {
-        color: #9ca3af;
-    }
-
-    .step.active .step-label {
-        color: #60a5fa;
-    }
-
-    .step.completed .step-number {
-        background: #059669;
-        border-color: #059669;
     }
 }
 
@@ -2828,22 +2794,6 @@
     border-color: #82C720;
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
-}
-
-
-/* elec-professionnel.css - Styles spécifiques pour le formulaire professionnel */
-
-/* ========================================
-   IMPORT DES STYLES DE BASE
-   ======================================== */
-/* Les styles de base sont partagés avec elec-residentiel.css */
-/* Ce fichier contient uniquement les styles spécifiques au pro */
-
-/* ========================================
-   HEADER PROFESSIONNEL
-   ======================================== */
-.pro-header {
-    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
 }
 
 /* ========================================

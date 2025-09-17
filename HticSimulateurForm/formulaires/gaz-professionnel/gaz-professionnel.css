@@ -8,13 +8,13 @@
    ======================================== */
 :root {
     /* Couleurs professionnelles - Bleu corporate */
-    --primary-gaz: #82C720;
-    --primary-gaz-50: #fdfffb;
-    --primary-gaz-100: #fdfffb;
-    --primary-gaz-200: #fdfffb;
-    --primary-gaz-500: #82C720;
-    --primary-gaz-600: #d0e9ab;
-    --primary-gaz-700: #82C720;
+    --primary-pro: #82C720;
+    --primary-pro-50: #fdfffb;
+    --primary-pro-100: #fdfffb;
+    --primary-pro-200: #fdfffb;
+    --primary-pro-500: #82C720;
+    --primary-pro-600: #d0e9ab;
+    --primary-pro-700: #82C720;
 
     --secondary-gaz: #2d3748;
     --gray-50: #f9fafb;
@@ -27,10 +27,10 @@
     --white: #ffffff;
 
     --success: #82C720;
-    --success-50: #ecfdf5;
-    --success-100: #d1fae5;
-    --success-200: #a7f3d0;
-    --success-700: #047857;
+    --success-50: #82C720;
+    --success-100: #91d630;
+    --success-200: #b8e578;
+    --success-700: #dcf0be;
 
     --warning: #f59e0b;
     --warning-50: #fffbeb;
@@ -177,7 +177,7 @@
 }
 
 .step.active .step-number {
-    background: var(--primary-gaz);
+    background: var(--primary-pro);
     color: white;
     box-shadow: var(--shadow-md);
     border-color: var(--primary-pro-600);
@@ -661,6 +661,8 @@ select:focus {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: var(--space-lg);
+    width: 24%;
+    justify-self: center;
 }
 
 @media (max-width: 768px) {
@@ -707,7 +709,7 @@ select:focus {
 }
 
 .result-card.main-result {
-    background: linear-gradient(135deg, var(--primary-pro-800), var(--primary-pro-600));
+    background: linear-gradient(135deg, var(--primary-pro), var(--primary-pro-600));
     border-radius: var(--radius-xl);
     padding: var(--space-2xl);
     text-align: center;
@@ -957,7 +959,7 @@ select:focus {
 
 /* Barre d'économies */
 .savings-bar {
-    background: linear-gradient(135deg, var(--success-50), var(--success-100));
+    background: linear-gradient(135deg, #769d3e, var(--success-100));
     border: 2px solid var(--success-200);
     border-radius: var(--radius-xl);
     padding: var(--space-xl);
@@ -998,7 +1000,7 @@ select:focus {
 .savings-text strong {
     display: block;
     font-size: 1.125rem;
-    color: var(--success-700);
+    color: #f2ffdf;
     margin-bottom: 0.25rem;
 }
 

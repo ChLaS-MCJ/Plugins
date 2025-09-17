@@ -72,43 +72,7 @@ $config_data = get_option('htic_simulateur_gaz_professionnel_data', array());
                                 <!-- Sera rempli par JavaScript -->
                             </optgroup>
                             
-                            <optgroup label="🗺️ Autres">
-                                <option value="autre" data-type="autre">Autre commune (saisie libre)</option>
-                            </optgroup>
                         </select>
-                        
-                        <!-- Section conditionnelle pour "Autre commune" -->
-                        <div id="autre-commune-details" class="conditional-section" style="display: none;">
-                            <div class="form-subgroup">
-                                <label for="nom_commune_autre">Nom de votre commune</label>
-                                <input type="text" id="nom_commune_autre" name="nom_commune_autre" placeholder="Saisissez le nom de votre commune">
-                                
-                                <label>Type de gaz disponible</label>
-                                <div class="radio-group">
-                                    <div class="radio-card">
-                                        <input type="radio" id="type_gaz_naturel_autre" name="type_gaz_autre" value="naturel" checked>
-                                        <label for="type_gaz_naturel_autre" class="radio-content">
-                                            <div class="radio-icon">🌱</div>
-                                            <div class="radio-text">
-                                                <div class="radio-title">Gaz naturel</div>
-                                                <div class="radio-subtitle">Réseau GRDF</div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    
-                                    <div class="radio-card">
-                                        <input type="radio" id="type_gaz_propane_autre" name="type_gaz_autre" value="propane">
-                                        <label for="type_gaz_propane_autre" class="radio-content">
-                                            <div class="radio-icon">⛽</div>
-                                            <div class="radio-text">
-                                                <div class="radio-title">Gaz propane</div>
-                                                <div class="radio-subtitle">Citerne GPL</div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         
                         <!-- Affichage du type de gaz détecté -->
                         <div id="type-gaz-info" class="info-box" style="display: none;">
@@ -174,7 +138,7 @@ $config_data = get_option('htic_simulateur_gaz_professionnel_data', array());
                 
                 <!-- SIRET -->
                 <div class="form-group">
-                    <label for="entreprise_siret" class="form-label">N° SIRET (optionnel)</label>
+                    <label for="entreprise_siret" class="form-label">N° SIRET</label>
                     <input type="text" 
                         id="entreprise_siret" 
                         name="entreprise_siret" 

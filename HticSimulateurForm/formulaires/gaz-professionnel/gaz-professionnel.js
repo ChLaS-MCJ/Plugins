@@ -126,7 +126,8 @@ jQuery(document).ready(function ($) {
             $('#btn-next').hide();
             $('#btn-calculate').show();
             $('#btn-restart').hide();
-        } else {
+            $('.results-actions').hide();
+        } else if (currentStep === 1) { // Étape 1
             $('#btn-next').show();
             $('#btn-calculate, #btn-restart').hide();
             $('.results-actions').hide();
@@ -253,6 +254,9 @@ jQuery(document).ready(function ($) {
             validateField($(this));
         });
 
+        $('input[type="number"]').on('input', function () {
+            validateNumberField($(this));
+        });
     }
 
     function validateCurrentStep() {
@@ -432,6 +436,34 @@ jQuery(document).ready(function ($) {
 
         $field.addClass(isValid ? 'field-success' : 'field-error');
         return isValid;
+    }
+
+    function validateNumberField($field) {
+        const min = parseFloat($field.attr('min'));
+        const max = parseFloat($field.attr('max'));
+        const value = parseFloat($field.val());
+
+        $field.removeClass('field-error field-success');
+
+        if (isNaN(value)) {
+            $field.addClass('field-error');
+            return false;
+        }
+
+        if (!isNaN(min) && value < min) {
+            $field.addClass('field-error');
+            showValidationMessage(`La valeur minimum est ${min}`);
+            return false;
+        }
+
+        if (!isNaN(max) && value > max) {
+            $field.addClass('field-error');
+            showValidationMessage(`La valeur maximum est ${max}`);
+            return false;
+        }
+
+        $field.addClass('field-success');
+        return true;
     }
 
     // ===============================

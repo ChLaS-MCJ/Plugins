@@ -28,35 +28,31 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
             <div class="progress-fill" data-progress="20"></div>
         </div>
         <div class="progress-steps">
-            <div class="step active" data-step="1">
-                <span class="step-number">1</span>
-                <span class="step-label">Logement</span>
-            </div>
-            <div class="step" data-step="2">
-                <span class="step-number">2</span>
-                <span class="step-label">Chauffage</span>
-            </div>
-            <div class="step" data-step="3">
-                <span class="step-number">3</span>
-                <span class="step-label">Eau chaude</span>
-            </div>
-            <div class="step" data-step="4">
-                <span class="step-number">4</span>
-                <span class="step-label">Cuisson</span>
-            </div>
-            <div class="step" data-step="5">
-                <span class="step-number">5</span>
-                <span class="step-label">Calcul</span>
-            </div>
-            <div class="step" data-step="6">
-                <span class="step-number">6</span>
-                <span class="step-label">Contact</span>
-            </div>
-            <div class="step" data-step="7">
-                <span class="step-number">7</span>
-                <span class="step-label">Résultats</span>
-            </div>
+        <div class="step active" data-step="1">
+            <span class="step-number">1</span>
+            <span class="step-label">Logement</span>
         </div>
+        <div class="step" data-step="2">
+            <span class="step-number">2</span>
+            <span class="step-label">Chauffage</span>
+        </div>
+        <div class="step" data-step="3">
+            <span class="step-number">3</span>
+            <span class="step-label">Eau chaude</span>
+        </div>
+        <div class="step" data-step="4">
+            <span class="step-number">4</span>
+            <span class="step-label">Cuisson</span>
+        </div>
+        <div class="step" data-step="5">
+            <span class="step-number">5</span>
+            <span class="step-label">Contact</span>
+        </div>
+        <div class="step" data-step="6">
+            <span class="step-number">6</span>
+            <span class="step-label">Résultats</span>
+        </div>
+    </div>
     </div>
     
     <!-- Formulaire principal -->
@@ -152,7 +148,7 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
                     
                     <!-- Affichage du type de gaz détecté -->
                     <div id="type-gaz-info" class="info-box" style="display: none;">
-                        <span class="info-icon">⛽</span>
+                        <span class="info-icon"></span>
                         <span id="type-gaz-text"></span>
                     </div>
                 </div>
@@ -428,9 +424,9 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
                     <span class="btn-icon">←</span>
                     Précédent
                 </button>
-                <button type="button" class="btn btn-primary btn-calculate">
-                    <span class="btn-icon">🔍</span>
-                    Calculer mon estimation
+               <button type="button" class="btn btn-primary btn-next">
+                    Suivant
+                    <span class="btn-icon">→</span>
                 </button>
             </div>
         </div>
@@ -577,23 +573,6 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
                     </div>
                 </div>
                 
-                <!-- Acceptation contact commercial -->
-                <div class="form-group full-width">
-                    <div class="checkbox-card legal">
-                        <input type="checkbox" id="accepte_contact" name="accepte_contact">
-                        <label for="accepte_contact" class="checkbox-content legal">
-                            <div class="checkbox-text">
-                                <div class="checkbox-title">
-                                    J'accepte d'être contacté(e) par HTIC pour des offres commerciales
-                                </div>
-                                <div class="checkbox-subtitle">
-                                    Optionnel - Vous pouvez refuser et recevoir uniquement votre estimation
-                                </div>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-                
             </div>
             
             <div class="form-actions">
@@ -601,9 +580,9 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
                     <span class="btn-icon">←</span>
                     Précédent
                 </button>
-                <button type="button" class="btn btn-primary btn-send-results">
-                    <span class="btn-icon">📧</span>
-                    Recevoir mon estimation détaillée
+                <button type="button" class="btn btn-primary btn-calculate">
+                    <span class="btn-icon">🔍</span>
+                    Calculer mon estimation
                 </button>
             </div>
         </div>
@@ -647,3 +626,7 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
     </div>
     
 </div>
+
+<script type="application/json" id="simulateur-config">
+    <?php echo json_encode($config_data, JSON_PRETTY_PRINT); ?>
+</script>

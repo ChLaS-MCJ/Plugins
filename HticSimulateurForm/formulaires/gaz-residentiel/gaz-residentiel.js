@@ -2,8 +2,7 @@
  * JavaScript pour le formulaire Gaz Résidentiel
  * Fichier: formulaires/gaz-residentiel/gaz-residentiel.js
  */
-
-document.addEventListener('DOMContentLoaded', function () {
+jQuery(document).ready(function ($) {
     console.log('Initialisation du simulateur gaz résidentiel');
 
     // Variables globales
@@ -15,10 +14,25 @@ document.addEventListener('DOMContentLoaded', function () {
     const typeGazInfo = document.getElementById('type-gaz-info');
     const typeGazText = document.getElementById('type-gaz-text');
 
+    // Variables pour la navigation
+    let currentStep = 1;
+    const totalSteps = 6;
+    let calculationResults = null;
+    let formData = {};
+    let configData = {};
+
     // Initialisation
     init();
 
     function init() {
+        // Initialiser l'étape courante
+        currentStep = 1;
+        showStep(currentStep);
+        updateProgressBar();
+
+        // Charger les données de configuration
+        loadConfigData();
+
         // Charger les communes depuis le back-office
         loadCommunesFromBackoffice();
 
@@ -30,6 +44,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Events listeners
         setupEventListeners();
+    }
+
+    function loadConfigData() {
+        const configElement = document.getElementById('simulateur-config');
+        if (configElement) {
+            try {
+                configData = JSON.parse(configElement.textContent);
+            } catch (e) {
+                console.error('❌ Erreur configuration:', e);
+                configData = {};
+            }
+        }
     }
 
     function setupEventListeners() {
@@ -49,34 +75,342 @@ document.addEventListener('DOMContentLoaded', function () {
             radio.addEventListener('change', toggleChauffageDetails);
         });
 
-        // Boutons navigation (si vous avez un système d'étapes)
-        setupNavigationButtons();
+        // Configuration des boutons de navigation comme dans elec-residentiel
+        $('#btn-next, .btn-next').on('click', function () {
+            if (validateCurrentStep()) {
+                saveCurrentStepData();
+                goToNextStep();
+            }
+        });
 
-        // Bouton calcul
-        const btnCalculate = document.querySelector('.btn-calculate');
-        if (btnCalculate) {
-            btnCalculate.addEventListener('click', calculateGazEstimation);
-        }
+        $('#btn-previous, .btn-prev').on('click', function () {
+            saveCurrentStepData();
+            goToPreviousStep();
+        });
+
+        // IMPORTANT: Le calcul se fait seulement à l'étape 6
+        $('#btn-calculate, .btn-calculate').on('click', function () {
+            // Empêcher le calcul s'il n'est pas sur l'étape 6
+            console.log('Tentative de calcul à l\'étape:', currentStep);
+            if (currentStep !== 6) {
+                console.log('Calcul bloqué - pas à l\'étape 6');
+                return false;
+            }
+            calculateGazEstimation();
+        });
+
+        // Bouton envoyer par email
+        $(document).on('click', '#btn-send-email', function () {
+            sendResultsByEmail();
+        });
     }
 
+    // ================================
+    // NAVIGATION ENTRE ÉTAPES
+    // ================================
+
     function setupNavigationButtons() {
-        // Gestion des boutons suivant/précédent si vous les implémentez
         const btnNext = document.querySelectorAll('.btn-next');
         const btnPrev = document.querySelectorAll('.btn-prev');
 
         btnNext.forEach(btn => {
             btn.addEventListener('click', function () {
-                // Logique de navigation entre étapes
                 console.log('Étape suivante');
+                if (validateCurrentStep()) {
+                    saveCurrentStepData();
+                    goToNextStep();
+                }
             });
         });
 
         btnPrev.forEach(btn => {
             btn.addEventListener('click', function () {
-                // Logique de navigation entre étapes
                 console.log('Étape précédente');
+                saveCurrentStepData();
+                goToPreviousStep();
             });
         });
+    }
+
+    function goToNextStep() {
+        if (currentStep < totalSteps) {
+            hideStep(currentStep);
+            currentStep++;
+            showStep(currentStep);
+            updateProgressBar();
+            updateNavigation();
+        }
+    }
+
+    function goToPreviousStep() {
+        if (currentStep > 1) {
+            hideStep(currentStep);
+            currentStep--;
+            showStep(currentStep);
+            updateProgressBar();
+            updateNavigation();
+        }
+    }
+
+    function showStep(stepNumber) {
+        const step = document.querySelector(`.form-step[data-step="${stepNumber}"]`);
+        if (step) {
+            step.classList.add('active');
+            step.style.display = 'block';
+        }
+
+        // Mettre à jour l'indicateur de progression
+        const progressStep = document.querySelector(`.step[data-step="${stepNumber}"]`);
+        if (progressStep) {
+            progressStep.classList.add('active');
+        }
+    }
+
+    function hideStep(stepNumber) {
+        const step = document.querySelector(`.form-step[data-step="${stepNumber}"]`);
+        if (step) {
+            step.classList.remove('active');
+            step.style.display = 'none';
+        }
+
+        // Marquer les étapes précédentes comme complétées
+        if (stepNumber < currentStep) {
+            const progressStep = document.querySelector(`.step[data-step="${stepNumber}"]`);
+            if (progressStep) {
+                progressStep.classList.remove('active');
+                progressStep.classList.add('completed');
+            }
+        }
+    }
+
+    function updateProgressBar() {
+        const progress = (currentStep / totalSteps) * 100;
+        const progressFill = document.querySelector('.progress-fill');
+        if (progressFill) {
+            progressFill.style.width = progress + '%';
+            progressFill.setAttribute('data-progress', Math.round(progress));
+        }
+
+        // Marquer les étapes comme complétées
+        for (let i = 1; i < currentStep; i++) {
+            const step = document.querySelector(`.step[data-step="${i}"]`);
+            if (step) {
+                step.classList.add('completed');
+                step.classList.remove('active');
+            }
+        }
+    }
+
+    function updateNavigation() {
+        // Afficher/masquer les boutons selon l'étape
+        const btnPrev = document.querySelector('.btn-prev, #btn-previous');
+        const btnNext = document.querySelector('.btn-next, #btn-next');
+        const btnCalculate = document.querySelector('.btn-calculate, #btn-calculate');
+
+        if (btnPrev) {
+            btnPrev.style.display = currentStep > 1 ? 'inline-block' : 'none';
+        }
+
+        if (currentStep === 6) { // Étape 6 - afficher le bouton calcul
+            if (btnNext) btnNext.style.display = 'none';
+            if (btnCalculate) btnCalculate.style.display = 'inline-block';
+        } else if (currentStep >= 1 && currentStep <= 5) { // Étapes 1-5 - bouton suivant
+            if (btnNext) btnNext.style.display = 'inline-block';
+            if (btnCalculate) btnCalculate.style.display = 'none';
+        } else {
+            // Après calcul, masquer tous les boutons de navigation
+            if (btnNext) btnNext.style.display = 'none';
+            if (btnCalculate) btnCalculate.style.display = 'none';
+        }
+    }
+
+    function saveCurrentStepData() {
+        const currentStepElement = document.querySelector(`.form-step[data-step="${currentStep}"]`);
+
+        if (currentStepElement) {
+            currentStepElement.querySelectorAll('input, select, textarea').forEach(function (field) {
+                const name = field.getAttribute('name');
+                const type = field.getAttribute('type');
+
+                if (!name) return;
+
+                const cleanName = name.replace('[]', '');
+
+                if (type === 'radio') {
+                    if (field.checked) {
+                        formData[cleanName] = field.value;
+                    }
+                } else if (type === 'checkbox') {
+                    if (!formData[cleanName]) {
+                        formData[cleanName] = [];
+                    }
+
+                    if (field.checked) {
+                        const value = field.value;
+                        if (!formData[cleanName].includes(value)) {
+                            formData[cleanName].push(value);
+                        }
+                    }
+                } else {
+                    formData[cleanName] = field.value;
+                }
+            });
+        }
+    }
+
+    function validateCurrentStep() {
+        switch (currentStep) {
+            case 1:
+                return validateStep1();
+            case 2:
+                return validateStep2();
+            case 3:
+                return validateStep3();
+            case 4:
+                return validateStep4();
+            case 5:
+                return validateStep5();
+            default:
+                return true;
+        }
+    }
+
+    function validateStep1() {
+        const superficie = document.getElementById('superficie');
+        const nbPersonnes = document.getElementById('nb_personnes');
+        const commune = document.getElementById('commune');
+
+        if (!superficie || !superficie.value || parseInt(superficie.value) < 20) {
+            showError('Veuillez saisir une superficie valide (minimum 20 m²)');
+            return false;
+        }
+
+        if (!nbPersonnes || !nbPersonnes.value || parseInt(nbPersonnes.value) < 1) {
+            showError('Veuillez saisir un nombre de personnes valide');
+            return false;
+        }
+
+        if (!commune || !commune.value) {
+            showError('Veuillez sélectionner votre commune');
+            return false;
+        }
+
+        // Validation spéciale pour "autre commune"
+        if (commune.value === 'autre') {
+            const nomCommune = document.getElementById('nom_commune_autre');
+            const typeGaz = document.querySelector('input[name="type_gaz_autre"]:checked');
+
+            if (!nomCommune || !nomCommune.value.trim()) {
+                showError('Veuillez saisir le nom de votre commune');
+                return false;
+            }
+
+            if (!typeGaz) {
+                showError('Veuillez sélectionner le type de gaz disponible');
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function validateStep2() {
+        const chauffageGaz = document.querySelector('input[name="chauffage_gaz"]:checked');
+        if (!chauffageGaz) {
+            showError('Veuillez indiquer si votre logement est chauffé au gaz');
+            return false;
+        }
+
+        // Si chauffage au gaz, vérifier l'isolation
+        if (chauffageGaz.value === 'oui') {
+            const isolation = document.querySelector('input[name="isolation"]:checked');
+            if (!isolation) {
+                showError('Veuillez sélectionner le niveau d\'isolation de votre logement');
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function validateStep3() {
+        const eauChaude = document.querySelector('input[name="eau_chaude"]:checked');
+        if (!eauChaude) {
+            showError('Veuillez indiquer le mode de production d\'eau chaude');
+            return false;
+        }
+        return true;
+    }
+
+    function validateStep4() {
+        const cuisson = document.querySelector('input[name="cuisson"]:checked');
+        if (!cuisson) {
+            showError('Veuillez indiquer le mode de cuisson');
+            return false;
+        }
+
+        const offre = document.querySelector('input[name="offre"]:checked');
+        if (!offre) {
+            showError('Veuillez sélectionner le type d\'offre');
+            return false;
+        }
+
+        return true;
+    }
+
+    function validateStep5() {
+        // Validation des données de contact
+        const civilite = document.querySelector('input[name="civilite"]:checked');
+        const prenom = document.getElementById('prenom');
+        const nom = document.getElementById('nom');
+        const email = document.getElementById('email');
+        const codePostal = document.getElementById('code_postal');
+        const source = document.getElementById('comment_nous_avez_vous_connu');
+        const accepteCGU = document.getElementById('accepte_cgu');
+
+        if (!civilite) {
+            showError('Veuillez sélectionner votre civilité');
+            return false;
+        }
+
+        if (!prenom || !prenom.value.trim()) {
+            showError('Veuillez saisir votre prénom');
+            return false;
+        }
+
+        if (!nom || !nom.value.trim()) {
+            showError('Veuillez saisir votre nom');
+            return false;
+        }
+
+        if (!email || !email.value.trim()) {
+            showError('Veuillez saisir votre adresse email');
+            return false;
+        }
+
+        // Validation email basique
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.value)) {
+            showError('Veuillez saisir une adresse email valide');
+            return false;
+        }
+
+        if (!codePostal || !/^[0-9]{5}$/.test(codePostal.value)) {
+            showError('Veuillez saisir un code postal valide (5 chiffres)');
+            return false;
+        }
+
+        if (!source || !source.value) {
+            showError('Veuillez indiquer comment vous nous avez connus');
+            return false;
+        }
+
+        if (!accepteCGU || !accepteCGU.checked) {
+            showError('Veuillez accepter les conditions générales d\'utilisation');
+            return false;
+        }
+
+        return true;
     }
 
     // ================================
@@ -287,140 +621,119 @@ document.addEventListener('DOMContentLoaded', function () {
     function calculateGazEstimation() {
         console.log('Début du calcul de l\'estimation gaz...');
 
-        // Récupérer toutes les données du formulaire
-        const formData = new FormData(document.getElementById('simulateur-gaz-residentiel'));
+        // Collecter toutes les données du formulaire
+        const allData = collectAllFormData();
 
-        // Validation de base
-        if (!validateForm(formData)) {
-            return;
-        }
+        // Stocker les données utilisateur
+        formData = allData;
 
-        // Préparer les données pour l'envoi
-        const userData = prepareUserData(formData);
+        console.log('Données utilisateur préparées:', allData);
 
-        console.log('Données utilisateur préparées:', userData);
+        // Afficher le loading dans l'étape 6 actuelle
+        showLoadingInCurrentStep();
 
-        // Afficher un indicateur de chargement
-        showLoadingState();
-
-        // Appel AJAX vers le calculateur (à implémenter)
-        sendCalculationRequest(userData);
+        // Envoyer au calculateur
+        sendDataToCalculator(allData, configData);
     }
 
-    function validateForm(formData) {
-        const communeValue = formData.get('commune');
+    function collectAllFormData() {
+        const data = {};
 
-        // Vérifier la commune
-        if (!communeValue) {
-            showError('Veuillez sélectionner votre commune');
-            return false;
-        }
+        // Collecter toutes les données du formulaire
+        document.querySelectorAll('#simulateur-gaz-residentiel input, #simulateur-gaz-residentiel select, #simulateur-gaz-residentiel textarea').forEach(function (field) {
+            const name = field.getAttribute('name');
+            const type = field.getAttribute('type');
 
-        // Si "Autre" est sélectionné, vérifier les champs supplémentaires
-        if (communeValue === 'autre') {
-            const nomCommune = formData.get('nom_commune_autre');
-            const typeGaz = formData.get('type_gaz_autre');
+            if (!name) return;
 
-            if (!nomCommune || !nomCommune.trim()) {
-                showError('Veuillez saisir le nom de votre commune');
-                return false;
-            }
+            const cleanName = name.replace('[]', '');
 
-            if (!typeGaz) {
-                showError('Veuillez sélectionner le type de gaz disponible');
-                return false;
-            }
-        }
-
-        // Autres validations
-        const superficie = formData.get('superficie');
-        if (!superficie || parseInt(superficie) < 20) {
-            showError('Veuillez saisir une superficie valide (minimum 20 m²)');
-            return false;
-        }
-
-        const nbPersonnes = formData.get('nb_personnes');
-        if (!nbPersonnes || parseInt(nbPersonnes) < 1) {
-            showError('Veuillez saisir un nombre de personnes valide');
-            return false;
-        }
-
-        return true;
-    }
-
-    function prepareUserData(formData) {
-        const communeValue = formData.get('commune');
-        let communeFinale, typeGazFinal;
-
-        if (communeValue === 'autre') {
-            // Pour les communes "autre"
-            communeFinale = formData.get('nom_commune_autre')?.trim().toUpperCase() || '';
-            typeGazFinal = formData.get('type_gaz_autre') || 'naturel';
-        } else {
-            // Pour les communes pré-configurées
-            communeFinale = communeValue;
-            const selectedOption = communeSelect.options[communeSelect.selectedIndex];
-            typeGazFinal = selectedOption?.getAttribute('data-type') || 'naturel';
-        }
-
-        return {
-            // Logement
-            commune: communeFinale,
-            type_gaz: typeGazFinal,
-            superficie: parseInt(formData.get('superficie')) || 150,
-            nb_personnes: parseInt(formData.get('nb_personnes')) || 5,
-            type_logement: formData.get('type_logement') || 'maison',
-
-            // Usages
-            chauffage_gaz: formData.get('chauffage_gaz') || 'oui',
-            isolation: formData.get('isolation') || 'niveau_1',
-            eau_chaude: formData.get('eau_chaude') || 'gaz',
-            cuisson: formData.get('cuisson') || 'gaz',
-            offre: formData.get('offre') || 'base',
-
-            // Métadonnées
-            timestamp: new Date().toISOString(),
-            user_agent: navigator.userAgent
-        };
-    }
-
-    function sendCalculationRequest(userData) {
-        // Vérifier si hticSimulateur est disponible
-        if (typeof hticSimulateur === 'undefined') {
-            showError('Configuration manquante. Veuillez recharger la page.');
-            hideLoadingState();
-            return;
-        }
-
-        // Appel AJAX vers le calculateur
-        fetch(hticSimulateur.ajaxUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                action: 'htic_calculate_estimation',
-                nonce: hticSimulateur.nonce,
-                type: 'gaz-residentiel',
-                user_data: JSON.stringify(userData),
-                config_data: '' // Sera récupéré côté serveur
-            })
-        })
-            .then(response => response.json())
-            .then(data => {
-                hideLoadingState();
-
-                if (data.success) {
-                    displayResults(data.data);
-                } else {
-                    showError(data.data || 'Erreur lors du calcul');
+            if (type === 'radio') {
+                if (field.checked) {
+                    data[cleanName] = field.value;
                 }
-            })
-            .catch(error => {
-                console.error('Erreur calcul:', error);
-                hideLoadingState();
-                showError('Erreur technique. Veuillez réessayer.');
-            });
+            } else if (type === 'checkbox') {
+                if (!data[cleanName]) {
+                    data[cleanName] = [];
+                }
+
+                if (field.checked) {
+                    const value = field.value;
+                    if (!data[cleanName].includes(value)) {
+                        data[cleanName].push(value);
+                    }
+                }
+            } else {
+                data[cleanName] = field.value;
+            }
+        });
+
+        return data;
+    }
+
+    function sendDataToCalculator(userData, configData) {
+        const dataToSend = {
+            action: 'htic_calculate_estimation',
+            type: 'gaz-residentiel',
+            user_data: JSON.stringify(userData),
+            config_data: JSON.stringify(configData)
+        };
+
+        // Ajouter le nonce selon la méthode de elec-residentiel
+        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
+            dataToSend.nonce = hticSimulateur.nonce;
+        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.calculateNonce) {
+            dataToSend.nonce = hticSimulateurUnifix.calculateNonce;
+        }
+
+        let ajaxUrl = '/wp-admin/admin-ajax.php';
+        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+            ajaxUrl = hticSimulateur.ajaxUrl;
+        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.ajaxUrl) {
+            ajaxUrl = hticSimulateurUnifix.ajaxUrl;
+        }
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            dataType: 'json',
+            data: dataToSend,
+            timeout: 30000,
+            success: function (response) {
+                hideLoadingInCurrentStep();
+
+                if (response.success) {
+                    calculationResults = response.data;
+
+                    // Afficher les résultats dans l'étape 6 actuelle (ne pas changer d'étape)
+                    displayResults(response.data);
+                    setupEmailActions();
+                } else {
+                    displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Erreur AJAX:', {
+                    status: status,
+                    error: error,
+                    responseText: xhr.responseText,
+                    statusCode: xhr.status
+                });
+
+                hideLoadingInCurrentStep();
+
+                let errorMessage = 'Erreur de connexion lors du calcul';
+                if (xhr.status === 0) {
+                    errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Erreur interne du serveur. Contactez l\'administrateur.';
+                } else if (status === 'timeout') {
+                    errorMessage = 'Le calcul prend trop de temps. Réessayez.';
+                }
+
+                displayError(errorMessage);
+            }
+        });
     }
 
     // ================================
@@ -431,7 +744,10 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Affichage des résultats:', results);
 
         const calculContainer = document.getElementById('calcul-container');
-        if (!calculContainer) return;
+        if (!calculContainer) {
+            console.error('Container calcul-container non trouvé');
+            return;
+        }
 
         // Créer l'affichage des résultats
         calculContainer.innerHTML = `
@@ -454,14 +770,42 @@ document.addEventListener('DOMContentLoaded', function () {
                         `).join('') : ''}
                     </div>
                 </div>
+                
+                <div class="result-details">
+                    <h4>Détails de votre estimation</h4>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Type de gaz</span>
+                            <span class="detail-value">${results.type_gaz === 'naturel' ? '🌱 Gaz naturel' : '⛽ Gaz propane'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Abonnement annuel</span>
+                            <span class="detail-value">${results.cout_abonnement || 0}€ HT</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Consommation</span>
+                            <span class="detail-value">${results.cout_consommation || 0}€ HT</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Prix du kWh</span>
+                            <span class="detail-value">${results.prix_kwh || 0}€</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="results-actions">
+                    <button class="btn btn-primary" id="btn-send-email">✉️ Recevoir par email</button>
+                    <button class="btn btn-secondary" onclick="location.reload()">🔄 Nouvelle simulation</button>
+                </div>
+                
+                <!-- Message de confirmation email -->
+                <div class="confirmation-message" id="email-confirmation" style="display: none;">
+                    <div class="success-icon">✅</div>
+                    <p>Votre simulation a été envoyée avec succès à <strong id="email-display"></strong></p>
+                </div>
             </div>
         `;
-
-        // Afficher les actions
-        const calculActions = document.getElementById('calcul-actions');
-        if (calculActions) {
-            calculActions.style.display = 'block';
-        }
     }
 
     function formatUsageLabel(key) {
@@ -471,6 +815,116 @@ document.addEventListener('DOMContentLoaded', function () {
             'cuisson': '🍳 Cuisson'
         };
         return labels[key] || key;
+    }
+
+    function displayError(message) {
+        const calculContainer = document.getElementById('calcul-container');
+        if (calculContainer) {
+            calculContainer.innerHTML = `
+                <div class="error-state">
+                    <div class="error-icon">❌</div>
+                    <h3>Erreur lors du calcul</h3>
+                    <p>${message}</p>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="location.reload()">🔄 Recharger</button>
+                        <button class="btn btn-secondary" onclick="goToStep(4)">← Retour au formulaire</button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // ================================
+    // ENVOI EMAIL
+    // ================================
+
+    function setupEmailActions() {
+        // Bouton envoyer par email
+        $(document).on('click', '#btn-send-email', function () {
+            sendResultsByEmail();
+        });
+    }
+
+    function sendResultsByEmail() {
+        console.log('Envoi des résultats par email');
+
+        if (!calculationResults || !formData) {
+            showError('Aucun calcul disponible. Veuillez refaire le calcul.');
+            return;
+        }
+
+        // Préparer les données pour l'email
+        const emailData = {
+            action: 'htic_send_simulation_email',
+            type: 'gaz-residentiel',
+            results: calculationResults,
+            client: {
+                civilite: formData.civilite,
+                nom: formData.nom,
+                prenom: formData.prenom,
+                email: formData.email,
+                telephone: formData.telephone,
+                code_postal: formData.code_postal,
+                commentaires: formData.commentaires
+            },
+            simulation: {
+                commune: formData.commune,
+                type_gaz: formData.type_gaz || 'naturel',
+                superficie: formData.superficie,
+                nb_personnes: formData.nb_personnes,
+                type_logement: formData.type_logement,
+                chauffage_gaz: formData.chauffage_gaz,
+                isolation: formData.isolation,
+                eau_chaude: formData.eau_chaude,
+                cuisson: formData.cuisson,
+                offre: formData.offre
+            }
+        };
+
+        // Ajouter le nonce
+        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
+            emailData.nonce = hticSimulateur.nonce;
+        }
+
+        // État de chargement
+        const $btn = $('#btn-send-email');
+        const originalText = $btn.html();
+        $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
+
+        let ajaxUrl = '/wp-admin/admin-ajax.php';
+        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+            ajaxUrl = hticSimulateur.ajaxUrl;
+        }
+
+        // Envoi AJAX
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: emailData,
+            success: function (response) {
+                if (response.success) {
+                    // Afficher la confirmation
+                    $('#email-confirmation').slideDown();
+                    $('#email-display').text(formData.email);
+
+                    // Masquer après 5 secondes
+                    setTimeout(() => {
+                        $('#email-confirmation').slideUp();
+                    }, 5000);
+
+                    showNotification('✅ Email envoyé avec succès !', 'success');
+                } else {
+                    showNotification('❌ Erreur lors de l\'envoi : ' + (response.data || 'Erreur inconnue'), 'error');
+                }
+            },
+            error: function () {
+                showNotification('❌ Erreur de connexion', 'error');
+            },
+            complete: function () {
+                // Restaurer le bouton
+                $btn.prop('disabled', false).html(originalText);
+            }
+        });
     }
 
     // ================================
@@ -503,12 +957,41 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingOverlay.style.display = 'flex';
         }
 
-        // Désactiver le bouton de calcul
-        const btnCalculate = document.querySelector('.btn-calculate');
+        // Afficher un message dans le container
+        const calculContainer = document.getElementById('calcul-container');
+        if (calculContainer) {
+            calculContainer.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Calcul de votre estimation gaz en cours...</p>
+                    <small>Traitement des données par le calculateur HTIC...</small>
+                </div>
+            `;
+        }
+    }
+
+    function showLoadingInCurrentStep() {
+        // Désactiver le bouton de calcul et montrer le loading
+        const btnCalculate = document.querySelector('.btn-calculate, #btn-calculate');
         if (btnCalculate) {
             btnCalculate.disabled = true;
-            btnCalculate.textContent = 'Calcul en cours...';
+            btnCalculate.innerHTML = '<span class="spinner"></span> Calcul en cours...';
         }
+
+        // Optionnel: afficher un overlay de loading
+        showLoadingState();
+    }
+
+    function hideLoadingInCurrentStep() {
+        // Réactiver le bouton de calcul
+        const btnCalculate = document.querySelector('.btn-calculate, #btn-calculate');
+        if (btnCalculate) {
+            btnCalculate.disabled = false;
+            btnCalculate.innerHTML = '<span class="btn-icon">🔍</span> Calculer mon estimation';
+        }
+
+        // Masquer l'overlay
+        hideLoadingState();
     }
 
     function hideLoadingState() {
@@ -516,12 +999,41 @@ document.addEventListener('DOMContentLoaded', function () {
         if (loadingOverlay) {
             loadingOverlay.style.display = 'none';
         }
+    }
 
-        // Réactiver le bouton de calcul
-        const btnCalculate = document.querySelector('.btn-calculate');
-        if (btnCalculate) {
-            btnCalculate.disabled = false;
-            btnCalculate.innerHTML = '<span class="btn-icon">🔍</span> Calculer mon estimation';
+    function showNotification(message, type = 'info') {
+        // Supprimer les notifications existantes
+        $('.notification').remove();
+
+        const $notification = $(`
+            <div class="notification notification-${type}">
+                ${message}
+            </div>
+        `);
+
+        $('body').append($notification);
+
+        // Animation d'entrée
+        setTimeout(() => {
+            $notification.addClass('show');
+        }, 100);
+
+        // Suppression après 4 secondes
+        setTimeout(() => {
+            $notification.removeClass('show');
+            setTimeout(() => {
+                $notification.remove();
+            }, 300);
+        }, 4000);
+    }
+
+    function goToStep(stepNumber) {
+        if (stepNumber >= 1 && stepNumber <= totalSteps) {
+            hideStep(currentStep);
+            currentStep = stepNumber;
+            showStep(currentStep);
+            updateProgressBar();
+            updateNavigation();
         }
     }
 
@@ -533,10 +1045,20 @@ document.addEventListener('DOMContentLoaded', function () {
     window.hticGazResidentiel = {
         calculateEstimation: calculateGazEstimation,
         updateEstimates: updateConsumptionEstimates,
+        goToStep: goToStep,
         validateForm: function () {
-            const formData = new FormData(document.getElementById('simulateur-gaz-residentiel'));
-            return validateForm(formData);
-        }
+            return validateCurrentStep();
+        },
+        getResults: function () {
+            return calculationResults;
+        },
+        getUserData: function () {
+            return formData;
+        },
+        getCurrentData: () => formData,
+        getAllData: collectAllFormData,
+        getConfigData: () => configData,
+        getCurrentStep: () => currentStep
     };
 
     console.log('Simulateur gaz résidentiel initialisé');

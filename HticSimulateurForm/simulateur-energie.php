@@ -41,6 +41,7 @@ class HticSimulateurEnergieAdmin {
 
         add_action('wp_ajax_htic_get_communes_gaz', array($this, 'ajax_get_communes_gaz'));
         add_action('wp_ajax_nopriv_htic_get_communes_gaz', array($this, 'ajax_get_communes_gaz'));
+
     }
         
     public function activate() {
@@ -384,19 +385,22 @@ class HticSimulateurEnergieAdmin {
         // ================================
         
         private function enqueue_formulaire_assets($type) {
-        $formulaire_path = HTIC_SIMULATEUR_PATH . 'formulaires/' . $type . '/';
-        $formulaire_url = HTIC_SIMULATEUR_URL . 'formulaires/' . $type . '/';
-        
-        
-        if (file_exists($formulaire_path . $type . '.js')) {
-            wp_enqueue_script(
+            $formulaire_path = HTIC_SIMULATEUR_PATH . 'formulaires/' . $type . '/';
+            $formulaire_url = HTIC_SIMULATEUR_URL . 'formulaires/' . $type . '/';
+            
+            $js_file = $formulaire_path . $type . '.js';
+
+            
+            if (file_exists($js_file)) {
+               wp_enqueue_script(
                 'htic-simulateur-' . $type . '-js', 
                 $formulaire_url . $type . '.js', 
-                array('jquery', 'htic-simulateur-common-js'), 
+                array('jquery'), 
                 HTIC_SIMULATEUR_VERSION, 
                 true
             );
-            
+        
+            // CETTE PARTIE EST CRUCIALE
             wp_localize_script(
                 'htic-simulateur-' . $type . '-js', 
                 'hticSimulateur', 
@@ -407,9 +411,12 @@ class HticSimulateurEnergieAdmin {
                     'restUrl' => rest_url('htic-simulateur/v1/')
                 )
             );
+                
+            } else {
+                error_log("ERROR: File not found for: " . $type . " at path: " . $js_file);
+            }
         }
-    }
-    
+   
     // ================================
     // ADMIN INTERFACE
     // ================================

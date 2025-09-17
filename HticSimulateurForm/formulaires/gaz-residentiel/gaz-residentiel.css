@@ -307,7 +307,7 @@ input[type="text"],
 input[type="number"],
 select {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0rem 1rem;
     border: 2px solid var(--gray-200);
     border-radius: 10px 0px 0px 10px;
     font-size: 1rem;
@@ -611,6 +611,21 @@ select:focus {
 /* ========================================
    RÉSULTATS
    ======================================== */
+
+.calcul-container {
+    display: flex;
+    margin: auto;
+    justify-content: center;
+}
+
+.calcul-loading {
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    align-items: center;
+}
+
+
 #resultats-container {
     min-height: 400px;
     display: flex;

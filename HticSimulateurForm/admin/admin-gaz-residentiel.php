@@ -195,7 +195,7 @@ $communes_gaz = isset($gaz_residentiel['communes_gaz']) ? $gaz_residentiel['comm
                 <td><em>Petits consommateurs</em></td>
             </tr>
             <tr style="background-color: #fff3cd;">
-                <td><strong>P2 ⭐</strong></td>
+                <td><strong>P2</strong></td>
                 <td>6 000 - 29 999</td>
                 <td>
                     <input type="number" step="0.01" 
@@ -319,7 +319,7 @@ $communes_gaz = isset($gaz_residentiel['communes_gaz']) ? $gaz_residentiel['comm
                 <td><em>1980 à 2000</em></td>
             </tr>
             <tr style="background-color: #d1ecf1;">
-                <td><strong>Niveau 3 ⭐</strong></td>
+                <td><strong>Niveau 3</strong></td>
                 <td>Bien isolé</td>
                 <td>
                     <input type="number" 

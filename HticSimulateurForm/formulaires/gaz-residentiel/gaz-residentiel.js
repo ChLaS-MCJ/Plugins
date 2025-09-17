@@ -1,49 +1,22 @@
-/**
- * JavaScript pour le formulaire Gaz Résidentiel
- * Fichier: formulaires/gaz-residentiel/gaz-residentiel.js
- */
+// gaz-residentiel.js - JavaScript complet pour collecte de données et calcul
+
 jQuery(document).ready(function ($) {
-    console.log('Initialisation du simulateur gaz résidentiel');
 
-    // Variables globales
-    const communeSelect = document.getElementById('commune');
-    const nbPersonnesInput = document.getElementById('nb_personnes');
-    const chauffageRadios = document.querySelectorAll('input[name="chauffage_gaz"]');
-    const chauffageDetails = document.querySelector('.chauffage-details');
-    const autreCommuneDetails = document.getElementById('autre-commune-details');
-    const typeGazInfo = document.getElementById('type-gaz-info');
-    const typeGazText = document.getElementById('type-gaz-text');
-
-    // Variables pour la navigation
     let currentStep = 1;
-    const totalSteps = 6;
-    let calculationResults = null;
+    const totalSteps = 6; // 6 étapes pour gaz (pas 8 comme elec)
     let formData = {};
     let configData = {};
+    let calculationResults = null;
 
-    // Initialisation
     init();
 
     function init() {
-        // Initialiser l'étape courante
-        currentStep = 1;
-        showStep(currentStep);
-        updateProgressBar();
-
-        // Charger les données de configuration
         loadConfigData();
-
-        // Charger les communes depuis le back-office
-        loadCommunesFromBackoffice();
-
-        // Mettre à jour les estimations initiales
+        setupStepNavigation();
+        setupFormValidation();
+        setupGazLogic();
+        loadCommunes();
         updateConsumptionEstimates();
-
-        // Gérer l'affichage conditionnel du chauffage
-        toggleChauffageDetails();
-
-        // Events listeners
-        setupEventListeners();
     }
 
     function loadConfigData() {
@@ -58,454 +31,174 @@ jQuery(document).ready(function ($) {
         }
     }
 
-    function setupEventListeners() {
-        // Changement du nombre de personnes
-        if (nbPersonnesInput) {
-            nbPersonnesInput.addEventListener('change', updateConsumptionEstimates);
-            nbPersonnesInput.addEventListener('input', updateConsumptionEstimates);
-        }
+    // ===============================
+    // NAVIGATION ENTRE LES ÉTAPES
+    // ===============================
 
-        // Changement de commune
-        if (communeSelect) {
-            communeSelect.addEventListener('change', handleCommuneSelection);
-        }
-
-        // Gestion du chauffage au gaz
-        chauffageRadios.forEach(radio => {
-            radio.addEventListener('change', toggleChauffageDetails);
-        });
-
-        // Configuration des boutons de navigation comme dans elec-residentiel
-        $('#btn-next, .btn-next').on('click', function () {
+    function setupStepNavigation() {
+        $('#btn-next').on('click', function () {
             if (validateCurrentStep()) {
                 saveCurrentStepData();
                 goToNextStep();
             }
         });
 
-        $('#btn-previous, .btn-prev').on('click', function () {
+        $('#btn-previous').on('click', function () {
             saveCurrentStepData();
             goToPreviousStep();
         });
 
-        // IMPORTANT: Le calcul se fait seulement à l'étape 6
-        $('#btn-calculate, .btn-calculate').on('click', function () {
-            // Empêcher le calcul s'il n'est pas sur l'étape 6
-            console.log('Tentative de calcul à l\'étape:', currentStep);
-            if (currentStep !== 6) {
-                console.log('Calcul bloqué - pas à l\'étape 6');
-                return false;
-            }
-            calculateGazEstimation();
-        });
-
-        // Bouton envoyer par email
-        $(document).on('click', '#btn-send-email', function () {
-            sendResultsByEmail();
-        });
-    }
-
-    // ================================
-    // NAVIGATION ENTRE ÉTAPES
-    // ================================
-
-    function setupNavigationButtons() {
-        const btnNext = document.querySelectorAll('.btn-next');
-        const btnPrev = document.querySelectorAll('.btn-prev');
-
-        btnNext.forEach(btn => {
-            btn.addEventListener('click', function () {
-                console.log('Étape suivante');
-                if (validateCurrentStep()) {
-                    saveCurrentStepData();
-                    goToNextStep();
-                }
-            });
-        });
-
-        btnPrev.forEach(btn => {
-            btn.addEventListener('click', function () {
-                console.log('Étape précédente');
+        $('#btn-calculate').on('click', function () {
+            if (validateCurrentStep()) {
                 saveCurrentStepData();
-                goToPreviousStep();
-            });
+                calculateResults();
+            }
+        });
+
+        $('#btn-restart').on('click', function () {
+            if (confirm('Voulez-vous vraiment recommencer la simulation ?')) {
+                restartSimulation();
+            }
+        });
+
+        $('.step').on('click', function () {
+            const targetStep = parseInt($(this).data('step'));
+            if (targetStep < currentStep || targetStep === 1) {
+                saveCurrentStepData();
+                goToStep(targetStep);
+            }
         });
     }
 
     function goToNextStep() {
         if (currentStep < totalSteps) {
-            hideStep(currentStep);
             currentStep++;
             showStep(currentStep);
-            updateProgressBar();
+            updateProgress();
             updateNavigation();
         }
     }
 
     function goToPreviousStep() {
         if (currentStep > 1) {
-            hideStep(currentStep);
             currentStep--;
             showStep(currentStep);
-            updateProgressBar();
+            updateProgress();
+            updateNavigation();
+        }
+    }
+
+    function goToStep(stepNumber) {
+        if (stepNumber >= 1 && stepNumber <= totalSteps) {
+            currentStep = stepNumber;
+            showStep(currentStep);
+            updateProgress();
             updateNavigation();
         }
     }
 
     function showStep(stepNumber) {
-        const step = document.querySelector(`.form-step[data-step="${stepNumber}"]`);
-        if (step) {
-            step.classList.add('active');
-            step.style.display = 'block';
-        }
+        $('.form-step').removeClass('active');
+        $(`.form-step[data-step="${stepNumber}"]`).addClass('active');
 
-        // Mettre à jour l'indicateur de progression
-        const progressStep = document.querySelector(`.step[data-step="${stepNumber}"]`);
-        if (progressStep) {
-            progressStep.classList.add('active');
-        }
+        $('.step').removeClass('active');
+        $(`.step[data-step="${stepNumber}"]`).addClass('active');
     }
 
-    function hideStep(stepNumber) {
-        const step = document.querySelector(`.form-step[data-step="${stepNumber}"]`);
-        if (step) {
-            step.classList.remove('active');
-            step.style.display = 'none';
-        }
-
-        // Marquer les étapes précédentes comme complétées
-        if (stepNumber < currentStep) {
-            const progressStep = document.querySelector(`.step[data-step="${stepNumber}"]`);
-            if (progressStep) {
-                progressStep.classList.remove('active');
-                progressStep.classList.add('completed');
-            }
-        }
-    }
-
-    function updateProgressBar() {
-        const progress = (currentStep / totalSteps) * 100;
-        const progressFill = document.querySelector('.progress-fill');
-        if (progressFill) {
-            progressFill.style.width = progress + '%';
-            progressFill.setAttribute('data-progress', Math.round(progress));
-        }
-
-        // Marquer les étapes comme complétées
-        for (let i = 1; i < currentStep; i++) {
-            const step = document.querySelector(`.step[data-step="${i}"]`);
-            if (step) {
-                step.classList.add('completed');
-                step.classList.remove('active');
-            }
-        }
+    function updateProgress() {
+        const progressPercent = (currentStep / totalSteps) * 100;
+        $('.progress-fill').css('width', progressPercent + '%');
     }
 
     function updateNavigation() {
-        // Afficher/masquer les boutons selon l'étape
-        const btnPrev = document.querySelector('.btn-prev, #btn-previous');
-        const btnNext = document.querySelector('.btn-next, #btn-next');
-        const btnCalculate = document.querySelector('.btn-calculate, #btn-calculate');
+        // Bouton Précédent
+        $('#btn-previous').toggle(currentStep > 1);
 
-        if (btnPrev) {
-            btnPrev.style.display = currentStep > 1 ? 'inline-block' : 'none';
-        }
-
-        if (currentStep === 6) { // Étape 6 - afficher le bouton calcul
-            if (btnNext) btnNext.style.display = 'none';
-            if (btnCalculate) btnCalculate.style.display = 'inline-block';
-        } else if (currentStep >= 1 && currentStep <= 5) { // Étapes 1-5 - bouton suivant
-            if (btnNext) btnNext.style.display = 'inline-block';
-            if (btnCalculate) btnCalculate.style.display = 'none';
+        // Gestion des boutons pour 6 étapes
+        if (currentStep === 6) { // Étape résultats
+            $('#btn-next, #btn-calculate').hide();
+            $('#btn-restart').show();
+            $('.results-actions').show();
+        } else if (currentStep === 5) { // Étape contact
+            $('#btn-next').hide();
+            $('#btn-calculate').show();
+            $('#btn-restart').hide();
         } else {
-            // Après calcul, masquer tous les boutons de navigation
-            if (btnNext) btnNext.style.display = 'none';
-            if (btnCalculate) btnCalculate.style.display = 'none';
+            $('#btn-next').show();
+            $('#btn-calculate, #btn-restart').hide();
+            $('.results-actions').hide();
         }
     }
 
-    function saveCurrentStepData() {
-        const currentStepElement = document.querySelector(`.form-step[data-step="${currentStep}"]`);
+    // ===============================
+    // LOGIQUE SPÉCIFIQUE GAZ
+    // ===============================
 
-        if (currentStepElement) {
-            currentStepElement.querySelectorAll('input, select, textarea').forEach(function (field) {
-                const name = field.getAttribute('name');
-                const type = field.getAttribute('type');
+    function setupGazLogic() {
+        // Gestion chauffage au gaz vs autres
+        $('input[name="chauffage_gaz"]').on('change', function () {
+            const value = $(this).val();
+            const detailsSection = $('#chauffage-details');
 
-                if (!name) return;
-
-                const cleanName = name.replace('[]', '');
-
-                if (type === 'radio') {
-                    if (field.checked) {
-                        formData[cleanName] = field.value;
-                    }
-                } else if (type === 'checkbox') {
-                    if (!formData[cleanName]) {
-                        formData[cleanName] = [];
-                    }
-
-                    if (field.checked) {
-                        const value = field.value;
-                        if (!formData[cleanName].includes(value)) {
-                            formData[cleanName].push(value);
-                        }
-                    }
-                } else {
-                    formData[cleanName] = field.value;
-                }
-            });
-        }
-    }
-
-    function validateCurrentStep() {
-        switch (currentStep) {
-            case 1:
-                return validateStep1();
-            case 2:
-                return validateStep2();
-            case 3:
-                return validateStep3();
-            case 4:
-                return validateStep4();
-            case 5:
-                return validateStep5();
-            default:
-                return true;
-        }
-    }
-
-    function validateStep1() {
-        const superficie = document.getElementById('superficie');
-        const nbPersonnes = document.getElementById('nb_personnes');
-        const commune = document.getElementById('commune');
-
-        if (!superficie || !superficie.value || parseInt(superficie.value) < 20) {
-            showError('Veuillez saisir une superficie valide (minimum 20 m²)');
-            return false;
-        }
-
-        if (!nbPersonnes || !nbPersonnes.value || parseInt(nbPersonnes.value) < 1) {
-            showError('Veuillez saisir un nombre de personnes valide');
-            return false;
-        }
-
-        if (!commune || !commune.value) {
-            showError('Veuillez sélectionner votre commune');
-            return false;
-        }
-
-        // Validation spéciale pour "autre commune"
-        if (commune.value === 'autre') {
-            const nomCommune = document.getElementById('nom_commune_autre');
-            const typeGaz = document.querySelector('input[name="type_gaz_autre"]:checked');
-
-            if (!nomCommune || !nomCommune.value.trim()) {
-                showError('Veuillez saisir le nom de votre commune');
-                return false;
+            if (value === 'oui') {
+                detailsSection.show();
+                detailsSection.find('input[required]').attr('required', true);
+            } else {
+                detailsSection.hide();
+                detailsSection.find('input').prop('checked', false).attr('required', false);
             }
-
-            if (!typeGaz) {
-                showError('Veuillez sélectionner le type de gaz disponible');
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    function validateStep2() {
-        const chauffageGaz = document.querySelector('input[name="chauffage_gaz"]:checked');
-        if (!chauffageGaz) {
-            showError('Veuillez indiquer si votre logement est chauffé au gaz');
-            return false;
-        }
-
-        // Si chauffage au gaz, vérifier l'isolation
-        if (chauffageGaz.value === 'oui') {
-            const isolation = document.querySelector('input[name="isolation"]:checked');
-            if (!isolation) {
-                showError('Veuillez sélectionner le niveau d\'isolation de votre logement');
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    function validateStep3() {
-        const eauChaude = document.querySelector('input[name="eau_chaude"]:checked');
-        if (!eauChaude) {
-            showError('Veuillez indiquer le mode de production d\'eau chaude');
-            return false;
-        }
-        return true;
-    }
-
-    function validateStep4() {
-        const cuisson = document.querySelector('input[name="cuisson"]:checked');
-        if (!cuisson) {
-            showError('Veuillez indiquer le mode de cuisson');
-            return false;
-        }
-
-        const offre = document.querySelector('input[name="offre"]:checked');
-        if (!offre) {
-            showError('Veuillez sélectionner le type d\'offre');
-            return false;
-        }
-
-        return true;
-    }
-
-    function validateStep5() {
-        // Validation des données de contact
-        const civilite = document.querySelector('input[name="civilite"]:checked');
-        const prenom = document.getElementById('prenom');
-        const nom = document.getElementById('nom');
-        const email = document.getElementById('email');
-        const codePostal = document.getElementById('code_postal');
-        const source = document.getElementById('comment_nous_avez_vous_connu');
-        const accepteCGU = document.getElementById('accepte_cgu');
-
-        if (!civilite) {
-            showError('Veuillez sélectionner votre civilité');
-            return false;
-        }
-
-        if (!prenom || !prenom.value.trim()) {
-            showError('Veuillez saisir votre prénom');
-            return false;
-        }
-
-        if (!nom || !nom.value.trim()) {
-            showError('Veuillez saisir votre nom');
-            return false;
-        }
-
-        if (!email || !email.value.trim()) {
-            showError('Veuillez saisir votre adresse email');
-            return false;
-        }
-
-        // Validation email basique
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email.value)) {
-            showError('Veuillez saisir une adresse email valide');
-            return false;
-        }
-
-        if (!codePostal || !/^[0-9]{5}$/.test(codePostal.value)) {
-            showError('Veuillez saisir un code postal valide (5 chiffres)');
-            return false;
-        }
-
-        if (!source || !source.value) {
-            showError('Veuillez indiquer comment vous nous avez connus');
-            return false;
-        }
-
-        if (!accepteCGU || !accepteCGU.checked) {
-            showError('Veuillez accepter les conditions générales d\'utilisation');
-            return false;
-        }
-
-        return true;
-    }
-
-    // ================================
-    // GESTION DES COMMUNES
-    // ================================
-
-    function loadCommunesFromBackoffice() {
-        console.log('Chargement des communes depuis le back-office...');
-
-        // Vérifier si hticSimulateur est disponible
-        if (typeof hticSimulateur === 'undefined') {
-            console.warn('hticSimulateur non disponible, utilisation des communes par défaut');
-            populateDefaultCommunes();
-            return;
-        }
-
-        // Appel AJAX pour récupérer les communes configurées dans l'admin
-        fetch(hticSimulateur.ajaxUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                action: 'htic_get_communes_gaz',
-                nonce: hticSimulateur.nonce
-            })
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Réponse AJAX communes:', data);
-
-                if (data.success && data.data && data.data.communes) {
-                    console.log('Communes récupérées:', data.data.communes);
-                    populateCommunesSelect(data.data.communes);
-                } else {
-                    console.log('Pas de communes en base, utilisation des valeurs par défaut');
-                    populateDefaultCommunes();
-                }
-            })
-            .catch(error => {
-                console.error('Erreur chargement communes:', error);
-                populateDefaultCommunes();
-            });
-    }
-
-    function populateCommunesSelect(communes) {
-        console.log('Remplissage du select avec', communes.length, 'communes');
-
-        if (!communeSelect) {
-            console.error('Select commune non trouvé');
-            return;
-        }
-
-        const groupeNaturel = document.getElementById('communes-naturel');
-        const groupePropane = document.getElementById('communes-propane');
-
-        if (!groupeNaturel || !groupePropane) {
-            console.error('Groupes communes non trouvés');
-            return;
-        }
-
-        // Vider les groupes existants
-        groupeNaturel.innerHTML = '';
-        groupePropane.innerHTML = '';
-
-        // Trier les communes par type et nom
-        const communesNaturel = communes.filter(c => c.type === 'naturel').sort((a, b) => a.nom.localeCompare(b.nom));
-        const communesPropane = communes.filter(c => c.type === 'propane').sort((a, b) => a.nom.localeCompare(b.nom));
-
-        // Ajouter les communes gaz naturel
-        communesNaturel.forEach(commune => {
-            const option = document.createElement('option');
-            option.value = commune.nom;
-            option.textContent = commune.nom;
-            option.setAttribute('data-type', 'naturel');
-            groupeNaturel.appendChild(option);
         });
 
-        // Ajouter les communes gaz propane
-        communesPropane.forEach(commune => {
-            const option = document.createElement('option');
-            option.value = commune.nom;
-            option.textContent = commune.nom;
-            option.setAttribute('data-type', 'propane');
-            groupePropane.appendChild(option);
-        });
+        // Mise à jour des estimations selon le nombre de personnes
+        $('#nb_personnes').on('change input', updateConsumptionEstimates);
 
-        console.log('Select rempli:', communesNaturel.length, 'naturel +', communesPropane.length, 'propane');
+        // Gestion commune autre
+        $('#commune').on('change', handleCommuneSelection);
     }
 
-    function populateDefaultCommunes() {
-        console.log('Utilisation des communes par défaut Excel');
+    function updateConsumptionEstimates() {
+        const nbPersonnes = parseInt($('#nb_personnes').val()) || 4;
 
+        // Eau chaude : 400 kWh/personne/an
+        const eauChaudeConsommation = nbPersonnes * 400;
+        $('#eau-chaude-estimation').text(`${eauChaudeConsommation} kWh/an`);
+
+        // Cuisson : 50 kWh/personne/an  
+        const cuissonConsommation = nbPersonnes * 50;
+        $('#cuisson-estimation').text(`${cuissonConsommation} kWh/an`);
+    }
+
+    function handleCommuneSelection() {
+        const selectedValue = $('#commune').val();
+        const selectedOption = $('#commune option:selected');
+
+        if (selectedValue === 'autre') {
+            $('#autre-commune-details').show();
+            $('#type-gaz-info').hide();
+        } else if (selectedValue && selectedValue !== '') {
+            $('#autre-commune-details').hide();
+            showTypeGazInfo(selectedOption);
+        } else {
+            $('#autre-commune-details').hide();
+            $('#type-gaz-info').hide();
+        }
+    }
+
+    function showTypeGazInfo(selectedOption) {
+        const typeGaz = selectedOption.data('type');
+        if (!typeGaz) return;
+
+        const typeText = typeGaz === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
+        const icon = typeGaz === 'naturel' ? '🌱' : '⛽';
+
+        $('#type-gaz-text').html(`${icon} <strong>${typeText}</strong> disponible dans cette commune`);
+        $('#type-gaz-info').show();
+    }
+
+    function loadCommunes() {
+        // Communes par défaut
         const defaultCommunes = [
-            // Communes Gaz Naturel (données Excel exactes)
+            // Gaz Naturel
             { nom: 'AIRE SUR L\'ADOUR', type: 'naturel' },
             { nom: 'BARCELONNE DU GERS', type: 'naturel' },
             { nom: 'GAAS', type: 'naturel' },
@@ -514,7 +207,7 @@ jQuery(document).ready(function ($) {
             { nom: 'MISSON', type: 'naturel' },
             { nom: 'POUILLON', type: 'naturel' },
 
-            // Communes Gaz Propane (données Excel exactes)
+            // Gaz Propane
             { nom: 'BASCONS', type: 'propane' },
             { nom: 'BENESSE LES DAX', type: 'propane' },
             { nom: 'CAMPAGNE', type: 'propane' },
@@ -532,154 +225,408 @@ jQuery(document).ready(function ($) {
         populateCommunesSelect(defaultCommunes);
     }
 
-    function handleCommuneSelection() {
-        const selectedOption = communeSelect.options[communeSelect.selectedIndex];
-        const selectedValue = selectedOption.value;
+    function populateCommunesSelect(communes) {
+        const communesNaturel = communes.filter(c => c.type === 'naturel');
+        const communesPropane = communes.filter(c => c.type === 'propane');
 
-        console.log('Commune sélectionnée:', selectedValue);
+        // Remplir le groupe naturel
+        $('#communes-naturel').empty();
+        communesNaturel.forEach(commune => {
+            $('#communes-naturel').append(`<option value="${commune.nom}" data-type="naturel">${commune.nom}</option>`);
+        });
 
-        if (selectedValue === 'autre') {
-            // Afficher la section "Autre commune"
-            if (autreCommuneDetails) {
-                autreCommuneDetails.style.display = 'block';
-            }
-
-            // Masquer l'info type de gaz
-            if (typeGazInfo) {
-                typeGazInfo.style.display = 'none';
-            }
-        } else if (selectedValue && selectedValue !== '') {
-            // Masquer la section "Autre commune"
-            if (autreCommuneDetails) {
-                autreCommuneDetails.style.display = 'none';
-            }
-
-            // Afficher le type de gaz détecté
-            showTypeGazInfo(selectedOption);
-        } else {
-            // Aucune commune sélectionnée
-            if (autreCommuneDetails) {
-                autreCommuneDetails.style.display = 'none';
-            }
-            if (typeGazInfo) {
-                typeGazInfo.style.display = 'none';
-            }
-        }
-    }
-
-    function showTypeGazInfo(selectedOption) {
-        const typeGaz = selectedOption.getAttribute('data-type');
-        if (!typeGaz || !typeGazInfo || !typeGazText) return;
-
-        const typeText = typeGaz === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
-        const icon = typeGaz === 'naturel' ? '🌱' : '⛽';
-
-        typeGazText.innerHTML = `${icon} <strong>${typeText}</strong> disponible dans cette commune`;
-        typeGazInfo.style.display = 'block';
-    }
-
-    // ================================
-    // GESTION DES ESTIMATIONS
-    // ================================
-
-    function updateConsumptionEstimates() {
-        const nbPersonnes = parseInt(nbPersonnesInput?.value) || 5;
-
-        // Eau chaude : 400 kWh/personne/an (valeur Excel K29)
-        const eauChaudeConsommation = nbPersonnes * 400;
-        const eauChaudeEl = document.getElementById('eau-chaude-estimation');
-        if (eauChaudeEl) {
-            eauChaudeEl.textContent = `${eauChaudeConsommation} kWh/an`;
-        }
-
-        // Cuisson : 50 kWh/personne/an (valeur Excel K28)
-        const cuissonConsommation = nbPersonnes * 50;
-        const cuissonEl = document.getElementById('cuisson-estimation');
-        if (cuissonEl) {
-            cuissonEl.textContent = `${cuissonConsommation} kWh/an`;
-        }
-
-        console.log('Estimations mises à jour:', {
-            personnes: nbPersonnes,
-            eauChaude: eauChaudeConsommation,
-            cuisson: cuissonConsommation
+        // Remplir le groupe propane
+        $('#communes-propane').empty();
+        communesPropane.forEach(commune => {
+            $('#communes-propane').append(`<option value="${commune.nom}" data-type="propane">${commune.nom}</option>`);
         });
     }
 
-    function toggleChauffageDetails() {
-        const chauffageOui = document.getElementById('chauffage_oui');
+    // ===============================
+    // VALIDATION
+    // ===============================
 
-        if (chauffageOui && chauffageDetails) {
-            chauffageDetails.style.display = chauffageOui.checked ? 'block' : 'none';
+    function setupFormValidation() {
+        $('input[required], select[required]').on('blur', function () {
+            validateField($(this));
+        });
+
+        $('input[type="number"]').on('input', function () {
+            validateNumberField($(this));
+        });
+    }
+
+    function validateCurrentStep() {
+        const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
+        let isValid = true;
+
+        currentStepElement.find('.field-error, .field-success').removeClass('field-error field-success');
+
+        switch (currentStep) {
+            case 1:
+                isValid = validateStep1(currentStepElement);
+                break;
+            case 2:
+                isValid = validateStep2(currentStepElement);
+                break;
+            case 3:
+                isValid = validateStep3(currentStepElement);
+                break;
+            case 4:
+                isValid = validateStep4(currentStepElement);
+                break;
+            case 5:
+                isValid = validateStep5(currentStepElement);
+                break;
         }
+
+        if (!isValid) {
+            showValidationMessage('Veuillez remplir tous les champs obligatoires avant de continuer.');
+        }
+
+        return isValid;
     }
 
-    // ================================
-    // CALCUL ET VALIDATION
-    // ================================
+    // Validations par étape adaptées au gaz
+    function validateStep1(stepElement) {
+        let isValid = true;
 
-    function calculateGazEstimation() {
-        console.log('Début du calcul de l\'estimation gaz...');
+        const typeLogement = stepElement.find('input[name="type_logement"]:checked');
+        if (!typeLogement.length) {
+            isValid = false;
+        }
 
-        // Collecter toutes les données du formulaire
-        const allData = collectAllFormData();
+        const surface = stepElement.find('#superficie');
+        const surfaceValue = parseInt(surface.val());
+        if (!surfaceValue || surfaceValue < 20 || surfaceValue > 500) {
+            surface.addClass('field-error');
+            isValid = false;
+        } else {
+            surface.addClass('field-success');
+        }
 
-        // Stocker les données utilisateur
-        formData = allData;
+        const nbPersonnes = stepElement.find('#nb_personnes');
+        if (!nbPersonnes.val()) {
+            nbPersonnes.addClass('field-error');
+            isValid = false;
+        } else {
+            nbPersonnes.addClass('field-success');
+        }
 
-        console.log('Données utilisateur préparées:', allData);
+        const commune = stepElement.find('#commune');
+        if (!commune.val()) {
+            commune.addClass('field-error');
+            isValid = false;
+        } else {
+            commune.addClass('field-success');
+        }
 
-        // Afficher le loading dans l'étape 6 actuelle
-        showLoadingInCurrentStep();
+        // Validation pour autre commune
+        if (commune.val() === 'autre') {
+            const nomCommune = stepElement.find('#nom_commune_autre').val().trim();
+            const typeGaz = stepElement.find('input[name="type_gaz_autre"]:checked');
 
-        // Envoyer au calculateur
-        sendDataToCalculator(allData, configData);
+            if (!nomCommune) {
+                stepElement.find('#nom_commune_autre').addClass('field-error');
+                isValid = false;
+            }
+
+            if (!typeGaz.length) {
+                isValid = false;
+            }
+        }
+
+        return isValid;
     }
 
-    function collectAllFormData() {
-        const data = {};
+    function validateStep2(stepElement) {
+        const chauffageGaz = stepElement.find('input[name="chauffage_gaz"]:checked');
+        if (!chauffageGaz.length) {
+            return false;
+        }
 
-        // Collecter toutes les données du formulaire
-        document.querySelectorAll('#simulateur-gaz-residentiel input, #simulateur-gaz-residentiel select, #simulateur-gaz-residentiel textarea').forEach(function (field) {
-            const name = field.getAttribute('name');
-            const type = field.getAttribute('type');
+        // Si chauffage au gaz, vérifier l'isolation
+        if (chauffageGaz.val() === 'oui') {
+            const isolation = stepElement.find('input[name="isolation"]:checked');
+            if (!isolation.length) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function validateStep3(stepElement) {
+        const eauChaude = stepElement.find('input[name="eau_chaude"]:checked');
+        return eauChaude.length > 0;
+    }
+
+    function validateStep4(stepElement) {
+        const cuisson = stepElement.find('input[name="cuisson"]:checked');
+        if (!cuisson.length) {
+            return false;
+        }
+
+        const offre = stepElement.find('input[name="offre"]:checked');
+        return offre.length > 0;
+    }
+
+    function validateStep5(stepElement) {
+        let isValid = true;
+        let errors = [];
+
+        // Champs obligatoires
+        const requiredFields = [
+            { id: 'client_nom', label: 'Nom' },
+            { id: 'client_prenom', label: 'Prénom' },
+            { id: 'client_email', label: 'Email' },
+            { id: 'client_telephone', label: 'Téléphone' }
+        ];
+
+        requiredFields.forEach(field => {
+            const $field = stepElement.find(`#${field.id}`);
+            const value = $field.val().trim();
+
+            if (!value) {
+                isValid = false;
+                errors.push(`Le champ "${field.label}" est requis`);
+                $field.addClass('field-error');
+            } else {
+                $field.removeClass('field-error').addClass('field-success');
+            }
+        });
+
+        // Validation email
+        const email = stepElement.find('#client_email').val().trim();
+        if (email && !isValidEmail(email)) {
+            isValid = false;
+            errors.push('L\'adresse email n\'est pas valide');
+            stepElement.find('#client_email').addClass('field-error');
+        }
+
+        // Validation téléphone
+        const phone = stepElement.find('#client_telephone').val().trim();
+        if (phone && !isValidPhone(phone)) {
+            isValid = false;
+            errors.push('Le numéro de téléphone n\'est pas valide');
+            stepElement.find('#client_telephone').addClass('field-error');
+        }
+
+        // Validation code postal (optionnel)
+        const codePostal = stepElement.find('#client_code_postal').val().trim();
+        if (codePostal && !/^[0-9]{5}$/.test(codePostal)) {
+            isValid = false;
+            errors.push('Le code postal doit contenir 5 chiffres');
+            stepElement.find('#client_code_postal').addClass('field-error');
+        }
+
+        if (!isValid && errors.length > 0) {
+            showValidationMessage(errors.join('<br>'));
+        }
+
+        return isValid;
+    }
+
+    function isValidEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
+    function isValidPhone(phone) {
+        const re = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
+        return re.test(phone.replace(/\s/g, ''));
+    }
+
+    // ===============================
+    // COLLECTE DES DONNÉES CLIENT
+    // ===============================
+    function collectClientData() {
+        return {
+            nom: $('#client_nom').val().trim(),
+            prenom: $('#client_prenom').val().trim(),
+            email: $('#client_email').val().trim(),
+            telephone: $('#client_telephone').val().trim(),
+            adresse: $('#client_adresse').val().trim(),
+            code_postal: $('#client_code_postal').val().trim(),
+            ville: $('#client_ville').val().trim()
+        };
+    }
+
+    function validateField($field) {
+        const fieldType = $field.attr('type');
+        const fieldName = $field.attr('name');
+        let isValid = true;
+
+        $field.removeClass('field-error field-success');
+
+        if (fieldType === 'radio') {
+            isValid = $(`input[name="${fieldName}"]:checked`).length > 0;
+        } else if ($field.is('select')) {
+            isValid = $field.val() !== '' && $field.val() !== null;
+        } else {
+            isValid = $field.val().trim() !== '';
+        }
+
+        $field.addClass(isValid ? 'field-success' : 'field-error');
+        return isValid;
+    }
+
+    function validateNumberField($field) {
+        const min = parseFloat($field.attr('min'));
+        const max = parseFloat($field.attr('max'));
+        const value = parseFloat($field.val());
+
+        $field.removeClass('field-error field-success');
+
+        if (isNaN(value)) {
+            $field.addClass('field-error');
+            return false;
+        }
+
+        if (!isNaN(min) && value < min) {
+            $field.addClass('field-error');
+            showValidationMessage(`La valeur minimum est ${min}`);
+            return false;
+        }
+
+        if (!isNaN(max) && value > max) {
+            $field.addClass('field-error');
+            showValidationMessage(`La valeur maximum est ${max}`);
+            return false;
+        }
+
+        $field.addClass('field-success');
+        return true;
+    }
+
+    // ===============================
+    // SAUVEGARDE DES DONNÉES
+    // ===============================
+
+    function saveCurrentStepData() {
+        const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
+
+        currentStepElement.find('input, select, textarea').each(function () {
+            const $field = $(this);
+            const name = $field.attr('name');
+            const type = $field.attr('type');
 
             if (!name) return;
 
             const cleanName = name.replace('[]', '');
 
             if (type === 'radio') {
-                if (field.checked) {
-                    data[cleanName] = field.value;
+                if ($field.is(':checked')) {
+                    formData[cleanName] = $field.val();
                 }
             } else if (type === 'checkbox') {
-                if (!data[cleanName]) {
-                    data[cleanName] = [];
+                if (!formData[cleanName]) {
+                    formData[cleanName] = [];
                 }
 
-                if (field.checked) {
-                    const value = field.value;
-                    if (!data[cleanName].includes(value)) {
-                        data[cleanName].push(value);
+                const value = $field.val();
+
+                if ($field.is(':checked')) {
+                    if (!formData[cleanName].includes(value)) {
+                        formData[cleanName].push(value);
+                    }
+                } else {
+                    const index = formData[cleanName].indexOf(value);
+                    if (index > -1) {
+                        formData[cleanName].splice(index, 1);
                     }
                 }
             } else {
-                data[cleanName] = field.value;
+                formData[cleanName] = $field.val();
             }
         });
-
-        return data;
     }
 
-    function sendDataToCalculator(userData, configData) {
+    function collectAllFormData() {
+        formData = {};
+
+        $('.form-step').each(function () {
+            const $step = $(this);
+
+            $step.find('input, select, textarea').each(function () {
+                const $field = $(this);
+                const name = $field.attr('name');
+                const type = $field.attr('type');
+
+                if (!name) return;
+
+                const cleanName = name.replace('[]', '');
+
+                if (type === 'radio') {
+                    if ($field.is(':checked')) {
+                        formData[cleanName] = $field.val();
+                    }
+                } else if (type === 'checkbox') {
+                    if (!formData[cleanName]) {
+                        formData[cleanName] = [];
+                    }
+
+                    if ($field.is(':checked')) {
+                        const value = $field.val();
+                        if (!formData[cleanName].includes(value)) {
+                            formData[cleanName].push(value);
+                        }
+                    }
+                } else if ($field.is('select') || type === 'text' || type === 'number' || type === 'email' || type === 'tel' || $field.is('textarea')) {
+                    formData[cleanName] = $field.val();
+                }
+            });
+        });
+
+        return formData;
+    }
+
+    // ===============================
+    // CALCUL - SIMULATION PERSONNALISÉE
+    // ===============================
+
+    function calculateResults() {
+        const allData = collectAllFormData();
+        const clientData = collectClientData();
+
+        // Validation des données essentielles pour le gaz
+        if (!allData.superficie || !allData.nb_personnes || !allData.type_logement || !allData.commune) {
+            showValidationMessage('Des informations obligatoires sont manquantes.');
+            console.error('❌ Données manquantes:', {
+                superficie: allData.superficie,
+                nb_personnes: allData.nb_personnes,
+                type_logement: allData.type_logement,
+                commune: allData.commune
+            });
+            return;
+        }
+
+        showStep(6);
+        updateProgress();
+        updateNavigation();
+
+        $('#results-container').html(`
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Calcul de votre estimation gaz personnalisée...</p>
+            </div>
+        `);
+
+        sendDataToCalculator(allData, configData, clientData);
+    }
+
+    // ===============================
+    // ENVOI DONNÉES AU CALCULATEUR
+    // ===============================
+
+    function sendDataToCalculator(userData, configData, clientData) {
         const dataToSend = {
             action: 'htic_calculate_estimation',
-            type: 'gaz-residentiel',
-            user_data: JSON.stringify(userData),
-            config_data: JSON.stringify(configData)
+            type: 'gaz-residentiel', // Type modifié pour gaz
+            user_data: userData,
+            config_data: configData
         };
 
-        // Ajouter le nonce selon la méthode de elec-residentiel
         if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
             dataToSend.nonce = hticSimulateur.nonce;
         } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.calculateNonce) {
@@ -700,12 +647,11 @@ jQuery(document).ready(function ($) {
             data: dataToSend,
             timeout: 30000,
             success: function (response) {
-                hideLoadingInCurrentStep();
-
                 if (response.success) {
-                    calculationResults = response.data;
+                    window.calculationResults = response.data;
+                    window.clientData = clientData;
+                    window.simulationData = userData;
 
-                    // Afficher les résultats dans l'étape 6 actuelle (ne pas changer d'étape)
                     displayResults(response.data);
                     setupEmailActions();
                 } else {
@@ -720,9 +666,8 @@ jQuery(document).ready(function ($) {
                     statusCode: xhr.status
                 });
 
-                hideLoadingInCurrentStep();
-
                 let errorMessage = 'Erreur de connexion lors du calcul';
+
                 if (xhr.status === 0) {
                     errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
                 } else if (xhr.status === 500) {
@@ -736,280 +681,88 @@ jQuery(document).ready(function ($) {
         });
     }
 
-    // ================================
-    // AFFICHAGE DES RÉSULTATS
-    // ================================
-
-    function displayResults(results) {
-        console.log('Affichage des résultats:', results);
-
-        const calculContainer = document.getElementById('calcul-container');
-        if (!calculContainer) {
-            console.error('Container calcul-container non trouvé');
-            return;
-        }
-
-        // Créer l'affichage des résultats
-        calculContainer.innerHTML = `
-            <div class="results-summary">
-                <div class="result-card main-result">
-                    <div class="result-icon">🔥</div>
-                    <h3>Votre estimation gaz</h3>
-                    <div class="big-number">${results.consommation_totale || 0} <span>kWh/an</span></div>
-                    <div class="result-price">${results.cout_annuel_ttc || 0}€ <span>/an TTC</span></div>
-                </div>
-                
-                <div class="result-breakdown">
-                    <h4>Répartition de votre consommation</h4>
-                    <div class="breakdown-items">
-                        ${results.repartition ? Object.entries(results.repartition).map(([key, value]) => `
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">${formatUsageLabel(key)}</span>
-                                <span class="breakdown-value">${value} kWh/an</span>
-                            </div>
-                        `).join('') : ''}
-                    </div>
-                </div>
-                
-                <div class="result-details">
-                    <h4>Détails de votre estimation</h4>
-                    <div class="details-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">Type de gaz</span>
-                            <span class="detail-value">${results.type_gaz === 'naturel' ? '🌱 Gaz naturel' : '⛽ Gaz propane'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Abonnement annuel</span>
-                            <span class="detail-value">${results.cout_abonnement || 0}€ HT</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Consommation</span>
-                            <span class="detail-value">${results.cout_consommation || 0}€ HT</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Prix du kWh</span>
-                            <span class="detail-value">${results.prix_kwh || 0}€</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Actions -->
-                <div class="results-actions">
-                    <button class="btn btn-primary" id="btn-send-email">✉️ Recevoir par email</button>
-                    <button class="btn btn-secondary" onclick="location.reload()">🔄 Nouvelle simulation</button>
-                </div>
-                
-                <!-- Message de confirmation email -->
-                <div class="confirmation-message" id="email-confirmation" style="display: none;">
-                    <div class="success-icon">✅</div>
-                    <p>Votre simulation a été envoyée avec succès à <strong id="email-display"></strong></p>
-                </div>
-            </div>
-        `;
-    }
-
-    function formatUsageLabel(key) {
-        const labels = {
-            'chauffage': '🔥 Chauffage',
-            'eau_chaude': '🚿 Eau chaude',
-            'cuisson': '🍳 Cuisson'
-        };
-        return labels[key] || key;
-    }
-
-    function displayError(message) {
-        const calculContainer = document.getElementById('calcul-container');
-        if (calculContainer) {
-            calculContainer.innerHTML = `
-                <div class="error-state">
-                    <div class="error-icon">❌</div>
-                    <h3>Erreur lors du calcul</h3>
-                    <p>${message}</p>
-                    <div class="error-actions">
-                        <button class="btn btn-primary" onclick="location.reload()">🔄 Recharger</button>
-                        <button class="btn btn-secondary" onclick="goToStep(4)">← Retour au formulaire</button>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    // ================================
-    // ENVOI EMAIL
-    // ================================
+    // ===============================
+    // GESTION EMAIL
+    // ===============================
 
     function setupEmailActions() {
         // Bouton envoyer par email
         $(document).on('click', '#btn-send-email', function () {
-            sendResultsByEmail();
-        });
-    }
+            const $btn = $(this);
+            const originalText = $btn.html();
 
-    function sendResultsByEmail() {
-        console.log('Envoi des résultats par email');
+            // État de chargement
+            $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
 
-        if (!calculationResults || !formData) {
-            showError('Aucun calcul disponible. Veuillez refaire le calcul.');
-            return;
-        }
-
-        // Préparer les données pour l'email
-        const emailData = {
-            action: 'htic_send_simulation_email',
-            type: 'gaz-residentiel',
-            results: calculationResults,
-            client: {
-                civilite: formData.civilite,
-                nom: formData.nom,
-                prenom: formData.prenom,
-                email: formData.email,
-                telephone: formData.telephone,
-                code_postal: formData.code_postal,
-                commentaires: formData.commentaires
-            },
-            simulation: {
-                commune: formData.commune,
-                type_gaz: formData.type_gaz || 'naturel',
-                superficie: formData.superficie,
-                nb_personnes: formData.nb_personnes,
-                type_logement: formData.type_logement,
-                chauffage_gaz: formData.chauffage_gaz,
-                isolation: formData.isolation,
-                eau_chaude: formData.eau_chaude,
-                cuisson: formData.cuisson,
-                offre: formData.offre
-            }
-        };
-
-        // Ajouter le nonce
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
-            emailData.nonce = hticSimulateur.nonce;
-        }
-
-        // État de chargement
-        const $btn = $('#btn-send-email');
-        const originalText = $btn.html();
-        $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
-
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
-        }
-
-        // Envoi AJAX
-        $.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            data: emailData,
-            success: function (response) {
-                if (response.success) {
-                    // Afficher la confirmation
-                    $('#email-confirmation').slideDown();
-                    $('#email-display').text(formData.email);
-
-                    // Masquer après 5 secondes
-                    setTimeout(() => {
-                        $('#email-confirmation').slideUp();
-                    }, 5000);
-
-                    showNotification('✅ Email envoyé avec succès !', 'success');
-                } else {
-                    showNotification('❌ Erreur lors de l\'envoi : ' + (response.data || 'Erreur inconnue'), 'error');
+            // Préparer les données
+            const emailData = {
+                action: 'htic_send_simulation_email',
+                type: 'gaz-residentiel', // Type modifié pour gaz
+                results: calculationResults,
+                client: {
+                    nom: formData.client_nom,
+                    prenom: formData.client_prenom,
+                    email: formData.client_email,
+                    telephone: formData.client_telephone,
+                    adresse: formData.client_adresse,
+                    code_postal: formData.client_code_postal,
+                    ville: formData.client_ville
                 }
-            },
-            error: function () {
-                showNotification('❌ Erreur de connexion', 'error');
-            },
-            complete: function () {
-                // Restaurer le bouton
-                $btn.prop('disabled', false).html(originalText);
+            };
+
+            // Ajouter le nonce si disponible
+            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
+                emailData.nonce = hticSimulateur.nonce;
             }
+
+            let ajaxUrl = '/wp-admin/admin-ajax.php';
+            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+                ajaxUrl = hticSimulateur.ajaxUrl;
+            }
+
+            // Envoi AJAX
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: emailData,
+                success: function (response) {
+                    if (response.success) {
+                        // Afficher la confirmation
+                        $('#email-confirmation').slideDown();
+                        $('#email-display').text(formData.client_email);
+
+                        // Masquer après 5 secondes
+                        setTimeout(() => {
+                            $('#email-confirmation').slideUp();
+                        }, 5000);
+
+                        // Notification
+                        showNotification('✅ Email envoyé avec succès !', 'success');
+                    } else {
+                        showNotification('❌ Erreur lors de l\'envoi : ' + (response.data || 'Erreur inconnue'), 'error');
+                    }
+                },
+                error: function () {
+                    showNotification('❌ Erreur de connexion', 'error');
+                },
+                complete: function () {
+                    // Restaurer le bouton
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
         });
     }
 
-    // ================================
-    // UTILITAIRES
-    // ================================
-
-    function showError(message) {
-        console.error('Erreur formulaire:', message);
-
-        const errorContainer = document.getElementById('error-container');
-        const errorText = document.querySelector('.error-text');
-
-        if (errorContainer && errorText) {
-            errorText.textContent = message;
-            errorContainer.style.display = 'block';
-
-            // Masquer après 5 secondes
-            setTimeout(() => {
-                errorContainer.style.display = 'none';
-            }, 5000);
-        } else {
-            // Fallback avec alert
-            alert(message);
-        }
-    }
-
-    function showLoadingState() {
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) {
-            loadingOverlay.style.display = 'flex';
-        }
-
-        // Afficher un message dans le container
-        const calculContainer = document.getElementById('calcul-container');
-        if (calculContainer) {
-            calculContainer.innerHTML = `
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Calcul de votre estimation gaz en cours...</p>
-                    <small>Traitement des données par le calculateur HTIC...</small>
-                </div>
-            `;
-        }
-    }
-
-    function showLoadingInCurrentStep() {
-        // Désactiver le bouton de calcul et montrer le loading
-        const btnCalculate = document.querySelector('.btn-calculate, #btn-calculate');
-        if (btnCalculate) {
-            btnCalculate.disabled = true;
-            btnCalculate.innerHTML = '<span class="spinner"></span> Calcul en cours...';
-        }
-
-        // Optionnel: afficher un overlay de loading
-        showLoadingState();
-    }
-
-    function hideLoadingInCurrentStep() {
-        // Réactiver le bouton de calcul
-        const btnCalculate = document.querySelector('.btn-calculate, #btn-calculate');
-        if (btnCalculate) {
-            btnCalculate.disabled = false;
-            btnCalculate.innerHTML = '<span class="btn-icon">🔍</span> Calculer mon estimation';
-        }
-
-        // Masquer l'overlay
-        hideLoadingState();
-    }
-
-    function hideLoadingState() {
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) {
-            loadingOverlay.style.display = 'none';
-        }
-    }
-
+    // Fonction de notification
     function showNotification(message, type = 'info') {
         // Supprimer les notifications existantes
         $('.notification').remove();
 
         const $notification = $(`
-            <div class="notification notification-${type}">
-                ${message}
-            </div>
-        `);
+        <div class="notification notification-${type}">
+            ${message}
+        </div>
+    `);
 
         $('body').append($notification);
 
@@ -1027,39 +780,286 @@ jQuery(document).ready(function ($) {
         }, 4000);
     }
 
-    function goToStep(stepNumber) {
-        if (stepNumber >= 1 && stepNumber <= totalSteps) {
-            hideStep(currentStep);
-            currentStep = stepNumber;
-            showStep(currentStep);
-            updateProgressBar();
-            updateNavigation();
+    // ===============================
+    // AFFICHAGE RÉSULTATS ADAPTÉ GAZ
+    // ===============================
+
+    function displayResults(results) {
+        if (!results || !results.consommation_annuelle) {
+            displayError('Données de résultats incomplètes');
+            return;
         }
+
+        const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
+        const coutAnnuel = parseFloat(results.cout_annuel_ttc) || 0;
+        const coutMensuel = Math.round(coutAnnuel / 12);
+
+        // Répartition spécifique gaz
+        const repartition = results.repartition || {};
+        const chauffage = parseInt(repartition.chauffage) || 0;
+        const eauChaude = parseInt(repartition.eau_chaude) || 0;
+        const cuisson = parseInt(repartition.cuisson) || 0;
+
+        const resultsHtml = `
+        <div class="results-summary">
+            <!-- Résultat principal -->
+            <div class="result-card main-result">
+                <div class="result-icon">🔥</div>
+                <h3>Votre estimation gaz</h3>
+                <div class="big-number">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
+                <div class="result-price">${coutAnnuel.toLocaleString()}€ <span>/an TTC</span></div>
+                <p>Soit environ <strong>${coutMensuel}€/mois</strong></p>
+            </div>
+            
+            <!-- Répartition de la consommation gaz -->
+            <div class="repartition-conso">
+                <div class="repartition-header">
+                    <h3>🔥 Répartition de votre consommation gaz</h3>
+                    <p class="repartition-subtitle">Analyse détaillée par usage</p>
+                </div>
+                
+                <div class="repartition-content">
+                    ${chauffage > 0 ? `
+                    <div class="repartition-item chauffage">
+                        <div class="item-header">
+                            <div class="item-info">
+                                <div class="item-icon">🔥</div>
+                                <div class="item-details">
+                                    <div class="item-name">Chauffage au gaz</div>
+                                    <div class="item-value">${chauffage.toLocaleString()} kWh/an</div>
+                                </div>
+                            </div>
+                            <div class="item-stats">
+                                <div class="item-percentage">${Math.round(chauffage / consommationAnnuelle * 100)}%</div>
+                                <div class="item-kwh">du total</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${Math.round(chauffage / consommationAnnuelle * 100)}%"></div>
+                        </div>
+                    </div>` : ''}
+                    
+                    ${eauChaude > 0 ? `
+                    <div class="repartition-item eau-chaude">
+                        <div class="item-header">
+                            <div class="item-info">
+                                <div class="item-icon">🚿</div>
+                                <div class="item-details">
+                                    <div class="item-name">Eau chaude sanitaire</div>
+                                    <div class="item-value">${eauChaude.toLocaleString()} kWh/an</div>
+                                </div>
+                            </div>
+                            <div class="item-stats">
+                                <div class="item-percentage">${Math.round(eauChaude / consommationAnnuelle * 100)}%</div>
+                                <div class="item-kwh">du total</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${Math.round(eauChaude / consommationAnnuelle * 100)}%"></div>
+                        </div>
+                    </div>` : ''}
+                    
+                    ${cuisson > 0 ? `
+                    <div class="repartition-item cuisson">
+                        <div class="item-header">
+                            <div class="item-info">
+                                <div class="item-icon">🍳</div>
+                                <div class="item-details">
+                                    <div class="item-name">Cuisson</div>
+                                    <div class="item-value">${cuisson.toLocaleString()} kWh/an</div>
+                                </div>
+                            </div>
+                            <div class="item-stats">
+                                <div class="item-percentage">${Math.round(cuisson / consommationAnnuelle * 100)}%</div>
+                                <div class="item-kwh">du total</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${Math.round(cuisson / consommationAnnuelle * 100)}%"></div>
+                        </div>
+                    </div>` : ''}
+                </div>
+            </div>
+            
+            <!-- Récapitulatif gaz -->
+            <div class="recap-section">
+                <div class="recap-header">
+                    <h3>Récapitulatif de votre simulation gaz</h3>
+                </div>
+                
+                <div class="recap-content">
+                    <div class="recap-categories">
+                        
+                        <!-- Logement -->
+                        <div class="recap-category">
+                            <div class="category-header">
+                                <div class="category-icon">🏠</div>
+                                <div class="category-title">Logement</div>
+                            </div>
+                            <div class="category-items">
+                                <div class="recap-item">
+                                    <span class="recap-label">Type de logement</span>
+                                    <span class="recap-value">${getLogementLabel(formData.type_logement)}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Surface habitable</span>
+                                    <span class="recap-value highlight">${formData.superficie || '0'} m²</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Nombre d'occupants</span>
+                                    <span class="recap-value">${formData.nb_personnes || '0'} personne${formData.nb_personnes > 1 ? 's' : ''}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Commune</span>
+                                    <span class="recap-value">${formData.commune || 'Non spécifiée'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Chauffage Gaz -->
+                        <div class="recap-category">
+                            <div class="category-header">
+                                <div class="category-icon">🔥</div>
+                                <div class="category-title">Chauffage</div>
+                            </div>
+                            <div class="category-items">
+                                <div class="recap-item">
+                                    <span class="recap-label">Chauffage au gaz</span>
+                                    <span class="recap-value highlight">${formData.chauffage_gaz === 'oui' ? 'Oui' : 'Non'}</span>
+                                </div>
+                                ${formData.chauffage_gaz === 'oui' ? `
+                                <div class="recap-item">
+                                    <span class="recap-label">Isolation</span>
+                                    <span class="recap-value">${getIsolationLabel(formData.isolation)}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Usages Gaz -->
+                        <div class="recap-category">
+                            <div class="category-header">
+                                <div class="category-icon">💧</div>
+                                <div class="category-title">Autres usages</div>
+                            </div>
+                            <div class="category-items">
+                                <div class="recap-item">
+                                    <span class="recap-label">Eau chaude</span>
+                                    <span class="recap-value">${formData.eau_chaude === 'gaz' ? '🔥 Au gaz' : '⚡ Autre énergie'}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Cuisson</span>
+                                    <span class="recap-value">${formData.cuisson === 'gaz' ? '🍳 Gazinière' : '⚡ Autre'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions avec bouton email -->
+            <div class="results-actions">
+                <button class="btn btn-primary" id="btn-send-email">✉️ Recevoir par email</button>
+                <button class="btn btn-secondary" onclick="location.reload()">🔄 Nouvelle simulation</button>
+            </div>
+            
+            <!-- Message de confirmation email -->
+            <div class="confirmation-message" id="email-confirmation" style="display: none;">
+                <div class="success-icon">✅</div>
+                <p>Votre simulation a été envoyée avec succès à <strong id="email-display"></strong></p>
+            </div>
+        </div>
+    `;
+
+        $('#results-container').html(resultsHtml);
+        $('.results-summary').hide().fadeIn(600);
     }
 
-    // ================================
-    // FONCTIONS PUBLIQUES
-    // ================================
+    // ===============================
+    // FONCTIONS UTILITAIRES ADAPTÉES GAZ
+    // ===============================
 
-    // Exposer certaines fonctions globalement si nécessaire
-    window.hticGazResidentiel = {
-        calculateEstimation: calculateGazEstimation,
-        updateEstimates: updateConsumptionEstimates,
-        goToStep: goToStep,
-        validateForm: function () {
-            return validateCurrentStep();
-        },
-        getResults: function () {
-            return calculationResults;
-        },
-        getUserData: function () {
-            return formData;
-        },
+    function getLogementLabel(type) {
+        const labels = {
+            'maison': '🏠 Maison',
+            'appartement': '🏢 Appartement'
+        };
+        return labels[type] || type;
+    }
+
+    function getIsolationLabel(code) {
+        const labels = {
+            'faible': 'Faible (160 kWh/m²/an)',
+            'correcte': 'Correcte (110 kWh/m²/an)',
+            'bonne': 'Bonne (70 kWh/m²/an)',
+            'excellente': 'Excellente (20 kWh/m²/an)'
+        };
+        return labels[code] || code;
+    }
+
+    function displayError(message) {
+        $('#results-container').html(`
+            <div class="error-state">
+                <div class="error-icon">❌</div>
+                <h3>Erreur lors du calcul</h3>
+                <p>${message}</p>
+                <div class="error-actions">
+                    <button class="btn btn-primary" onclick="location.reload()">🔄 Recharger</button>
+                    <button class="btn btn-secondary" id="btn-back-to-form">← Retour au formulaire</button>
+                </div>
+            </div>
+        `);
+
+        $('#btn-back-to-form').on('click', function () {
+            goToStep(5);
+        });
+    }
+
+    function showValidationMessage(message) {
+        $('.validation-message').remove();
+
+        const $message = $(`<div class="validation-message">${message}</div>`);
+        const activeStep = $('.form-step.active');
+        const stepHeader = activeStep.find('.step-header');
+
+        stepHeader.after($message);
+        $message.hide().slideDown(300);
+
+        setTimeout(() => {
+            $message.slideUp(300, () => $message.remove());
+        }, 5000);
+    }
+
+    function restartSimulation() {
+        currentStep = 1;
+        formData = {};
+        calculationResults = null;
+
+        $('#simulateur-elec-residentiel')[0].reset(); // Garder l'ID original du formulaire
+
+        showStep(1);
+        updateProgress();
+        updateNavigation();
+
+        $('.field-error, .field-success').removeClass('field-error field-success');
+    }
+
+    // ===============================
+    // FONCTIONS GLOBALES
+    // ===============================
+
+    window.downloadPDF = function () {
+        alert('Fonction de téléchargement PDF en cours de développement');
+    };
+
+    // API publique pour récupérer les données
+    window.HticGazResidentielData = {
         getCurrentData: () => formData,
         getAllData: collectAllFormData,
         getConfigData: () => configData,
-        getCurrentStep: () => currentStep
+        getCurrentStep: () => currentStep,
+        goToStep: goToStep
     };
 
-    console.log('Simulateur gaz résidentiel initialisé');
 });

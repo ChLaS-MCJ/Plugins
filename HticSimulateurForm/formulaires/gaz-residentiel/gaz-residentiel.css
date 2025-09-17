@@ -12,7 +12,7 @@
     --primary-gaz-100: #fdfffb;
     --primary-gaz-200: #fdfffb;
     --primary-gaz-500: #82C720;
-    --primary-gaz-600: #82C720;
+    --primary-gaz-600: #d0e9ab;
     --primary-gaz-700: #82C720;
 
     --secondary-gaz: #2d3748;
@@ -323,6 +323,19 @@ select:focus {
     box-shadow: 0 0 0 3px var(--primary-gaz-100);
 }
 
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+input[type="search"],
+input[type=reset],
+input[type=tel],
+input[type=date],
+select {
+    border-radius: 10px 0px 0px 10px;
+}
+
 .field-help {
     font-size: 0.875rem;
     color: var(--gray-600);
@@ -609,6 +622,36 @@ select:focus {
 }
 
 /* ========================================
+   INFO BOX
+   ======================================== */
+.info-box {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-200);
+    margin-top: 1rem;
+}
+
+.info-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.info-content h4 {
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.info-content p {
+    margin: 0;
+    color: var(--gray-600);
+    font-size: 0.875rem;
+}
+
+/* ========================================
    RÉSULTATS
    ======================================== */
 
@@ -625,6 +668,11 @@ select:focus {
     align-items: center;
 }
 
+.form-navigation {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 25px;
+}
 
 #resultats-container {
     min-height: 400px;
@@ -776,4 +824,18 @@ select:focus {
         font-size: 12pt;
         line-height: 1.4;
     }
+}
+
+
+.btn-success:hover {
+    background: #82C720;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.error-state,
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }

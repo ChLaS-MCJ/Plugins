@@ -42,6 +42,12 @@ class HticSimulateurEnergieAdmin {
         add_action('wp_ajax_htic_get_communes_gaz', array($this, 'ajax_get_communes_gaz'));
         add_action('wp_ajax_nopriv_htic_get_communes_gaz', array($this, 'ajax_get_communes_gaz'));
 
+        add_shortcode('htic_contact_form', array($this, 'shortcode_contact_form'));
+        add_action('wp_ajax_htic_contact_submit', array($this, 'ajax_contact_submit'));
+        add_action('wp_ajax_nopriv_htic_contact_submit', array($this, 'ajax_contact_submit'));
+        
+        add_action('init', array($this, 'init_contact_system'));
+
     }
         
     public function activate() {
@@ -61,6 +67,7 @@ class HticSimulateurEnergieAdmin {
             'formulaires/gaz-residentiel', 
             'formulaires/elec-professionnel',
             'formulaires/gaz-professionnel',
+            'formulaires/contact',
             'includes'
         );
         
@@ -86,6 +93,15 @@ class HticSimulateurEnergieAdmin {
             'dashicons-chart-line',
             30
         );
+
+        add_submenu_page(
+            'htic-simulateur-energie',
+            'Formulaire de Contact',
+            'Contact',
+            'manage_options',
+            'htic-contact-form',
+            array($this, 'contact_admin_page')
+        );
     }
     
     public function register_settings() {
@@ -93,6 +109,8 @@ class HticSimulateurEnergieAdmin {
         register_setting('htic_simulateur_gaz_residentiel', 'htic_simulateur_gaz_residentiel_data');
         register_setting('htic_simulateur_elec_professionnel', 'htic_simulateur_elec_professionnel_data');
         register_setting('htic_simulateur_gaz_professionnel', 'htic_simulateur_gaz_professionnel_data');
+
+        register_setting('htic_contact_settings', 'htic_contact_email');
     }
     
     public function enqueue_admin_scripts($hook) {
@@ -680,93 +698,93 @@ class HticSimulateurEnergieAdmin {
         );
     }
     
-public function get_default_gaz_residentiel() {
-    return array(
-        // COMMUNES (19 total) - Excel M20:N38
-        'communes_gaz' => array(
-            'AIRE SUR L\'ADOUR',
-            'BARCELONNE DU GERS', 
-            'BASCONS',
-            'BENESSE LES DAX',
-            'CAMPAGNE',
-            'CARCARES SAINTE CROIX',
-            'GAAS',
-            'GEAUNE',
-            'LABATUT',
-            'LALUQUE',
-            'MAZEROLLES',
-            'MEILHAN',
-            'MISSON',
-            'PONTONX SUR L\'ADOUR',
-            'POUILLON',
-            'SAINT MAURICE',
-            'SOUPROSSE',
-            'TETHIEU',
-            'YGOS SAINT SATURNIN'
-        ),
+    public function get_default_gaz_residentiel() {
+        return array(
+            // COMMUNES (19 total) - Excel M20:N38
+            'communes_gaz' => array(
+                'AIRE SUR L\'ADOUR',
+                'BARCELONNE DU GERS', 
+                'BASCONS',
+                'BENESSE LES DAX',
+                'CAMPAGNE',
+                'CARCARES SAINTE CROIX',
+                'GAAS',
+                'GEAUNE',
+                'LABATUT',
+                'LALUQUE',
+                'MAZEROLLES',
+                'MEILHAN',
+                'MISSON',
+                'PONTONX SUR L\'ADOUR',
+                'POUILLON',
+                'SAINT MAURICE',
+                'SOUPROSSE',
+                'TETHIEU',
+                'YGOS SAINT SATURNIN'
+            ),
+            
+            // TYPES GAZ PAR COMMUNE - Excel exact
+            'communes_types' => array(
+                'AIRE SUR L\'ADOUR' => 'naturel',
+                'BARCELONNE DU GERS' => 'naturel', 
+                'BASCONS' => 'propane',
+                'BENESSE LES DAX' => 'propane',
+                'CAMPAGNE' => 'propane',
+                'CARCARES SAINTE CROIX' => 'propane',
+                'GAAS' => 'naturel',
+                'GEAUNE' => 'propane',
+                'LABATUT' => 'naturel',
+                'LALUQUE' => 'naturel',
+                'MAZEROLLES' => 'propane',
+                'MEILHAN' => 'propane',
+                'MISSON' => 'naturel',
+                'PONTONX SUR L\'ADOUR' => 'propane',
+                'POUILLON' => 'naturel',
+                'SAINT MAURICE' => 'propane',
+                'SOUPROSSE' => 'propane',
+                'TETHIEU' => 'propane',
+                'YGOS SAINT SATURNIN' => 'propane'
+            ),
+            
+            // GAZ NATUREL (2 tranches GOM0/GOM1) - Excel P9:Q10
+            'seuil_gom_naturel' => 4000, // P6
+            'gaz_naturel_gom0_abo' => 8.92, // P9 = 107.04/12
+            'gaz_naturel_gom0_kwh' => 0.1265, // P10
+            'gaz_naturel_gom1_abo' => 22.42, // Q9 = 269.01/12  
+            'gaz_naturel_gom1_kwh' => 0.0978, // Q10
+            
+            // GAZ PROPANE (5 tranches P0-P4) - Excel P14:T15
+            'gaz_propane_p0_abo' => 4.64, // P14 = 55.7/12
+            'gaz_propane_p0_kwh' => 0.12479, // P15
+            'gaz_propane_p1_abo' => 5.26, // Q14 = 63.09/12
+            'gaz_propane_p1_kwh' => 0.11852, // Q15
+            'gaz_propane_p2_abo' => 16.06, // R14 calculé
+            'gaz_propane_p2_kwh' => 0.11305, // R15
+            'gaz_propane_p3_abo' => 34.56, // S14 calculé
+            'gaz_propane_p3_kwh' => 0.10273, // S15
+            'gaz_propane_p4_abo' => 311.01, // T14 calculé
+            'gaz_propane_p4_kwh' => 0.10064, // T15
+            
+            // CONSOMMATIONS PAR USAGE - Excel K28, K29
+            'gaz_cuisson_par_personne' => 50, // K28 - PAS de base
+            'gaz_eau_chaude_par_personne' => 400, // K29 - PAS de base
+            
+            // ISOLATION (4 niveaux) - Excel G28:H31 
+            'gaz_chauffage_niveau_1' => 160, // H28
+            'gaz_chauffage_niveau_2' => 70, // H29
+            'gaz_chauffage_niveau_3' => 110, // H30
+            'gaz_chauffage_niveau_4' => 20, // H31
+            
+            // COEFFICIENTS LOGEMENT
+            'coefficient_maison' => 1.0,
+            'coefficient_appartement' => 0.8,
+            
+            // PARAMÈTRES DIVERS
+            'surface_min_chauffage' => 15,
+            'nb_personnes_min' => 1
+        );
+    }
         
-        // TYPES GAZ PAR COMMUNE - Excel exact
-        'communes_types' => array(
-            'AIRE SUR L\'ADOUR' => 'naturel',
-            'BARCELONNE DU GERS' => 'naturel', 
-            'BASCONS' => 'propane',
-            'BENESSE LES DAX' => 'propane',
-            'CAMPAGNE' => 'propane',
-            'CARCARES SAINTE CROIX' => 'propane',
-            'GAAS' => 'naturel',
-            'GEAUNE' => 'propane',
-            'LABATUT' => 'naturel',
-            'LALUQUE' => 'naturel',
-            'MAZEROLLES' => 'propane',
-            'MEILHAN' => 'propane',
-            'MISSON' => 'naturel',
-            'PONTONX SUR L\'ADOUR' => 'propane',
-            'POUILLON' => 'naturel',
-            'SAINT MAURICE' => 'propane',
-            'SOUPROSSE' => 'propane',
-            'TETHIEU' => 'propane',
-            'YGOS SAINT SATURNIN' => 'propane'
-        ),
-        
-        // GAZ NATUREL (2 tranches GOM0/GOM1) - Excel P9:Q10
-        'seuil_gom_naturel' => 4000, // P6
-        'gaz_naturel_gom0_abo' => 8.92, // P9 = 107.04/12
-        'gaz_naturel_gom0_kwh' => 0.1265, // P10
-        'gaz_naturel_gom1_abo' => 22.42, // Q9 = 269.01/12  
-        'gaz_naturel_gom1_kwh' => 0.0978, // Q10
-        
-        // GAZ PROPANE (5 tranches P0-P4) - Excel P14:T15
-        'gaz_propane_p0_abo' => 4.64, // P14 = 55.7/12
-        'gaz_propane_p0_kwh' => 0.12479, // P15
-        'gaz_propane_p1_abo' => 5.26, // Q14 = 63.09/12
-        'gaz_propane_p1_kwh' => 0.11852, // Q15
-        'gaz_propane_p2_abo' => 16.06, // R14 calculé
-        'gaz_propane_p2_kwh' => 0.11305, // R15
-        'gaz_propane_p3_abo' => 34.56, // S14 calculé
-        'gaz_propane_p3_kwh' => 0.10273, // S15
-        'gaz_propane_p4_abo' => 311.01, // T14 calculé
-        'gaz_propane_p4_kwh' => 0.10064, // T15
-        
-        // CONSOMMATIONS PAR USAGE - Excel K28, K29
-        'gaz_cuisson_par_personne' => 50, // K28 - PAS de base
-        'gaz_eau_chaude_par_personne' => 400, // K29 - PAS de base
-        
-        // ISOLATION (4 niveaux) - Excel G28:H31 
-        'gaz_chauffage_niveau_1' => 160, // H28
-        'gaz_chauffage_niveau_2' => 70, // H29
-        'gaz_chauffage_niveau_3' => 110, // H30
-        'gaz_chauffage_niveau_4' => 20, // H31
-        
-        // COEFFICIENTS LOGEMENT
-        'coefficient_maison' => 1.0,
-        'coefficient_appartement' => 0.8,
-        
-        // PARAMÈTRES DIVERS
-        'surface_min_chauffage' => 15,
-        'nb_personnes_min' => 1
-    );
-}
-    
     public function get_default_elec_professionnel() {
         return array(
             // Noms des offres (administrables)
@@ -1061,62 +1079,268 @@ public function get_default_gaz_residentiel() {
         dbDelta($sql);
     }
 
-    /**
- * Endpoint AJAX pour récupérer les communes configurées
- */
-public function ajax_get_communes_gaz() {
-    // Vérification nonce
-    if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
-        wp_send_json_error('Sécurité échouée');
-        return;
-    }
-    
-    // Récupérer les communes depuis les données de configuration
-    $gaz_data = get_option('htic_simulateur_gaz_residentiel_data', array());
-    
-    // Chercher les communes dans la configuration
-    $communes = array();
-    
-    // Si vous avez une structure de communes dans vos données
-    if (isset($gaz_data['communes']) && is_array($gaz_data['communes'])) {
-        $communes = $gaz_data['communes'];
-    } else {
-        // Sinon, utiliser les communes par défaut Excel
-        $communes = $this->get_default_communes_excel();
-    }
-    
-    wp_send_json_success(array('communes' => $communes));
-}
-
-/**
- * Obtenir les communes par défaut depuis Excel
- */
-private function get_default_communes_excel() {
-    return array(
-        // Communes Gaz Naturel (données Excel exactes)
-        array('nom' => 'AIRE SUR L\'ADOUR', 'type' => 'naturel'),
-        array('nom' => 'BARCELONNE DU GERS', 'type' => 'naturel'),
-        array('nom' => 'GAAS', 'type' => 'naturel'),
-        array('nom' => 'LABATUT', 'type' => 'naturel'),
-        array('nom' => 'LALUQUE', 'type' => 'naturel'),
-        array('nom' => 'MISSON', 'type' => 'naturel'),
-        array('nom' => 'POUILLON', 'type' => 'naturel'),
+        /**
+     * Endpoint AJAX pour récupérer les communes configurées
+     */
+    public function ajax_get_communes_gaz() {
+        // Vérification nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+            wp_send_json_error('Sécurité échouée');
+            return;
+        }
         
-        // Communes Gaz Propane (données Excel exactes)
-        array('nom' => 'BASCONS', 'type' => 'propane'),
-        array('nom' => 'BENESSE LES DAX', 'type' => 'propane'),
-        array('nom' => 'CAMPAGNE', 'type' => 'propane'),
-        array('nom' => 'CARCARES SAINTE CROIX', 'type' => 'propane'),
-        array('nom' => 'GEAUNE', 'type' => 'propane'),
-        array('nom' => 'MAZEROLLES', 'type' => 'propane'),
-        array('nom' => 'MEILHAN', 'type' => 'propane'),
-        array('nom' => 'PONTONX SUR L\'ADOUR', 'type' => 'propane'),
-        array('nom' => 'SAINT MAURICE', 'type' => 'propane'),
-        array('nom' => 'SOUPROSSE', 'type' => 'propane'),
-        array('nom' => 'TETHIEU', 'type' => 'propane'),
-        array('nom' => 'YGOS SAINT SATURNIN', 'type' => 'propane'),
-    );
-}
+        // Récupérer les communes depuis les données de configuration
+        $gaz_data = get_option('htic_simulateur_gaz_residentiel_data', array());
+        
+        // Chercher les communes dans la configuration
+        $communes = array();
+        
+        // Si vous avez une structure de communes dans vos données
+        if (isset($gaz_data['communes']) && is_array($gaz_data['communes'])) {
+            $communes = $gaz_data['communes'];
+        } else {
+            // Sinon, utiliser les communes par défaut Excel
+            $communes = $this->get_default_communes_excel();
+        }
+        
+        wp_send_json_success(array('communes' => $communes));
+    }
+
+    /**
+     * Obtenir les communes par défaut depuis Excel
+     */
+    private function get_default_communes_excel() {
+        return array(
+            // Communes Gaz Naturel (données Excel exactes)
+            array('nom' => 'AIRE SUR L\'ADOUR', 'type' => 'naturel'),
+            array('nom' => 'BARCELONNE DU GERS', 'type' => 'naturel'),
+            array('nom' => 'GAAS', 'type' => 'naturel'),
+            array('nom' => 'LABATUT', 'type' => 'naturel'),
+            array('nom' => 'LALUQUE', 'type' => 'naturel'),
+            array('nom' => 'MISSON', 'type' => 'naturel'),
+            array('nom' => 'POUILLON', 'type' => 'naturel'),
+            
+            // Communes Gaz Propane (données Excel exactes)
+            array('nom' => 'BASCONS', 'type' => 'propane'),
+            array('nom' => 'BENESSE LES DAX', 'type' => 'propane'),
+            array('nom' => 'CAMPAGNE', 'type' => 'propane'),
+            array('nom' => 'CARCARES SAINTE CROIX', 'type' => 'propane'),
+            array('nom' => 'GEAUNE', 'type' => 'propane'),
+            array('nom' => 'MAZEROLLES', 'type' => 'propane'),
+            array('nom' => 'MEILHAN', 'type' => 'propane'),
+            array('nom' => 'PONTONX SUR L\'ADOUR', 'type' => 'propane'),
+            array('nom' => 'SAINT MAURICE', 'type' => 'propane'),
+            array('nom' => 'SOUPROSSE', 'type' => 'propane'),
+            array('nom' => 'TETHIEU', 'type' => 'propane'),
+            array('nom' => 'YGOS SAINT SATURNIN', 'type' => 'propane'),
+        );
+    }
+
+    /**
+     * Initialiser le système de contact
+     */
+    public function init_contact_system() {
+        require_once HTIC_SIMULATEUR_PATH . 'includes/contact-handler.php';
+    }
+
+    /**
+     * Shortcode pour le formulaire de contact
+     */
+    public function shortcode_contact_form($atts) {
+        $atts = shortcode_atts(array(
+            'theme' => 'modern',
+            'type' => 'general'
+        ), $atts);
+        
+        $this->enqueue_contact_assets();
+        
+        ob_start();
+        include HTIC_SIMULATEUR_PATH . 'formulaires/contact/contact-form.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Charger les assets du formulaire de contact
+     */
+    private function enqueue_contact_assets() {
+        wp_enqueue_style(
+            'htic-contact-form-css',
+            HTIC_SIMULATEUR_URL . 'formulaires/contact/contact-form.css',
+            array(),
+            HTIC_SIMULATEUR_VERSION
+        );
+        
+        wp_enqueue_script(
+            'htic-contact-form-js',
+            HTIC_SIMULATEUR_URL . 'formulaires/contact/contact-form.js',
+            array('jquery'),
+            HTIC_SIMULATEUR_VERSION,
+            true
+        );
+        
+        wp_localize_script(
+            'htic-contact-form-js',
+            'hticContactConfig',
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('htic_contact_nonce'),
+                'maxFileSize' => wp_max_upload_size(),
+                'allowedTypes' => array('jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'),
+                'messages' => array(
+                    'uploading' => 'Upload en cours...',
+                    'uploadSuccess' => 'Fichier uploadé avec succès',
+                    'uploadError' => 'Erreur lors de l\'upload',
+                    'required' => 'Ce champ est obligatoire',
+                    'invalidEmail' => 'Format d\'email invalide',
+                    'invalidPhone' => 'Format de téléphone invalide'
+                )
+            )
+        );
+    }
+
+    /**
+     * Traitement AJAX du formulaire de contact
+     */
+    public function ajax_contact_submit() {
+        // Vérification de sécurité
+        if (!wp_verify_nonce($_POST['nonce'], 'htic_contact_nonce')) {
+            wp_send_json_error('Nonce invalide');
+            return;
+        }
+        
+        $contact_handler = new HTIC_Contact_Handler();
+        $result = $contact_handler->process_contact_form($_POST);
+        
+        if ($result['success']) {
+            wp_send_json_success($result['data']);
+        } else {
+            wp_send_json_error($result['message']);
+        }
+    }
+
+    /**
+     * Page d'administration du formulaire de contact
+     */
+    public function contact_admin_page() {
+        ?>
+        <div class="wrap">
+            <h1>📞 Formulaire de Contact</h1>
+            
+            <div class="card">
+                <h2>Utilisation du shortcode</h2>
+                <p>Pour afficher le formulaire de contact sur votre site, utilisez le shortcode suivant :</p>
+                <code>[htic_contact_form]</code>
+                
+                <h3>Paramètres disponibles :</h3>
+                <ul>
+                    <li><code>theme="modern"</code> - Style du formulaire</li>
+                    <li><code>type="general"</code> - Type de formulaire</li>
+                </ul>
+                
+                <h3>Exemple d'utilisation :</h3>
+                <code>[htic_contact_form theme="modern"]</code>
+            </div>
+            
+            <div class="card">
+                <h2>Configuration Email</h2>
+                <form method="post" action="options.php">
+                    <?php
+                    settings_fields('htic_contact_settings');
+                    do_settings_sections('htic_contact_settings');
+                    ?>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">Email de réception</th>
+                            <td>
+                                <input type="email" name="htic_contact_email" 
+                                    value="<?php echo esc_attr(get_option('htic_contact_email', get_option('admin_email'))); ?>" 
+                                    class="regular-text" />
+                                <p class="description">Email où recevoir les demandes de contact</p>
+                            </td>
+                        </tr>
+                    </table>
+                    <?php submit_button(); ?>
+                </form>
+            </div>
+            
+            <div class="card">
+                <h2>Statistiques</h2>
+                <?php $this->display_contact_stats(); ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Afficher les statistiques des contacts
+     */
+    private function display_contact_stats() {
+        $submissions = get_option('htic_contact_submissions', array());
+        $total = count($submissions);
+        
+        if ($total === 0) {
+            echo '<p>Aucune soumission de formulaire pour le moment.</p>';
+            return;
+        }
+        
+        // Statistiques par type
+        $types_count = array();
+        $recent_submissions = array();
+        
+        foreach ($submissions as $submission) {
+            // Compter par type
+            $type = $submission['type'] ?? 'inconnu';
+            $types_count[$type] = ($types_count[$type] ?? 0) + 1;
+            
+            // Garder les 10 dernières
+            if (count($recent_submissions) < 10) {
+                $recent_submissions[] = $submission;
+            }
+        }
+        
+        echo '<h3>Total des soumissions : ' . $total . '</h3>';
+        
+        echo '<h4>Répartition par type :</h4>';
+        echo '<ul>';
+        foreach ($types_count as $type => $count) {
+            $label = $this->get_type_demande_label($type);
+            echo '<li>' . esc_html($label) . ' : ' . $count . '</li>';
+        }
+        echo '</ul>';
+        
+        echo '<h4>Dernières soumissions :</h4>';
+        echo '<table class="wp-list-table widefat fixed striped">';
+        echo '<thead><tr><th>Date</th><th>Type</th><th>Email</th></tr></thead>';
+        echo '<tbody>';
+        foreach (array_reverse($recent_submissions) as $submission) {
+            echo '<tr>';
+            echo '<td>' . esc_html($submission['timestamp']) . '</td>';
+            echo '<td>' . esc_html($this->get_type_demande_label($submission['type'])) . '</td>';
+            echo '<td>' . esc_html($submission['email']) . '</td>';
+            echo '</tr>';
+        }
+        echo '</tbody></table>';
+    }
+
+    /**
+     * Obtenir le libellé du type de demande
+     */
+    private function get_type_demande_label($type) {
+        $types = array(
+            'releve_index' => 'Relevé d\'index',
+            'changement_rib' => 'Changement de RIB',
+            'resiliation_contrat' => 'Résiliation de contrat',
+            'modification_contrat' => 'Modification de contrat',
+            'depannage_urgent' => 'Dépannage urgent',
+            'mise_aux_normes' => 'Mise aux normes',
+            'renovation_electrique' => 'Rénovation électrique',
+            'maintenance_preventive' => 'Maintenance préventive',
+            'raccordement' => 'Raccordement',
+            'autre' => 'Autre'
+        );
+        
+        return isset($types[$type]) ? $types[$type] : 'Demande inconnue';
+    }
 }
 
 new HticSimulateurEnergieAdmin();

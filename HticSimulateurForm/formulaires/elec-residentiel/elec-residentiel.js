@@ -3,10 +3,10 @@
 jQuery(document).ready(function ($) {
 
     let currentStep = 1;
-    const totalSteps = 8; // MODIFIÉ : 8 étapes au lieu de 7
+    const totalSteps = 8;
     let formData = {};
     let configData = {};
-    let calculationResults = null; // AJOUT : Pour stocker les résultats
+    let calculationResults = null;
 
     init();
 
@@ -15,7 +15,6 @@ jQuery(document).ready(function ($) {
         setupStepNavigation();
         setupFormValidation();
         setupChauffageLogic();
-
     }
 
     function loadConfigData() {
@@ -652,7 +651,7 @@ jQuery(document).ready(function ($) {
 
                     displayResults(response.data);
 
-                    setupEmailActions();
+
                 } else {
                     displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
                 }
@@ -684,72 +683,223 @@ jQuery(document).ready(function ($) {
     // AJOUT : GESTION EMAIL
     // ===============================
 
-    function setupEmailActions() {
-        // Bouton envoyer par email
+    /**
+ * Validation basique intégrée si EmailValidationSystem n'est pas disponible
+ */
+    function validateEmailData(formType, formData, clientData) {
+        const errors = [];
+        const warnings = [];
+
+        // Validation des données client
+        if (!clientData.email || !clientData.email.trim()) {
+            errors.push({ code: 'MISSING_EMAIL', message: 'Email client requis' });
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(clientData.email)) {
+                errors.push({ code: 'INVALID_EMAIL', message: 'Format email invalide' });
+            }
+        }
+
+        if (!clientData.nom || !clientData.nom.trim()) {
+            errors.push({ code: 'MISSING_NAME', message: 'Nom client requis' });
+        }
+
+        if (!clientData.prenom || !clientData.prenom.trim()) {
+            errors.push({ code: 'MISSING_FIRSTNAME', message: 'Prénom client requis' });
+        }
+
+        // Validation des données de formulaire essentielles
+        if (formType === 'elec-residentiel') {
+            if (!formData.surface || formData.surface < 20 || formData.surface > 1000) {
+                errors.push({ code: 'INVALID_SURFACE', message: 'Surface invalide (20-1000 m²)' });
+            }
+            if (!formData.nb_personnes || formData.nb_personnes < 1 || formData.nb_personnes > 20) {
+                errors.push({ code: 'INVALID_PERSONS', message: 'Nombre de personnes invalide (1-20)' });
+            }
+            if (!formData.type_logement) {
+                errors.push({ code: 'MISSING_HOUSING_TYPE', message: 'Type de logement requis' });
+            }
+        }
+
+        // Vérifications de sécurité basiques
+        const dangerousPatterns = [/<script/i, /javascript:/i, /<iframe/i];
+        Object.values(clientData).forEach(value => {
+            if (typeof value === 'string') {
+                dangerousPatterns.forEach(pattern => {
+                    if (pattern.test(value)) {
+                        errors.push({ code: 'SECURITY_VIOLATION', message: 'Contenu suspect détecté' });
+                    }
+                });
+            }
+        });
+
+        return {
+            isValid: errors.length === 0,
+            hasWarnings: warnings.length > 0,
+            canSendEmail: errors.length === 0,
+            errors: errors,
+            warnings: warnings
+        };
+    }
+
+    function validateAndSendEmail(formType, formData, clientData, results, successCallback) {
+        console.log('🔍 Début validation email pour:', formType);
+
+        let validationResult;
+
+        // Utiliser EmailValidationSystem si disponible, sinon validation basique
+        if (typeof EmailValidationSystem !== 'undefined') {
+            const validator = new EmailValidationSystem();
+            validationResult = validator.validateForEmail(formType, formData);
+
+            // Validation additionnelle pour les données client
+            const clientValidation = validator.validateForEmail('client', clientData);
+            validationResult.errors.push(...clientValidation.errors);
+            validationResult.warnings.push(...clientValidation.warnings);
+            validationResult.isValid = validationResult.isValid && clientValidation.isValid;
+        } else {
+            // Validation basique intégrée
+            validationResult = validateEmailData(formType, formData, clientData);
+        }
+
+        // Afficher les résultats
+        if (validationResult.warnings.length > 0) {
+            validationResult.warnings.forEach(warning => {
+                console.warn('⚠️ Warning:', warning.message);
+            });
+        }
+
+        if (validationResult.errors.length > 0) {
+            validationResult.errors.forEach(error => {
+                console.error('❌ Error:', error.message);
+            });
+
+            // Afficher les erreurs à l'utilisateur
+            const errorMessages = validationResult.errors.map(e => e.message).join('\n• ');
+            showNotification(`Erreurs de validation:\n• ${errorMessages}`, 'error');
+            return validationResult;
+        }
+
+        // Validation réussie - préparer les données
+        if (validationResult.isValid) {
+            console.log('✅ Validation réussie, préparation des données');
+
+            const emailData = {
+                form_type: formType,
+                validation_timestamp: new Date().toISOString(),
+                validation_warnings: validationResult.warnings.length,
+                form_data: formData,
+                client_data: clientData,
+                results_data: results
+            };
+
+            successCallback(emailData);
+        }
+
+        return validationResult;
+    }
+
+    function setupEmailActionsElecResidentiel() {
         $(document).on('click', '#btn-send-email', function () {
             const $btn = $(this);
             const originalText = $btn.html();
 
-            // État de chargement
-            $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
+            // Vérifier que les résultats sont disponibles
+            if (!window.calculationResults) {
+                showNotification('❌ Aucun résultat de calcul disponible', 'error');
+                return;
+            }
 
-            // Préparer les données
-            const emailData = {
-                action: 'htic_send_simulation_email',
-                type: 'elec-residentiel',
-                results: calculationResults,
-                client: {
-                    nom: formData.client_nom,
-                    prenom: formData.client_prenom,
-                    email: formData.client_email,
-                    telephone: formData.client_telephone,
-                    adresse: formData.client_adresse,
-                    code_postal: formData.client_code_postal,
-                    ville: formData.client_ville,
-                    commentaire: formData.client_commentaire
-                }
+            // Collecter toutes les données
+            const allFormData = collectAllFormData();
+            const clientData = {
+                nom: $('#client_nom').val() || '',
+                prenom: $('#client_prenom').val() || '',
+                email: $('#client_email').val() || '',
+                telephone: $('#client_telephone').val() || '',
+                adresse: $('#client_adresse').val() || '',
+                code_postal: $('#client_code_postal').val() || '',
+                ville: $('#client_ville').val() || ''
             };
 
-            // Ajouter le nonce si disponible
-            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
-                emailData.nonce = hticSimulateur.nonce;
-            }
+            console.log('📋 Validation email elec-residentiel');
+            console.log('📊 Données formulaire:', allFormData);
+            console.log('👤 Données client:', clientData);
 
-            let ajaxUrl = '/wp-admin/admin-ajax.php';
-            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-                ajaxUrl = hticSimulateur.ajaxUrl;
-            }
-
-            // Envoi AJAX
-            $.ajax({
-                url: ajaxUrl,
-                type: 'POST',
-                data: emailData,
-                success: function (response) {
-                    if (response.success) {
-                        // Afficher la confirmation
-                        $('#email-confirmation').slideDown();
-                        $('#email-display').text(formData.client_email);
-
-                        // Masquer après 5 secondes
-                        setTimeout(() => {
-                            $('#email-confirmation').slideUp();
-                        }, 5000);
-
-                        // Notification
-                        showNotification('✅ Email envoyé avec succès !', 'success');
-                    } else {
-                        showNotification('❌ Erreur lors de l\'envoi : ' + (response.data || 'Erreur inconnue'), 'error');
-                    }
-                },
-                error: function () {
-                    showNotification('❌ Erreur de connexion', 'error');
-                },
-                complete: function () {
-                    // Restaurer le bouton
-                    $btn.prop('disabled', false).html(originalText);
+            // VALIDATION AVANT ENVOI
+            const validationResult = validateAndSendEmail(
+                'elec-residentiel',
+                allFormData,
+                clientData,
+                window.calculationResults,
+                function (validatedData) {
+                    // Envoi après validation réussie
+                    sendEmailElecResidentiel($btn, originalText, validatedData);
                 }
-            });
+            );
+
+            // Log du résultat
+            if (!validationResult.isValid) {
+                console.error('❌ Validation échouée pour elec-residentiel:', validationResult.errors);
+            }
+        });
+    }
+
+    function sendEmailElecResidentiel($btn, originalText, validatedData) {
+        $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
+
+        // Préparer les données pour l'envoi AJAX
+        const emailData = {
+            action: 'htic_send_simulation_email',
+            type: 'elec-residentiel',
+            nonce: typeof hticSimulateur !== 'undefined' ? hticSimulateur.nonce : '',
+
+            // Données validées
+            form_type: validatedData.form_type,
+            validation_timestamp: validatedData.validation_timestamp,
+
+            // Données client
+            client: validatedData.client_data,
+
+            // Données de simulation
+            simulation: validatedData.form_data,
+
+            // Résultats
+            results: validatedData.results_data,
+
+            // Date de simulation
+            date_simulation: new Date().toISOString()
+        };
+
+        let ajaxUrl = '/wp-admin/admin-ajax.php';
+        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+            ajaxUrl = hticSimulateur.ajaxUrl;
+        }
+
+        console.log('📤 Envoi données email:', emailData);
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: emailData,
+            success: function (response) {
+                console.log('📥 Réponse serveur:', response);
+
+                if (response.success) {
+                    $('#email-confirmation').slideDown();
+                    $('#email-display').text(validatedData.client_data.email);
+                    showNotification('✅ Email envoyé avec succès !', 'success');
+                } else {
+                    showNotification('❌ Erreur : ' + (response.data || 'Erreur inconnue'), 'error');
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Erreur AJAX:', { status, error, response: xhr.responseText });
+                showNotification('❌ Erreur de connexion', 'error');
+            },
+            complete: function () {
+                $btn.prop('disabled', false).html(originalText);
+            }
         });
     }
 
@@ -1220,6 +1370,8 @@ jQuery(document).ready(function ($) {
 
         $('#results-container').html(resultsHtml);
         $('.results-summary').hide().fadeIn(600);
+
+        setupEmailActionsElecResidentiel();
     }
 
     // ===============================
@@ -1388,7 +1540,8 @@ jQuery(document).ready(function ($) {
         getAllData: collectAllFormData,
         getConfigData: () => configData,
         getCurrentStep: () => currentStep,
-        goToStep: goToStep
+        goToStep: goToStep,
+        testEmailValidation: () => validateEmailData('elec-residentiel', collectAllFormData(), collectClientData())
     };
 
 });

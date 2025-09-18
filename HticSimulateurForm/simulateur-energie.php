@@ -48,12 +48,18 @@ class HticSimulateurEnergieAdmin {
         
         add_action('init', array($this, 'init_contact_system'));
 
+        add_action('init', array($this, 'init_email_system'));
+
     }
         
     public function activate() {
         $this->create_default_options();
         $this->create_tables();
         $this->create_formulaires_structure();
+    }
+
+    public function init_email_system() {
+     require_once plugin_dir_path(__FILE__) . 'includes/SendEmail/init.php';
     }
     
     private function create_formulaires_structure() {

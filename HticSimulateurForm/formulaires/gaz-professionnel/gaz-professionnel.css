@@ -1341,6 +1341,7 @@ select:focus {
 
     .form-navigation {
         flex-direction: column;
+        gap: 10px;
     }
 
     .btn {
@@ -1379,7 +1380,10 @@ select:focus {
     }
 
     .progress-steps {
-        justify-content: space-around;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        padding: 0 0.5rem;
     }
 
     .step-label {
@@ -1951,5 +1955,33 @@ select:focus {
 
     .file-upload-area {
         padding: 1.5rem;
+    }
+
+    .pdl-info {
+        flex-direction: column;
+    }
+
+    .localisation-section {
+        padding: 1rem;
+
+    }
+
+    .recap-section {
+        padding: 1em;
+    }
+
+
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+
+
+    .file-name-text {
+        font-size: 10px;
+    }
+
+    .recap-value {
+        font-size: 10px;
     }
 }

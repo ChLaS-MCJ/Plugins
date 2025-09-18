@@ -1,72 +1,95 @@
-// gaz-professionnel.js - Version harmonisée avec elec-professionnel.js
+// formulaires/elec-professionnel/elec-professionnel.js - Version complète avec calculs fonctionnels
 
 jQuery(document).ready(function ($) {
+    'use strict';
 
+    // Variables globales
     let currentStep = 1;
     const totalSteps = 4;
     let formData = {};
     let configData = {};
-    let uploadedFile = null; // Changé de formData.kbis_file à uploadedFile
+    let uploadedFile = null;
 
+    // Initialisation
     init();
 
     function init() {
+        console.log('🏢 Initialisation Simulateur Électricité Professionnel');
         loadConfigData();
         setupStepNavigation();
         setupFormValidation();
         setupProLogic();
         setupFileUpload();
-        loadCommunes();
+        updateUI();
+        console.log('✅ Simulateur Professionnel initialisé');
     }
 
+    // ================================
+    // CONFIGURATION AVEC NONCE
+    // ================================
     function loadConfigData() {
-        // Changé l'ID pour correspondre au template PHP
-        const configElement = document.getElementById('simulateur-config');
+        // Utiliser l'ID correct du template PHP
+        const configElement = document.getElementById('simulateur-config-pro');
         if (configElement) {
             try {
                 configData = JSON.parse(configElement.textContent);
-                console.log('✅ Configuration gaz pro chargée:', configData);
+                console.log('✅ Configuration chargée:', configData);
+
+                // Vérifier si le nonce est présent dans la config
+                if (configData.nonce || configData.calculate_nonce) {
+                    console.log('✅ Nonce trouvé dans la configuration');
+                }
             } catch (e) {
                 console.error('❌ Erreur configuration:', e);
                 configData = {};
             }
         }
+
+        // Créer les variables globales pour la compatibilité
+        if (!window.hticSimulateur && (configData.ajax_url || configData.nonce)) {
+            window.hticSimulateur = {
+                ajaxUrl: configData.ajax_url || '/wp-admin/admin-ajax.php',
+                nonce: configData.nonce || configData.calculate_nonce,
+                type: 'elec-professionnel'
+            };
+            console.log('✅ Variables globales hticSimulateur créées:', window.hticSimulateur);
+        }
     }
 
-    // ===============================
-    // NAVIGATION ENTRE LES ÉTAPES
-    // ===============================
-
+    // ================================
+    // NAVIGATION ENTRE ÉTAPES
+    // ================================
     function setupStepNavigation() {
-        $('#btn-next').on('click', function () {
+        // IDs corrigés pour correspondre exactement au template PHP
+        $('#btn-next-pro').on('click', function () {
+            console.log('📍 Clic sur bouton suivant - Étape actuelle:', currentStep);
             if (validateCurrentStep()) {
                 saveCurrentStepData();
-                goToNextStep();
+                nextStep();
             }
         });
 
-        $('#btn-previous').on('click', function () {
+        $('#btn-previous-pro').on('click', function () {
+            console.log('📍 Clic sur bouton précédent - Étape actuelle:', currentStep);
             saveCurrentStepData();
-            goToPreviousStep();
+            prevStep();
         });
 
-        $('#btn-calculate').on('click', function () {
+        $('#btn-calculate-pro').on('click', function () {
+            console.log('📍 Clic sur bouton calculer');
             if (validateCurrentStep()) {
                 saveCurrentStepData();
                 calculateResults();
             }
         });
 
-        $('#btn-restart').on('click', function () {
-            if (confirm('Voulez-vous vraiment recommencer ?')) {
+        $('#btn-restart-pro').on('click', function () {
+            if (confirm('Voulez-vous vraiment recommencer la simulation ?')) {
                 restartSimulation();
             }
         });
 
-        $('#btn-callback').on('click', function () {
-            registerCallback();
-        });
-
+        // Navigation par clic sur les étapes
         $('.step').on('click', function () {
             const targetStep = parseInt($(this).data('step'));
             if (targetStep < currentStep || targetStep === 1) {
@@ -76,108 +99,260 @@ jQuery(document).ready(function ($) {
         });
     }
 
-    function goToNextStep() {
+    function nextStep() {
+        console.log('🔄 Passage à l\'étape suivante. Étape actuelle:', currentStep);
+
         if (currentStep < totalSteps) {
             currentStep++;
-            showStep(currentStep);
-            updateProgress();
-            updateNavigation();
+            updateUI();
+            scrollToTop();
+            console.log('✅ Nouvelle étape:', currentStep);
         }
     }
 
-    function goToPreviousStep() {
+    function prevStep() {
+        console.log('🔄 Retour à l\'étape précédente. Étape actuelle:', currentStep);
+
         if (currentStep > 1) {
             currentStep--;
-            showStep(currentStep);
-            updateProgress();
-            updateNavigation();
+            updateUI();
+            scrollToTop();
         }
     }
 
     function goToStep(stepNumber) {
         if (stepNumber >= 1 && stepNumber <= totalSteps) {
+            console.log('🎯 Navigation vers étape:', stepNumber);
             currentStep = stepNumber;
-            showStep(currentStep);
-            updateProgress();
-            updateNavigation();
+            updateUI();
+            scrollToTop();
         }
     }
 
-    function showStep(stepNumber) {
+    function updateUI() {
+        console.log('🎨 Mise à jour UI pour étape:', currentStep);
+
+        // Mise à jour des étapes
         $('.form-step').removeClass('active');
-        $(`.form-step[data-step="${stepNumber}"]`).addClass('active');
+        $(`.form-step[data-step="${currentStep}"]`).addClass('active');
 
-        $('.step').removeClass('active');
-        $(`.step[data-step="${stepNumber}"]`).addClass('active');
-    }
-
-    function updateProgress() {
+        // Mise à jour de la barre de progression
         const progressPercent = (currentStep / totalSteps) * 100;
         $('.progress-fill').css('width', progressPercent + '%');
-    }
 
-    function updateNavigation() {
-        $('#btn-previous').toggle(currentStep > 1);
+        // Mise à jour des indicateurs d'étape
+        $('.step').removeClass('active');
+        $(`.step[data-step="${currentStep}"]`).addClass('active');
+
+        // Mise à jour des boutons - IDs corrigés selon template PHP
+        $('#btn-previous-pro').toggle(currentStep > 1);
 
         if (currentStep === totalSteps) {
-            $('#btn-next, #btn-calculate').hide();
-            $('#btn-restart').show();
+            // Étape 4 : Résultats
+            $('#btn-next-pro').hide();
+            $('#btn-calculate-pro').hide();
+            $('#btn-restart-pro').show();
         } else if (currentStep === totalSteps - 1) {
-            $('#btn-next').hide();
-            $('#btn-calculate').show();
-            $('#btn-restart').hide();
+            // Étape 3 : Avant résultats
+            $('#btn-next-pro').hide();
+            $('#btn-calculate-pro').show();
+            $('#btn-restart-pro').hide();
         } else {
-            $('#btn-next').show();
-            $('#btn-calculate, #btn-restart').hide();
+            // Étapes 1 et 2
+            $('#btn-next-pro').show();
+            $('#btn-calculate-pro').hide();
+            $('#btn-restart-pro').hide();
+        }
+
+        // Actions spécifiques par étape
+        if (currentStep === 1) {
+            updateEligibilityInfo();
         }
     }
 
-    // ===============================
-    // LOGIQUE SPÉCIFIQUE PROFESSIONNEL
-    // ===============================
+    function scrollToTop() {
+        $('html, body').animate({
+            scrollTop: $('.simulateur-header').offset().top - 20
+        }, 500);
+    }
 
-    function setupProLogic() {
-        // Gestion commune autre
-        $('#commune').on('change', handleCommuneSelection);
+    // ================================
+    // VALIDATION
+    // ================================
+    function validateCurrentStep() {
+        const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
+        let isValid = true;
 
-        // Validation de la consommation en temps réel
-        $('#consommation_previsionnelle').on('input', function () {
-            const value = parseFloat($(this).val());
-            const $helpText = $(this).closest('.form-group').find('.field-help');
+        console.log('🔍 Validation étape:', currentStep);
 
-            if (value > 0 && value < 5000) {
-                $helpText.html('💡 <strong>Très petite consommation</strong> - Tarif P0/GOM0');
-            } else if (value >= 5000 && value < 15000) {
-                $helpText.html('💡 <strong>Petite entreprise</strong> - Tarif adapté aux commerces');
-            } else if (value >= 15000 && value < 35000) {
-                $helpText.html('💡 <strong>PME</strong> - Tarif optimisé pour les moyens consommateurs');
-            } else if (value >= 35000 && value < 100000) {
-                $helpText.html('⚠️ <strong>Grande consommation</strong> - Un devis personnalisé sera établi');
-            } else if (value >= 100000) {
-                $helpText.html('🏭 <strong>Très grande consommation</strong> - Offre sur mesure requise');
+        // Retirer les classes d'erreur existantes
+        currentStepElement.find('.field-error').removeClass('field-error');
+
+        // Validation par étape
+        switch (currentStep) {
+            case 1:
+                isValid = validateStep1(currentStepElement);
+                break;
+            case 2:
+                isValid = validateStep2(currentStepElement);
+                break;
+            case 3:
+                isValid = validateStep3(currentStepElement);
+                break;
+        }
+
+        if (!isValid) {
+            showValidationMessage('Veuillez remplir tous les champs obligatoires');
+        }
+
+        console.log('✔️ Validation résultat:', isValid);
+        return isValid;
+    }
+
+    function validateStep1(stepElement) {
+        let isValid = true;
+
+        // Vérifier les champs requis de l'étape 1
+        const requiredFields = [
+            'categorie',
+            'eligible_trv',
+            'puissance',
+            'formule_tarifaire',
+            'conso_annuelle'
+        ];
+
+        requiredFields.forEach(field => {
+            const $field = stepElement.find(`[name="${field}"]`);
+
+            if ($field.attr('type') === 'radio') {
+                if (!stepElement.find(`input[name="${field}"]:checked`).length) {
+                    $field.addClass('field-error');
+                    isValid = false;
+                    console.log('❌ Champ radio manquant:', field);
+                }
+            } else {
+                if (!$field.val()) {
+                    $field.addClass('field-error');
+                    isValid = false;
+                    console.log('❌ Champ vide:', field);
+                }
             }
         });
 
-        // Checkbox "Je n'ai pas l'information" - ajusté pour le gaz (pas de PCE mais PDL/PRM électrique)
-        $('#pas_info').on('change', function () {
+        // Validation spéciale pour la consommation
+        const consoValue = parseFloat(stepElement.find('#conso_annuelle').val());
+        if (consoValue && (consoValue < 1000 || consoValue > 1000000)) {
+            stepElement.find('#conso_annuelle').addClass('field-error');
+            showValidationMessage('La consommation doit être entre 1 000 et 1 000 000 kWh/an');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    function validateStep2(stepElement) {
+        let isValid = true;
+
+        // Si "Je n'ai pas l'information" est coché, validation allégée
+        if ($('#pas_info').is(':checked')) {
+            // Vérifier seulement l'adresse principale
+            const requiredFields = ['adresse', 'code_postal', 'ville'];
+
+            requiredFields.forEach(field => {
+                const $field = stepElement.find(`#${field}`);
+                if (!$field.val()) {
+                    $field.addClass('field-error');
+                    isValid = false;
+                    console.log('❌ Champ adresse manquant:', field);
+                }
+            });
+        } else {
+            // Vérification complète avec PDL/PRM
+            const pdl = stepElement.find('#point_livraison').val();
+            const prm = stepElement.find('#num_prm').val();
+
+            if (!pdl && !prm) {
+                stepElement.find('#point_livraison, #num_prm').addClass('field-error');
+                showValidationMessage('Veuillez renseigner le point de livraison (PDL) ou le numéro PRM');
+                isValid = false;
+            }
+
+            // Adresse obligatoire
+            const requiredFields = ['adresse', 'code_postal', 'ville'];
+
+            requiredFields.forEach(field => {
+                const $field = stepElement.find(`#${field}`);
+                if (!$field.val()) {
+                    $field.addClass('field-error');
+                    isValid = false;
+                }
+            });
+        }
+
+        return isValid;
+    }
+
+    function validateStep3(stepElement) {
+        let isValid = true;
+
+        const requiredFields = [
+            'nom', 'prenom', 'raison_sociale',
+            'forme_juridique', 'siret', 'code_naf',
+            'email', 'telephone'
+        ];
+
+        requiredFields.forEach(field => {
+            const $field = stepElement.find(`#${field}`);
+            if (!$field.val()) {
+                $field.addClass('field-error');
+                isValid = false;
+                console.log('❌ Champ entreprise manquant:', field);
+            }
+        });
+
+        // Validation SIRET (14 chiffres)
+        const siret = stepElement.find('#siret').val();
+        if (siret && siret.length !== 14) {
+            stepElement.find('#siret').addClass('field-error');
+            showValidationMessage('Le SIRET doit contenir exactement 14 chiffres');
+            isValid = false;
+        }
+
+        // Validation email
+        const email = stepElement.find('#email').val();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (email && !emailRegex.test(email)) {
+            stepElement.find('#email').addClass('field-error');
+            showValidationMessage('Format d\'email invalide');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    // ================================
+    // LOGIQUE PROFESSIONNELLE
+    // ================================
+    function setupProLogic() {
+        $('#pas_info').off('change').on('change', function () {
             if ($(this).is(':checked')) {
                 $('#point_livraison').prop('disabled', true).val('');
                 $('#num_prm').prop('disabled', true).val('');
+                console.log('Mode "pas d\'info" activé');
             } else {
                 $('#point_livraison').prop('disabled', false);
                 $('#num_prm').prop('disabled', false);
+                console.log('Mode "pas d\'info" désactivé');
             }
         });
 
-        // Format SIRET automatique avec badge visuel
-        $('#siret').on('input', function () {
+        $('#siret').off('input').on('input', function () {
             let value = $(this).val().replace(/\s/g, '');
             if (value.length > 14) {
                 value = value.substr(0, 14);
             }
             $(this).val(value);
 
-            // Validation visuelle du SIRET
             const $badge = $('#siret-badge');
             if (value.length === 14) {
                 $badge.text('✓').removeClass('invalid').addClass('valid').show();
@@ -187,83 +362,120 @@ jQuery(document).ready(function ($) {
                 $badge.hide();
             }
         });
+
+
+        // Information sur la puissance en temps réel
+        $('#puissance').on('change', function () {
+            const puissance = parseInt($(this).val());
+            const $helpText = $(this).closest('.form-group').find('.form-help');
+
+            if (puissance <= 12) {
+                $helpText.text('💡 Petite installation - Idéal pour bureaux et commerces');
+            } else if (puissance <= 36) {
+                $helpText.text('💡 Installation moyenne - Adaptée aux PME');
+            } else {
+                $helpText.text('💡 Installation importante - Pour les grandes entreprises');
+            }
+        });
+
+        // Information sur la consommation en temps réel
+        $('#conso_annuelle').on('input', function () {
+            const conso = parseInt($(this).val());
+            const $helpText = $(this).closest('.form-group').find('.form-help');
+
+            if (conso < 10000) {
+                $helpText.text('💡 Petite consommation - Bureau ou petit commerce');
+            } else if (conso < 50000) {
+                $helpText.text('💡 Consommation moyenne - PME ou commerce');
+            } else if (conso < 200000) {
+                $helpText.text('💡 Grande consommation - Industrie ou gros consommateur');
+            } else {
+                $helpText.text('💡 Très grande consommation - Industrie lourde');
+            }
+        });
     }
 
-    function handleCommuneSelection() {
-        const selectedValue = $('#commune').val();
-        const selectedOption = $('#commune option:selected');
+    function setupFormValidation() {
+        // Utiliser .off() pour éviter la multiplication des événements
+        $('#email').off('blur').on('blur', function () {
+            const email = $(this).val();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (email && !emailRegex.test(email)) {
+                $(this).addClass('field-error');
+                showValidationMessage('Format d\'email invalide');
+            } else {
+                $(this).removeClass('field-error').addClass('field-success');
+            }
+        });
 
-        if (selectedValue === 'autre') {
-            $('#autre-commune-details').slideDown();
-            $('#type-gaz-info').hide();
-        } else if (selectedValue && selectedValue !== '') {
-            $('#autre-commune-details').slideUp();
-            showTypeGazInfo(selectedOption);
-        } else {
-            $('#autre-commune-details').hide();
-            $('#type-gaz-info').hide();
+        $('#telephone').off('blur').on('blur', function () {
+            const tel = $(this).val().replace(/[\s\-\(\)\.]/g, '');
+            if (tel && tel.length < 10) {
+                $(this).addClass('field-error');
+                showValidationMessage('Numéro de téléphone trop court');
+            } else {
+                $(this).removeClass('field-error').addClass('field-success');
+            }
+        });
+
+        $('#code_postal').off('blur').on('blur', function () {
+            const cp = $(this).val();
+            if (cp && !/^[0-9]{5}$/.test(cp)) {
+                $(this).addClass('field-error');
+                showValidationMessage('Le code postal doit contenir 5 chiffres');
+            } else {
+                $(this).removeClass('field-error').addClass('field-success');
+            }
+        });
+    }
+
+    function setupProLogic() {
+        $('#pas_info').off('change').on('change', function () {
+            if ($(this).is(':checked')) {
+                $('#point_livraison').prop('disabled', true).val('');
+                $('#num_prm').prop('disabled', true).val('');
+                console.log('Mode "pas d\'info" activé');
+            } else {
+                $('#point_livraison').prop('disabled', false);
+                $('#num_prm').prop('disabled', false);
+                console.log('Mode "pas d\'info" désactivé');
+            }
+        });
+
+        $('#siret').off('input').on('input', function () {
+            let value = $(this).val().replace(/\s/g, '');
+            if (value.length > 14) {
+                value = value.substr(0, 14);
+            }
+            $(this).val(value);
+
+            const $badge = $('#siret-badge');
+            if (value.length === 14) {
+                $badge.text('✓').removeClass('invalid').addClass('valid').show();
+            } else if (value.length > 0) {
+                $badge.text('✗').removeClass('valid').addClass('invalid').show();
+            } else {
+                $badge.hide();
+            }
+        });
+
+    }
+
+    function updateEligibilityInfo() {
+        // Information sur l'éligibilité au tarif réglementé
+        const eligible = $('input[name="eligible_trv"]:checked').val();
+        const $infoBox = $('.eligibility-info');
+
+        if (eligible === 'oui') {
+            $infoBox.html('✅ Vous pouvez bénéficier des tarifs réglementés').show();
+        } else if (eligible === 'non') {
+            $infoBox.html('⚠️ Vous devrez souscrire à une offre de marché').show();
         }
     }
 
-    function showTypeGazInfo(selectedOption) {
-        const typeGaz = selectedOption.data('type');
-        if (!typeGaz) return;
-
-        const typeText = typeGaz === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
-        const icon = typeGaz === 'naturel' ? '🌱' : '⛽';
-
-        $('#type-gaz-text').html(`${icon} <strong>${typeText}</strong> disponible dans cette commune`);
-        $('#type-gaz-info').fadeIn();
-    }
-
-    function loadCommunes() {
-        const defaultCommunes = [
-            // Gaz Naturel
-            { nom: 'AIRE SUR L\'ADOUR', type: 'naturel' },
-            { nom: 'BARCELONNE DU GERS', type: 'naturel' },
-            { nom: 'GAAS', type: 'naturel' },
-            { nom: 'LABATUT', type: 'naturel' },
-            { nom: 'LALUQUE', type: 'naturel' },
-            { nom: 'MISSON', type: 'naturel' },
-            { nom: 'POUILLON', type: 'naturel' },
-
-            // Gaz Propane
-            { nom: 'BASCONS', type: 'propane' },
-            { nom: 'BENESSE LES DAX', type: 'propane' },
-            { nom: 'CAMPAGNE', type: 'propane' },
-            { nom: 'CARCARES SAINTE CROIX', type: 'propane' },
-            { nom: 'GEAUNE', type: 'propane' },
-            { nom: 'MAZEROLLES', type: 'propane' },
-            { nom: 'MEILHAN', type: 'propane' },
-            { nom: 'PONTONX SUR L\'ADOUR', type: 'propane' },
-            { nom: 'SAINT MAURICE', type: 'propane' },
-            { nom: 'SOUPROSSE', type: 'propane' },
-            { nom: 'TETHIEU', type: 'propane' },
-            { nom: 'YGOS SAINT SATURNIN', type: 'propane' }
-        ];
-
-        populateCommunesSelect(defaultCommunes);
-    }
-
-    function populateCommunesSelect(communes) {
-        const communesNaturel = communes.filter(c => c.type === 'naturel');
-        const communesPropane = communes.filter(c => c.type === 'propane');
-
-        $('#communes-naturel').empty();
-        communesNaturel.forEach(commune => {
-            $('#communes-naturel').append(`<option value="${commune.nom}" data-type="naturel">${commune.nom}</option>`);
-        });
-
-        $('#communes-propane').empty();
-        communesPropane.forEach(commune => {
-            $('#communes-propane').append(`<option value="${commune.nom}" data-type="propane">${commune.nom}</option>`);
-        });
-    }
-
-    // ===============================
-    // UPLOAD FICHIER K-BIS (inspiré d'elec-pro)
-    // ===============================
-
+    // ================================
+    // UPLOAD DE FICHIER
+    // ================================
     function setupFileUpload() {
         const $fileInput = $('#kbis');
         const $uploadArea = $('#upload-area');
@@ -322,15 +534,15 @@ jQuery(document).ready(function ($) {
 
             // Vérifier la taille (5 Mo max)
             if (file.size > 5 * 1024 * 1024) {
-                showValidationMessage('Le fichier est trop lourd (max 5 Mo)');
+                showValidationMessage('Le fichier est trop volumineux (max 5 Mo)');
                 return;
             }
 
-            // Stocker le fichier comme dans elec-pro
+            // Stocker le fichier
             uploadedFile = file;
             formData.kbis_file = file;
 
-            // Afficher le nom
+            // Afficher le nom du fichier
             $fileName.text(file.name);
             $fileSelected.show();
             $uploadArea.addClass('has-file');
@@ -356,191 +568,9 @@ jQuery(document).ready(function ($) {
         }
     }
 
-    // ===============================
-    // VALIDATION (inspirée d'elec-pro)
-    // ===============================
-
-    function setupFormValidation() {
-        // Validation SIRET comme dans elec-pro
-        $('#siret').on('blur', function () {
-            const siret = $(this).val().replace(/\s/g, '');
-            if (siret && siret.length !== 14) {
-                $(this).addClass('field-error');
-                showValidationMessage('Le SIRET doit contenir 14 chiffres');
-            } else {
-                $(this).removeClass('field-error').addClass('field-success');
-            }
-        });
-
-        // Validation Code Postal
-        $('#code_postal').on('blur', function () {
-            const cp = $(this).val();
-            if (cp && !/^[0-9]{5}$/.test(cp)) {
-                $(this).addClass('field-error');
-                showValidationMessage('Le code postal doit contenir 5 chiffres');
-            } else {
-                $(this).removeClass('field-error').addClass('field-success');
-            }
-        });
-
-        // Validation Email
-        $('#email').on('blur', function () {
-            const email = $(this).val();
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (email && !emailRegex.test(email)) {
-                $(this).addClass('field-error');
-                showValidationMessage('Email invalide');
-            } else {
-                $(this).removeClass('field-error').addClass('field-success');
-            }
-        });
-
-        // Validation téléphone
-        $('#telephone').on('blur', function () {
-            const tel = $(this).val().replace(/[\s\-\(\)\.]/g, '');
-            if (tel && tel.length < 10) {
-                $(this).addClass('field-error');
-            } else {
-                $(this).removeClass('field-error').addClass('field-success');
-            }
-        });
-    }
-
-    function validateCurrentStep() {
-        const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
-        let isValid = true;
-
-        // Retirer les classes d'erreur existantes
-        currentStepElement.find('.field-error').removeClass('field-error');
-
-        // Validation par étape
-        switch (currentStep) {
-            case 1: // Configuration gaz
-                isValid = validateStep1(currentStepElement);
-                break;
-            case 2: // Localisation
-                isValid = validateStep2(currentStepElement);
-                break;
-            case 3: // Titulaire
-                isValid = validateStep3(currentStepElement);
-                break;
-        }
-
-        if (!isValid) {
-            showValidationMessage('Veuillez remplir tous les champs obligatoires');
-        }
-
-        return isValid;
-    }
-
-    function validateStep1(stepElement) {
-        let isValid = true;
-
-        // Validation commune
-        const commune = stepElement.find('#commune');
-        if (!commune.val()) {
-            commune.addClass('field-error');
-            isValid = false;
-        } else {
-            commune.addClass('field-success');
-        }
-
-        // Validation pour autre commune
-        if (commune.val() === 'autre') {
-            const nomCommune = stepElement.find('#nom_commune_autre').val().trim();
-            const typeGaz = stepElement.find('input[name="type_gaz_autre"]:checked');
-
-            if (!nomCommune) {
-                stepElement.find('#nom_commune_autre').addClass('field-error');
-                isValid = false;
-            }
-
-            if (!typeGaz.length) {
-                isValid = false;
-            }
-        }
-
-        // Validation consommation
-        const conso = stepElement.find('#consommation_previsionnelle');
-        const consoValue = parseFloat(conso.val());
-        if (!consoValue || consoValue < 100 || consoValue > 1000000) {
-            conso.addClass('field-error');
-            showValidationMessage('La consommation doit être entre 100 et 1 000 000 kWh');
-            isValid = false;
-        } else {
-            conso.addClass('field-success');
-        }
-
-        return isValid;
-    }
-
-    function validateStep2(stepElement) {
-        let isValid = true;
-
-        // Si "Je n'ai pas l'information" est coché, on skip certaines validations
-        if ($('#pas_info').is(':checked')) {
-            // Vérifier juste l'adresse principale
-            if (!stepElement.find('#adresse').val()) {
-                stepElement.find('#adresse').addClass('field-error');
-                isValid = false;
-            }
-        } else {
-            // Vérifier PDL ou PRM (même si c'est pour le gaz, on garde la logique électrique du template)
-            const pdl = stepElement.find('#point_livraison').val();
-            const prm = stepElement.find('#num_prm').val();
-
-            if (!pdl && !prm) {
-                stepElement.find('#point_livraison, #num_prm').addClass('field-error');
-                isValid = false;
-            }
-        }
-
-        // Adresse obligatoire
-        if (!stepElement.find('#adresse').val()) {
-            stepElement.find('#adresse').addClass('field-error');
-            isValid = false;
-        }
-
-        // Code postal obligatoire
-        if (!stepElement.find('#code_postal').val()) {
-            stepElement.find('#code_postal').addClass('field-error');
-            isValid = false;
-        }
-
-        // Ville obligatoire
-        if (!stepElement.find('#ville').val()) {
-            stepElement.find('#ville').addClass('field-error');
-            isValid = false;
-        }
-
-        return isValid;
-    }
-
-    function validateStep3(stepElement) {
-        let isValid = true;
-
-        // Champs obligatoires comme dans elec-pro
-        const requiredFields = [
-            'nom', 'prenom', 'raison_sociale',
-            'forme_juridique', 'siret', 'code_naf',
-            'email', 'telephone'
-        ];
-
-        requiredFields.forEach(field => {
-            const $field = stepElement.find(`#${field}`);
-            if (!$field.val()) {
-                $field.addClass('field-error');
-                isValid = false;
-            }
-        });
-
-        return isValid;
-    }
-
-    // ===============================
-    // COLLECTE DES DONNÉES (comme elec-pro)
-    // ===============================
-
+    // ================================
+    // GESTION DES DONNÉES
+    // ================================
     function saveCurrentStepData() {
         const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
 
@@ -562,14 +592,14 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        // Ajouter le fichier uploadé si présent (comme elec-pro)
+        // Ajouter le fichier uploadé si présent
         if (uploadedFile && currentStep === 3) {
             formData.kbis_filename = uploadedFile.name;
             formData.kbis_size = uploadedFile.size;
             formData.kbis_type = uploadedFile.type;
         }
 
-        console.log('📝 Données sauvegardées étape', currentStep, ':', formData);
+        console.log('💾 Données sauvegardées étape', currentStep, ':', formData);
     }
 
     function collectAllFormData() {
@@ -595,7 +625,7 @@ jQuery(document).ready(function ($) {
             });
         });
 
-        // Ajouter le fichier uploadé si présent (comme elec-pro)
+        // Ajouter le fichier uploadé si présent
         if (uploadedFile) {
             formData.kbis_filename = uploadedFile.name;
             formData.kbis_size = uploadedFile.size;
@@ -606,67 +636,58 @@ jQuery(document).ready(function ($) {
         return formData;
     }
 
-    // ===============================
-    // CALCUL DES RÉSULTATS (côté serveur)
-    // ===============================
-
+    // ================================
+    // CALCUL DES RÉSULTATS - VERSION FONCTIONNELLE
+    // ================================
     function calculateResults() {
+        console.log('🧮 Démarrage calcul des résultats');
+
         const allData = collectAllFormData();
 
-        // Validation
-        if (!allData.commune || !allData.consommation_previsionnelle) {
+        // Validation des données essentielles
+        if (!allData.conso_annuelle || !allData.puissance || !allData.categorie) {
             showValidationMessage('Données manquantes pour le calcul');
             return;
         }
 
-        console.log('🚀 Envoi des données au calculateur gaz:', allData);
-
         // Afficher l'étape des résultats
-        showStep(4);
-        updateProgress();
-        updateNavigation();
+        currentStep = totalSteps;
+        updateUI();
 
         // Afficher le loader
-        $('#results-container').html(`
-            <div class="loading-state">
-                <div class="loading-spinner"></div>
-                <p>Calcul en cours...</p>
-                <small>Analyse de votre offre gaz professionnel...</small>
-            </div>
-        `);
+        $('#results-container-pro').html(`
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Calcul en cours...</p>
+            <small>Analyse de votre contrat électrique professionnel...</small>
+        </div>
+    `);
 
-        // Envoyer au calculateur PHP
+        // Envoyer directement au calculateur comme elec-residentiel
         sendToCalculator(allData);
     }
 
     function sendToCalculator(userData) {
-        // Déterminer l'URL AJAX
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
-        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.ajaxUrl) {
-            ajaxUrl = hticSimulateurUnifix.ajaxUrl;
-        }
-
-        // Préparer les données pour le calculateur
         const dataToSend = {
             action: 'htic_calculate_estimation',
-            type: 'gaz-professionnel',
+            type: 'elec-professionnel',
             user_data: userData,
             config_data: configData
         };
 
-        // Ajouter le nonce si disponible
+        // Ajouter le nonce si disponible (comme elec-residentiel)
         if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
             dataToSend.nonce = hticSimulateur.nonce;
         } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.calculateNonce) {
             dataToSend.nonce = hticSimulateurUnifix.calculateNonce;
         }
 
-        console.log('📤 Envoi AJAX gaz pro:', {
-            url: ajaxUrl,
-            data: dataToSend
-        });
+        let ajaxUrl = '/wp-admin/admin-ajax.php';
+        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+            ajaxUrl = hticSimulateur.ajaxUrl;
+        }
+
+        console.log('📤 Envoi AJAX électricité pro:', dataToSend);
 
         $.ajax({
             url: ajaxUrl,
@@ -675,290 +696,452 @@ jQuery(document).ready(function ($) {
             data: dataToSend,
             timeout: 30000,
             success: function (response) {
-                console.log('📥 Réponse du calculateur gaz:', response);
-
+                console.log('📥 Réponse du calculateur:', response);
                 if (response.success) {
-                    // Vérifier si c'est un devis personnalisé
-                    if (response.data.devis_personnalise) {
-                        displayDevisPersonnalise(response.data);
-                    } else {
-                        displayResults(response.data);
-                    }
-                    setupEmailActions();
+                    displayResults(response.data);
                 } else {
                     displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
                 }
             },
             error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX gaz:', {
-                    status: status,
-                    error: error,
-                    responseText: xhr.responseText,
-                    statusCode: xhr.status
-                });
-
-                let errorMessage = 'Erreur de connexion lors du calcul';
-
-                if (xhr.status === 0) {
-                    errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
-                } else if (xhr.status === 500) {
-                    errorMessage = 'Erreur interne du serveur. Contactez l\'administrateur.';
-                } else if (status === 'timeout') {
-                    errorMessage = 'Le calcul prend trop de temps. Réessayez.';
-                }
-
-                displayError(errorMessage);
+                console.error('❌ Erreur AJAX:', xhr.responseText);
+                displayError('Erreur de connexion lors du calcul');
             }
         });
     }
 
-    // ===============================
+    // ================================
     // AFFICHAGE RÉSULTATS
-    // ===============================
-
-    function displayDevisPersonnalise(data) {
-        $('#results-container').hide();
-        $('#devis-personnalise-container').show();
-
-        // Remplir les informations du devis
-        $('#devis-entreprise').text(formData.raison_sociale || '--');
-        $('#devis-commune').text(data.commune || formData.commune || '--');
-        $('#devis-consommation').text((data.consommation_annuelle || formData.consommation_previsionnelle || 0).toLocaleString() + ' kWh/an');
-        $('#devis-type-gaz').text(data.type_gaz || 'Gaz naturel');
-
-        $('.results-actions').show();
-    }
+    // ================================
 
     function displayResults(results) {
-        if (!results || !results.consommation_annuelle) {
+        if (!results || !results.offres || !results.consommation_annuelle) {
             displayError('Données de résultats incomplètes');
             return;
         }
 
-        $('#devis-personnalise-container').hide();
-        $('#results-container').show();
+        console.log('📊 Affichage des résultats professionnels:', results);
 
         const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
-        const coutAnnuel = parseFloat(results.cout_annuel_ttc) || 0;
-        const coutMensuel = Math.round(coutAnnuel / 12);
-        const prixKwh = parseFloat(results.prix_kwh) || 0;
-        const abonnementAnnuel = parseFloat(results.cout_abonnement) || 0;
-        const abonnementMensuel = Math.round(abonnementAnnuel / 12);
+        const puissance = parseInt(results.puissance) || parseInt(formData.puissance) || 0;
+        const meilleureOffre = results.meilleure_offre;
+        const userData = results.user_data || formData;
+        const economieMax = parseFloat(results.economie_max) || 0;
+
+        // Générer les cartes d'offres selon le style de vos autres formulaires
+        const offresCards = results.offres.map(offre => {
+            const isRecommended = offre.meilleure;
+            const totalTTC = Math.round(parseFloat(offre.total_ttc));
+            const totalMensuel = Math.round(totalTTC / 12);
+
+            let typeClass = 'offre-marche';
+            if (offre.nom.includes('TRV') || offre.nom.includes('Bleu')) typeClass = 'trv';
+            if (offre.nom.includes('Tempo')) typeClass = 'tempo';
+            if (offre.nom.includes('française') || offre.nom.includes('verte')) typeClass = 'offre-francaise';
+
+            return `
+            <div class="tarif-card ${typeClass} ${isRecommended ? 'recommended' : ''}">
+                <h4>${offre.nom}</h4>
+                <div class="tarif-prix">${totalTTC.toLocaleString()}€<span>/an</span></div>
+                <div class="tarif-mensuel">${totalMensuel.toLocaleString()}€/mois</div>
+                <div class="tarif-details">
+                    <div>Abonnement : ${Math.round(offre.abonnement_annuel).toLocaleString()}€/an</div>
+                    <div>Consommation : ${Math.round(offre.cout_consommation).toLocaleString()}€/an</div>
+                    <div>Prix : ${offre.details}</div>
+                </div>
+                ${isRecommended ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
+                ${offre.details_tempo ? generateTempoDetails(offre.details_tempo) : ''}
+            </div>
+        `;
+        }).join('');
 
         const resultsHtml = `
-            <div class="results-summary">
-                <!-- Résultat principal -->
-                <div class="result-card main-result">
-                    <div class="result-icon">🏢</div>
-                    <h3>Votre estimation professionnelle</h3>
-                    <div class="big-number">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
-                    <div class="result-price">${coutAnnuel.toLocaleString()}€ <span>/an HT</span></div>
-                    <p>Soit environ <strong>${coutMensuel}€/mois HT</strong></p>
+        <div class="results-summary">
+            <!-- Résultat principal -->
+            <div class="result-card main-result">
+                <div class="result-icon">🏢</div>
+                <h3>Votre estimation professionnelle</h3>
+                <div class="big-number">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
+                <div class="result-price">${Math.round(meilleureOffre.total_ttc).toLocaleString()}€ <span>/an TTC</span></div>
+                <p>Soit environ <strong>${Math.round(meilleureOffre.total_ttc / 12).toLocaleString()}€/mois TTC</strong></p>
+            </div>
+            
+            <!-- Comparaison des tarifs (même style que elec-residentiel) -->
+            <div class="tarifs-comparison">
+                <h3>💰 Comparaison des tarifs professionnels</h3>
+                <div class="tarifs-grid">
+                    ${offresCards}
                 </div>
                 
-                <!-- Détails de l'offre - Design amélioré -->
-                <div class="offer-details-modern">
-                    <div class="offer-header">
-                        <h3>Détails de votre offre professionnelle</h3>
-                        <span class="offer-badge">${results.type_gaz || 'Gaz'}</span>
+                ${economieMax > 0 ? `
+                <div class="economies">
+                    <h4>💡 Économies potentielles</h4>
+                    <p><strong>Jusqu'à ${Math.round(economieMax).toLocaleString()}€/an</strong> en choisissant le tarif optimal !</p>
+                    <small>Le tarif ${meilleureOffre.nom} est actuellement le plus avantageux pour votre profil.</small>
+                </div>
+                ` : ''}
+                
+                ${meilleureOffre.details_tempo ? generateTempoDetailsComplete(meilleureOffre.details_tempo) : ''}
+            </div>
+            
+            <!-- Répartition de la consommation (même style que elec-residentiel) -->
+            <div class="repartition-conso">
+                <div class="repartition-header">
+                    <h3>Répartition de votre consommation</h3>
+                    <p class="repartition-subtitle">Analyse détaillée par poste de consommation</p>
+                </div>
+                
+                <div class="repartition-content">
+                    <!-- Éclairage -->
+                    <div class="repartition-item eclairage">
+                        <div class="item-header">
+                            <div class="item-info">
+                                <div class="item-icon">💡</div>
+                                <div class="item-details">
+                                    <div class="item-name">Éclairage</div>
+                                    <div class="item-value">${Math.round(consommationAnnuelle * 0.25).toLocaleString()} kWh/an</div>
+                                </div>
+                            </div>
+                            <div class="item-stats">
+                                <div class="item-percentage">25%</div>
+                                <div class="item-kwh">du total</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 25%"></div>
+                        </div>
                     </div>
                     
-                    <div class="offer-main-grid">
-                        <!-- Carte tarification -->
-                        <div class="offer-card pricing-card">
-                            <div class="card-header">
-                                <div class="card-icon">💰</div>
-                                <h4>Tarification</h4>
+                    <!-- Informatique -->
+                    <div class="repartition-item multimedia">
+                        <div class="item-header">
+                            <div class="item-info">
+                                <div class="item-icon">💻</div>
+                                <div class="item-details">
+                                    <div class="item-name">Informatique</div>
+                                    <div class="item-value">${Math.round(consommationAnnuelle * 0.30).toLocaleString()} kWh/an</div>
+                                </div>
                             </div>
-                            <div class="card-content">
-                                <div class="pricing-row">
-                                    <span class="pricing-label">Tranche tarifaire</span>
-                                    <span class="pricing-value badge-primary">${results.tranche_tarifaire || '--'}</span>
+                            <div class="item-stats">
+                                <div class="item-percentage">30%</div>
+                                <div class="item-kwh">du total</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 30%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chauffage/Climatisation -->
+                    <div class="repartition-item chauffage">
+                        <div class="item-header">
+                            <div class="item-info">
+                                <div class="item-icon">🌡️</div>
+                                <div class="item-details">
+                                    <div class="item-name">Chauffage/Climatisation</div>
+                                    <div class="item-value">${Math.round(consommationAnnuelle * 0.35).toLocaleString()} kWh/an</div>
                                 </div>
-                                <div class="pricing-row">
-                                    <span class="pricing-label">Prix du kWh HT</span>
-                                    <span class="pricing-value">${prixKwh.toFixed(4)}€</span>
+                            </div>
+                            <div class="item-stats">
+                                <div class="item-percentage">35%</div>
+                                <div class="item-kwh">du total</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 35%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Autres équipements -->
+                    <div class="repartition-item equipements">
+                        <div class="item-header">
+                            <div class="item-info">
+                                <div class="item-icon">⚙️</div>
+                                <div class="item-details">
+                                    <div class="item-name">Autres équipements</div>
+                                    <div class="item-value">${Math.round(consommationAnnuelle * 0.10).toLocaleString()} kWh/an</div>
                                 </div>
-                                <div class="pricing-row">
-                                    <span class="pricing-label">Abonnement HT</span>
-                                    <span class="pricing-value">${abonnementMensuel}€/mois</span>
+                            </div>
+                            <div class="item-stats">
+                                <div class="item-percentage">10%</div>
+                                <div class="item-kwh">du total</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 10%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Récapitulatif complet (même style que elec-residentiel) -->
+            <div class="recap-section">
+                <div class="recap-header">
+                    <h3>Récapitulatif complet de votre simulation</h3>
+                </div>
+                
+                <div class="recap-content">
+                    <div class="recap-categories">
+                        
+                        <!-- Entreprise -->
+                        <div class="recap-category">
+                            <div class="category-header">
+                                <div class="category-icon">🏢</div>
+                                <div class="category-title">Entreprise</div>
+                            </div>
+                            <div class="category-items">
+                                <div class="recap-item">
+                                    <span class="recap-label">Raison sociale</span>
+                                    <span class="recap-value">${userData.raison_sociale || '--'}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Forme juridique</span>
+                                    <span class="recap-value">${formData.forme_juridique || '--'}</span>
+                                </div>
+                                ${userData.siret ? `
+                                <div class="recap-item">
+                                    <span class="recap-label">SIRET</span>
+                                    <span class="recap-value">${formatSiret(userData.siret)}</span>
+                                </div>` : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Configuration électrique -->
+                        <div class="recap-category">
+                            <div class="category-header">
+                                <div class="category-icon">⚡</div>
+                                <div class="category-title">Configuration électrique</div>
+                            </div>
+                            <div class="category-items">
+                                <div class="recap-item">
+                                    <span class="recap-label">Puissance souscrite</span>
+                                    <span class="recap-value highlight">${puissance} kVA</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Catégorie</span>
+                                    <span class="recap-value">${results.categorie || formData.categorie}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Formule tarifaire</span>
+                                    <span class="recap-value">${results.formule || formData.formule_tarifaire}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Éligibilité TRV</span>
+                                    <span class="recap-value ${formData.eligible_trv === 'oui' ? 'success' : 'warning'}">${formData.eligible_trv === 'oui' ? '✅ Oui' : '❌ Non'}</span>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Carte coûts -->
-                        <div class="offer-card costs-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h4>Répartition des coûts</h4>
+                        <!-- Contact -->
+                        <div class="recap-category">
+                            <div class="category-header">
+                                <div class="category-icon">📞</div>
+                                <div class="category-title">Contact</div>
                             </div>
-                            <div class="card-content">
-                                <div class="cost-breakdown">
-                                    <div class="cost-item">
-                                        <div class="cost-label">
-                                            <span class="cost-icon">⚡</span>
-                                            Consommation annuelle
-                                        </div>
-                                        <div class="cost-value">${(results.cout_consommation || 0).toLocaleString()}€</div>
-                                    </div>
-                                    <div class="cost-item">
-                                        <div class="cost-label">
-                                            <span class="cost-icon">📅</span>
-                                            Abonnement annuel
-                                        </div>
-                                        <div class="cost-value">${(abonnementAnnuel || 0).toLocaleString()}€</div>
-                                    </div>
-                                    <div class="cost-separator"></div>
-                                    <div class="cost-item total">
-                                        <div class="cost-label">
-                                            <strong>Total annuel HT</strong>
-                                        </div>
-                                        <div class="cost-value primary">${coutAnnuel.toLocaleString()}€</div>
-                                    </div>
+                            <div class="category-items">
+                                <div class="recap-item">
+                                    <span class="recap-label">Contact</span>
+                                    <span class="recap-value">${userData.prenom} ${userData.nom}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Email</span>
+                                    <span class="recap-value">${userData.email || '--'}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Téléphone</span>
+                                    <span class="recap-value">${userData.telephone || '--'}</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Barre d'économies potentielles -->
-                    <div class="savings-bar">
-                        <div class="savings-content">
-                            <div class="savings-icon">💡</div>
-                            <div class="savings-text">
-                                <strong>Économisez jusqu'à 15%</strong> en optimisant votre contrat professionnel
+                        
+                        <!-- Localisation -->
+                        <div class="recap-category">
+                            <div class="category-header">
+                                <div class="category-icon">📍</div>
+                                <div class="category-title">Localisation</div>
+                            </div>
+                            <div class="category-items">
+                                <div class="recap-item">
+                                    <span class="recap-label">Adresse</span>
+                                    <span class="recap-value">${userData.adresse || '--'}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Code postal</span>
+                                    <span class="recap-value">${userData.code_postal || '--'}</span>
+                                </div>
+                                <div class="recap-item">
+                                    <span class="recap-label">Ville</span>
+                                    <span class="recap-value">${userData.ville || '--'}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-                
-                <!-- Récapitulatif entreprise -->
-                <div class="recap-section">
-                    <div class="recap-header">
-                        <h3>Récapitulatif de votre simulation</h3>
-                    </div>
-                    
-                    <div class="recap-content">
-                        <div class="recap-categories">
-                            
-                            <!-- Entreprise -->
-                            <div class="recap-category">
-                                <div class="category-header">
-                                    <div class="category-icon">🏢</div>
-                                    <div class="category-title">Entreprise</div>
-                                </div>
-                                <div class="category-items">
-                                    <div class="recap-item">
-                                        <span class="recap-label">Nom</span>
-                                        <span class="recap-value">${formData.raison_sociale || '--'}</span>
-                                    </div>
-                                    <div class="recap-item">
-                                        <span class="recap-label">Forme juridique</span>
-                                        <span class="recap-value">${formData.forme_juridique || '--'}</span>
-                                    </div>
-                                    ${formData.siret ? `
-                                    <div class="recap-item">
-                                        <span class="recap-label">SIRET</span>
-                                        <span class="recap-value">${formatSiret(formData.siret)}</span>
-                                    </div>` : ''}
+                        
+                        ${userData.kbis_filename ? `
+                        <!-- Document -->
+                        <div class="recap-category">
+                            <div class="category-header">
+                                <div class="category-icon">📄</div>
+                                <div class="category-title">Document</div>
+                            </div>
+                            <div class="category-items">
+                                <div class="recap-item">
+                                    <span class="recap-label">K-bis</span>
+                                    <span class="recap-value success">✅ ${userData.kbis_filename}</span>
                                 </div>
                             </div>
-                            
-                            <!-- Localisation -->
-                            <div class="recap-category">
-                                <div class="category-header">
-                                    <div class="category-icon">📍</div>
-                                    <div class="category-title">Localisation</div>
-                                </div>
-                                <div class="category-items">
-                                    <div class="recap-item">
-                                        <span class="recap-label">Commune</span>
-                                        <span class="recap-value">${formData.commune || 'Non spécifiée'}</span>
-                                    </div>
-                                    <div class="recap-item">
-                                        <span class="recap-label">Type de gaz</span>
-                                        <span class="recap-value highlight">${results.type_gaz || 'Non défini'}</span>
-                                    </div>
-                                    ${formData.code_postal ? `
-                                    <div class="recap-item">
-                                        <span class="recap-label">Code postal</span>
-                                        <span class="recap-value">${formData.code_postal}</span>
-                                    </div>` : ''}
-                                </div>
-                            </div>
-                            
-                            <!-- Contact -->
-                            <div class="recap-category">
-                                <div class="category-header">
-                                    <div class="category-icon">📞</div>
-                                    <div class="category-title">Contact</div>
-                                </div>
-                                <div class="category-items">
-                                    <div class="recap-item">
-                                        <span class="recap-label">Contact</span>
-                                        <span class="recap-value">${formData.prenom} ${formData.nom}</span>
-                                    </div>
-                                    <div class="recap-item">
-                                        <span class="recap-label">Email</span>
-                                        <span class="recap-value">${formData.email || '--'}</span>
-                                    </div>
-                                    <div class="recap-item">
-                                        <span class="recap-label">Téléphone</span>
-                                        <span class="recap-value">${formData.telephone || '--'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                        </div>
+                        </div>` : ''}
+                        
                     </div>
-                </div>
-                <!-- Actions -->
-                <div class="pro-actions">
-                    <button class="btn btn-success" onclick="sendResultsByEmail()">📧 Recevoir par email</button>
-                    <button class="btn btn-secondary" onclick="location.reload()">🔄 Nouvelle simulation</button>
                 </div>
             </div>
-        `;
+            
+            <!-- Actions -->
+            <div class="results-actions">
+                <button class="btn btn-success" id="btn-send-email">✉️ Recevoir par email</button>
+                <button class="btn btn-secondary" onclick="location.reload()">🔄 Nouvelle simulation</button>
+            </div>
+        </div>
+    `;
 
-        $('#results-container').html(resultsHtml);
+        $('#results-container-pro').html(resultsHtml);
         $('.results-summary').hide().fadeIn(600);
 
         // Préparer les données pour l'email
         prepareEmailData(results);
     }
 
+    // Fonction pour les détails Tempo (version compacte)
+    function generateTempoDetails(tempoData) {
+        if (!tempoData) return '';
+
+        return `
+        <div class="tempo-details-compact">
+            <div class="tempo-breakdown">
+                <div class="tempo-jour bleu">Bleu: ${Math.round(tempoData.cout_bleu).toLocaleString()}€</div>
+                <div class="tempo-jour blanc">Blanc: ${Math.round(tempoData.cout_blanc).toLocaleString()}€</div>
+                <div class="tempo-jour rouge">Rouge: ${Math.round(tempoData.cout_rouge).toLocaleString()}€</div>
+            </div>
+        </div>
+    `;
+    }
+
+    // Fonction pour les détails Tempo complets (si c'est la meilleure offre)
+    function generateTempoDetailsComplete(tempoData) {
+        if (!tempoData) return '';
+
+        return `
+        <div class="tempo-details">
+            <div class="tempo-header">
+                <div class="tempo-icon">📅</div>
+                <div class="tempo-title">
+                    <h4>Détails du tarif Tempo</h4>
+                    <div class="tempo-subtitle">Répartition sur 365 jours</div>
+                </div>
+            </div>
+            
+            <div class="tempo-periods">
+                <!-- Jours Bleus -->
+                <div class="period-card period-bleu">
+                    <div class="period-header">
+                        <span class="period-name">Jours Bleus</span>
+                        <span class="period-days">${tempoData.jours_bleu} jours</span>
+                    </div>
+                    <div class="period-cost">${Math.round(tempoData.cout_bleu).toLocaleString()}€</div>
+                    <div class="period-details">
+                        <div class="period-detail-row">
+                            <span class="detail-label">Heures Pleines:</span>
+                            <span class="detail-value">${tempoData.prix_bleu_hp}€/kWh</span>
+                        </div>
+                        <div class="period-detail-row">
+                            <span class="detail-label">Heures Creuses:</span>
+                            <span class="detail-value">${tempoData.prix_bleu_hc}€/kWh</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Jours Blancs -->
+                <div class="period-card period-blanc">
+                    <div class="period-header">
+                        <span class="period-name">Jours Blancs</span>
+                        <span class="period-days">${tempoData.jours_blanc} jours</span>
+                    </div>
+                    <div class="period-cost">${Math.round(tempoData.cout_blanc).toLocaleString()}€</div>
+                    <div class="period-details">
+                        <div class="period-detail-row">
+                            <span class="detail-label">Heures Pleines:</span>
+                            <span class="detail-value">${tempoData.prix_blanc_hp}€/kWh</span>
+                        </div>
+                        <div class="period-detail-row">
+                            <span class="detail-label">Heures Creuses:</span>
+                            <span class="detail-value">${tempoData.prix_blanc_hc}€/kWh</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Jours Rouges -->
+                <div class="period-card period-rouge">
+                    <div class="period-header">
+                        <span class="period-name">Jours Rouges</span>
+                        <span class="period-days">${tempoData.jours_rouge} jours</span>
+                    </div>
+                    <div class="period-cost">${Math.round(tempoData.cout_rouge).toLocaleString()}€</div>
+                    <div class="period-details">
+                        <div class="period-detail-row">
+                            <span class="detail-label">Heures Pleines:</span>
+                            <span class="detail-value" style="color: #c62828;">${tempoData.prix_rouge_hp}€/kWh</span>
+                        </div>
+                        <div class="period-detail-row">
+                            <span class="detail-label">Heures Creuses:</span>
+                            <span class="detail-value">${tempoData.prix_rouge_hc}€/kWh</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tempo-footer">
+                <div class="tempo-info">
+                    <strong>💡 Conseil :</strong> Le tarif Tempo est avantageux si vous pouvez réduire votre consommation les ${tempoData.jours_rouge} jours rouges.
+                </div>
+            </div>
+        </div>
+    `;
+    }
+
     function displayError(message) {
-        $('#results-container').html(`
+        $('#results-container-pro').html(`
             <div class="error-state">
                 <div class="error-icon">❌</div>
                 <h3>Erreur lors du calcul</h3>
                 <p>${message}</p>
                 <div class="error-actions">
                     <button class="btn btn-primary" onclick="location.reload()">🔄 Recharger</button>
-                    <button class="btn btn-secondary" id="btn-back-to-form-gaz">← Retour au formulaire</button>
+                    <button class="btn btn-secondary" id="btn-back-to-form-elec">← Retour au formulaire</button>
                 </div>
             </div>
         `);
 
-        $('#btn-back-to-form-gaz').on('click', function () {
+        $('#btn-back-to-form-elec').on('click', function () {
             goToStep(3);
         });
     }
 
-    // ===============================
-    // EMAIL ET ACTIONS
-    // ===============================
+    // ================================
+    // UTILITAIRES
+    // ================================
+    function formatSiret(siret) {
+        if (!siret || siret.length !== 14) return siret;
+        return siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4');
+    }
 
-    function setupEmailActions() {
-        // Actions email similaires à elec-pro
-        $(document).on('click', '#btn-send-email', function () {
-            if (window.emailData) {
-                sendEmail();
-            }
-        });
+    function showValidationMessage(message) {
+        $('.validation-message').remove();
 
-        $(document).on('click', '#btn-download-pdf', function () {
-            downloadPDF();
-        });
+        const $message = $(`<div class="validation-message error">${message}</div>`);
+        $('.form-step.active .step-header').after($message);
+
+        setTimeout(() => {
+            $message.fadeOut(() => $message.remove());
+        }, 4000);
     }
 
     function prepareEmailData(results) {
@@ -981,70 +1164,47 @@ jQuery(document).ready(function ($) {
         };
 
         window.emailData = emailData;
-        console.log('📧 Données email gaz préparées:', emailData);
-    }
-
-    function registerCallback() {
-        // Fonction de callback
-        console.log('📞 Demande de rappel gaz pro');
-    }
-
-    window.sendResultsByEmail = function () {
-        if (!window.emailData) {
-            alert('Aucune donnée à envoyer');
-            return;
-        }
-
-        console.log('📮 Envoi email gaz pro avec les données:', window.emailData);
-        alert('Email envoyé avec succès !'); // Placeholder
-    };
-
-    window.downloadPDF = function () {
-        alert('Fonction de téléchargement PDF gaz pro en cours de développement');
-    };
-
-    // ===============================
-    // UTILITAIRES
-    // ===============================
-
-    function formatSiret(siret) {
-        if (!siret || siret.length !== 14) return siret;
-        return siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4');
-    }
-
-    function showValidationMessage(message) {
-        $('.validation-message').remove();
-
-        const $message = $(`<div class="validation-message">${message}</div>`);
-        $('.form-step.active .step-header').after($message);
-
-        setTimeout(() => {
-            $message.fadeOut(() => $message.remove());
-        }, 3000);
+        console.log('📧 Données email préparées:', emailData);
     }
 
     function restartSimulation() {
         currentStep = 1;
         formData = {};
         uploadedFile = null;
-        $('#simulateur-gaz-professionnel')[0].reset();
-        showStep(1);
-        updateProgress();
-        updateNavigation();
+        $('#simulateur-elec-professionnel')[0].reset();
+        updateUI();
         $('.field-error, .field-success').removeClass('field-error field-success');
         $('.file-selected-name').hide();
         $('.file-upload-area').removeClass('has-file');
         $('.file-upload-text').show();
         $('#siret-badge').hide();
+
+        console.log('🔄 Simulation redémarrée');
     }
 
-    // API publique
-    window.HticGazProfessionnelData = {
-        getCurrentData: () => formData,
-        getAllData: collectAllFormData,
-        getConfigData: () => configData,
-        getCurrentStep: () => currentStep,
-        goToStep: goToStep
+    // ================================
+    // FONCTIONS PUBLIQUES
+    // ================================
+    window.sendResultsByEmail = function () {
+        if (!window.emailData) {
+            alert('Aucune donnée à envoyer');
+            return;
+        }
+
+        console.log('📮 Envoi email électricité pro avec les données:', window.emailData);
+        alert('Fonctionnalité d\'envoi d\'email en cours de développement');
     };
 
+    // API publique pour debugging
+    window.HticElecProfessionnelData = {
+        getCurrentData: () => formData,
+        getAllData: collectAllFormData,
+        getConfig: () => configData,
+        getCurrentStep: () => currentStep,
+        goToStep: goToStep,
+        validateStep: validateCurrentStep,
+        restart: restartSimulation,
+    };
+
+    console.log('🎯 API publique HticElecProfessionnelData disponible dans la console');
 });

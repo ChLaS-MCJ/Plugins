@@ -447,7 +447,7 @@ class HticSimulateurEnergieAdmin {
         
         ?>
         <div class="wrap">
-            <h1>Configuration du Simulateur Énergie HTIC</h1>
+            <h1>Configuration du Simulateur Énergie</h1>
             
             <div class="notice notice-info">
                 <h3>📝 Shortcodes pour pages :</h3>

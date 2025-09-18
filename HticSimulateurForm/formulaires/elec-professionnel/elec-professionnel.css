@@ -2107,7 +2107,7 @@
 @media (min-width: 768px) {
     .tarifs-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr) !important;
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 1.5rem;
     }
 }

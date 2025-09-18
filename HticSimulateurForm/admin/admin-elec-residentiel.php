@@ -755,7 +755,7 @@ if (empty($elec_residentiel)) {
             </tbody>
         </table>
 
-        <h4>Chauffage annuel par m² - Appartement (coefficient 0.95)</h4>
+        <h4>Chauffage annuel par m² - Appartement</h4>
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>

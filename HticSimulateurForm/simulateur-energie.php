@@ -46,9 +46,9 @@ class HticSimulateurEnergieAdmin {
         add_action('wp_ajax_htic_contact_submit', array($this, 'ajax_contact_submit'));
         add_action('wp_ajax_nopriv_htic_contact_submit', array($this, 'ajax_contact_submit'));
         
-        add_action('init', array($this, 'init_contact_system'));
+        add_action('wp_ajax_htic_recalculate_with_power', array($this, 'ajax_recalculate_with_power'));
+        add_action('wp_ajax_nopriv_htic_recalculate_with_power', array($this, 'ajax_recalculate_with_power'));
 
-        add_action('init', array($this, 'init_email_system'));
 
     }
         
@@ -223,11 +223,11 @@ class HticSimulateurEnergieAdmin {
         
         wp_localize_script(
             'htic-simulateur-unifie-js', 
-            'hticSimulateurUnifix', 
+            'hticSimulateur',
             array(
                 'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('htic_simulateur_nonce'),
-                'calculateNonce' => wp_create_nonce('htic_simulateur_calculate'),
+                'nonce' => wp_create_nonce('htic_simulateur_calculate'),
+                'type' => 'unifie',
                 'pluginUrl' => HTIC_SIMULATEUR_URL
             )
         );
@@ -280,7 +280,7 @@ class HticSimulateurEnergieAdmin {
     
     public function ajax_calculate_estimation() {
 
-        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
             wp_send_json_error('Nonce invalide');
             return;
         }
@@ -1090,7 +1090,7 @@ class HticSimulateurEnergieAdmin {
      */
     public function ajax_get_communes_gaz() {
         // Vérification nonce
-        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
             wp_send_json_error('Sécurité échouée');
             return;
         }
@@ -1346,6 +1346,89 @@ class HticSimulateurEnergieAdmin {
         );
         
         return isset($types[$type]) ? $types[$type] : 'Demande inconnue';
+    }
+
+    public function ajax_recalculate_with_power() {
+        // Vérification de sécurité
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+            wp_send_json_error('Nonce invalide');
+            return;
+        }
+        
+        ob_start();
+
+        $type = sanitize_text_field($_POST['type']);
+        $userData = $_POST['user_data'];
+        $configData = $_POST['config_data'];
+        $nouvellePuissance = intval($_POST['nouvelle_puissance']);
+        $tarifChoisi = sanitize_text_field($_POST['tarif_choisi']);
+        
+        $types_valides = array(
+            'elec-residentiel',
+            'gaz-residentiel', 
+            'elec-professionnel',
+            'gaz-professionnel'
+        );
+        
+        if (!in_array($type, $types_valides)) {
+            wp_send_json_error('Type de calculateur invalide: ' . $type);
+            return;
+        }
+
+        // Validation des paramètres spécifiques
+        if ($nouvellePuissance < 3 || $nouvellePuissance > 36) {
+            wp_send_json_error('Puissance invalide. Doit être entre 3 et 36 kVA.');
+            return;
+        }
+
+        $tarifs_valides = array('base', 'hc', 'tempo');
+        if (!in_array($tarifChoisi, $tarifs_valides)) {
+            wp_send_json_error('Tarif invalide.');
+            return;
+        }
+
+        // Forcer la nouvelle puissance dans les données utilisateur
+        $userData['puissance_forcee'] = $nouvellePuissance;
+        $userData['tarif_force'] = $tarifChoisi;
+        
+        try {
+            $calculatorFile = HTIC_SIMULATEUR_PATH . 'includes/calculateur-' . str_replace('-', '-', $type) . '.php';
+            
+            if (!file_exists($calculatorFile)) {
+                wp_send_json_error('Calculateur non trouvé pour le type: ' . $type);
+                return;
+            }
+            
+            require_once $calculatorFile;
+            
+            $calculatorFunction = 'htic_calculateur_' . str_replace('-', '_', $type);
+            
+            if (!function_exists($calculatorFunction)) {
+                wp_send_json_error('Fonction de calcul non trouvée: ' . $calculatorFunction);
+                return;
+            }
+            
+            // Appel du calculateur avec les nouvelles données
+            $results = call_user_func($calculatorFunction, $userData, $configData);
+            
+            if (ob_get_length()) {
+                ob_end_clean();
+            }
+            
+            if ($results && isset($results['success']) && $results['success']) {
+                
+                wp_send_json_success($results['data']);
+            } else {
+                $error = isset($results['error']) ? $results['error'] : 'Erreur inconnue lors du recalcul';
+                wp_send_json_error($error);
+            }
+            
+        } catch (Exception $e) {
+            if (ob_get_length()) {
+                ob_end_clean();
+            }
+            wp_send_json_error('Erreur technique lors du recalcul: ' . $e->getMessage());
+        }
     }
 }
 

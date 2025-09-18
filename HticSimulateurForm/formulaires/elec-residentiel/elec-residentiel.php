@@ -25,7 +25,7 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
     <!-- Indicateur de progression -->
     <div class="progress-container">
         <div class="progress-bar">
-            <div class="progress-fill" data-progress="12.5"></div>
+            <div class="progress-fill" data-progress="10"></div>
         </div>
         <div class="progress-steps">
             <div class="step active" data-step="1">
@@ -54,11 +54,19 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
             </div>
             <div class="step" data-step="7">
                 <span class="step-number">7</span>
-                <span class="step-label">Contact</span>
+                <span class="step-label">Résultats</span>
             </div>
             <div class="step" data-step="8">
                 <span class="step-number">8</span>
-                <span class="step-label">Résultats</span>
+                <span class="step-label">Sélection</span>
+            </div>
+            <div class="step" data-step="9">
+                <span class="step-number">9</span>
+                <span class="step-label">Contact</span>
+            </div>
+            <div class="step" data-step="10">
+                <span class="step-number">10</span>
+                <span class="step-label">Récapitulatif</span>
             </div>
         </div>
     </div>
@@ -558,46 +566,8 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                         </label>
                     </div>
                 </div>
-                
-                <!-- Préférence tarifaire -->
-                <div class="form-group full-width">
-                    <label class="form-label">Préférence tarifaire (optionnel)</label>
-                    <div class="radio-group">
-                        <label class="radio-card">
-                            <input type="radio" name="preference_tarif" value="base">
-                            <div class="radio-content">
-                                <div class="radio-icon">📊</div>
-                                <div class="radio-text">
-                                    <strong>Tarif BASE</strong>
-                                    <span>Tarif unique toute la journée</span>
-                                </div>
-                            </div>
-                        </label>
-                        
-                        <label class="radio-card">
-                            <input type="radio" name="preference_tarif" value="hc">
-                            <div class="radio-content">
-                                <div class="radio-icon">🌙</div>
-                                <div class="radio-text">
-                                    <strong>Heures Creuses</strong>
-                                    <span>Tarif réduit la nuit</span>
-                                </div>
-                            </div>
-                        </label>
-                        
-                        <label class="radio-card">
-                            <input type="radio" name="preference_tarif" value="indifferent">
-                            <div class="radio-content">
-                                <div class="radio-icon">🔍</div>
-                                <div class="radio-text">
-                                    <strong>Indifférent</strong>
-                                    <span>Comparaison automatique</span>
-                                </div>
-                            </div>
-                        </label>
-                    </div>
 
-                    <!-- Info automatique -->
+                <div class="form-group full-width">
                     <div class="info-box">
                         <div class="info-icon">ℹ️</div>
                         <div class="info-content">
@@ -606,109 +576,13 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                         </div>
                     </div>
                 </div>
+                    
+                
             </div>
         </div>
         
         <!-- ÉTAPE 7: Informations client -->
         <div class="form-step" data-step="7">
-            <div class="step-header">
-                <h2>📧 Vos coordonnées</h2>
-                <p>Pour recevoir votre simulation personnalisée et être recontacté si vous le souhaitez</p>
-            </div>
-            
-            <div class="form-grid">
-                <!-- Nom -->
-                <div class="form-group">
-                    <label for="client_nom" class="form-label">Nom *</label>
-                    <input type="text" 
-                        id="client_nom" 
-                        name="client_nom" 
-                        required 
-                        class="form-input"
-                        placeholder="Votre nom">
-                </div>
-                
-                <!-- Prénom -->
-                <div class="form-group">
-                    <label for="client_prenom" class="form-label">Prénom *</label>
-                    <input type="text" 
-                        id="client_prenom" 
-                        name="client_prenom" 
-                        required 
-                        class="form-input"
-                        placeholder="Votre prénom">
-                </div>
-                
-                <!-- Email -->
-                <div class="form-group">
-                    <label for="client_email" class="form-label">Email *</label>
-                    <input type="email" 
-                        id="client_email" 
-                        name="client_email" 
-                        required 
-                        class="form-input"
-                        placeholder="exemple@email.com">
-                    <small class="form-help">Pour recevoir votre simulation</small>
-                </div>
-                
-                <!-- Téléphone -->
-                <div class="form-group">
-                    <label for="client_telephone" class="form-label">Téléphone *</label>
-                    <input type="tel" 
-                        id="client_telephone" 
-                        name="client_telephone" 
-                        required 
-                        class="form-input"
-                        placeholder="06 XX XX XX XX">
-                    <small class="form-help">Pour être recontacté si besoin</small>
-                </div>
-                
-                <!-- Adresse -->
-                <div class="form-group full-width">
-                    <label for="client_adresse" class="form-label">Adresse complète (optionnel)</label>
-                    <input type="text" 
-                        id="client_adresse" 
-                        name="client_adresse" 
-                        class="form-input"
-                        placeholder="Numéro et nom de rue">
-                </div>
-                
-                <!-- Code postal et Ville sur la même ligne -->
-                <div class="form-group">
-                    <label for="client_code_postal" class="form-label">Code postal (optionnel)</label>
-                    <input type="text" 
-                        id="client_code_postal" 
-                        name="client_code_postal" 
-                        pattern="[0-9]{5}"
-                        maxlength="5"
-                        class="form-input"
-                        placeholder="40000">
-                </div>
-                
-                <div class="form-group">
-                    <label for="client_ville" class="form-label">Ville (optionnel)</label>
-                    <input type="text" 
-                        id="client_ville" 
-                        name="client_ville" 
-                        class="form-input"
-                        placeholder="Votre ville">
-                </div>
-                
-                <!-- Information RGPD avec le même style que les autres info-box -->
-                <div class="form-group full-width">
-                    <div class="info-box">
-                        <div class="info-icon">🔒</div>
-                        <div class="info-content">
-                            <h4>Vos données sont protégées</h4>
-                            <p><strong>Envoi immédiat :</strong> Vos résultats détaillés seront envoyés directement à notre adresse email.</p>
-                            <p><strong>Confidentialité :</strong> Aucune donnée n'est conservée sur nos serveurs après l'envoi.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-step" data-step="8">
             <div class="step-header">
                 <h2>📊 Vos résultats personnalisés</h2>
                 <p>Estimation basée sur vos informations</p>
@@ -719,28 +593,371 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                 <!-- Les résultats seront injectés ici par JavaScript -->
             </div>
             
-            <!-- NOUVELLE SECTION : Actions après résultats -->
-            <div class="results-actions" style="display: none;">
-                <div class="actions-grid">
-                    <!-- Bouton télécharger PDF -->
-                    <button type="button" class="btn btn-secondary" id="btn-download-pdf">
-                        <span class="btn-icon">📄</span>
-                        Télécharger le PDF
-                    </button>
+            <!-- Les actions seront gérées par JavaScript -->
+        </div>
+
+        <div class="form-step" data-step="8">
+            <div class="step-header">
+                <h2>🎯 Finalisons votre choix</h2>
+                <p>Sélectionnez le tarif et la puissance qui vous conviennent le mieux</p>
+            </div>
+            
+            <div class="form-content">
+                
+                <!-- Sélection du tarif -->
+                <div class="field-group">
+                    <label class="field-label required">
+                        <span class="label-icon">💰</span>
+                        Choisissez votre tarif
+                    </label>
+                    <div class="tarif-selection">
+                        <div class="tarif-card-selection">
+                            <input type="radio" 
+                                id="tarif_base" 
+                                name="tarif_choisi" 
+                                value="base">
+                            <label for="tarif_base" class="radio-label tarif-label">
+                                <div class="tarif-header">
+                                    <h4>Base TRV</h4>
+                                    <span class="tarif-badge simple">Simple</span>
+                                </div>
+                                <div class="tarif-description">
+                                    <p>Prix unique toute la journée</p>
+                                    <small>Idéal si vous consommez régulièrement</small>
+                                </div>
+                                <div class="tarif-price" id="prix-base">
+                                    <span class="price-amount">--</span>
+                                    <span class="price-period">€/an</span>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="tarif-card-selection">
+                            <input type="radio" 
+                                id="tarif_hc" 
+                                name="tarif_choisi" 
+                                value="hc">
+                            <label for="tarif_hc" class="radio-label tarif-label">
+                                <div class="tarif-header">
+                                    <h4>Heures Creuses TRV</h4>
+                                    <span class="tarif-badge economique">Économique</span>
+                                </div>
+                                <div class="tarif-description">
+                                    <p>Prix réduit 8h par jour</p>
+                                    <small>Économies en décalant vos usages</small>
+                                </div>
+                                <div class="tarif-price" id="prix-hc">
+                                    <span class="price-amount">--</span>
+                                    <span class="price-period">€/an</span>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="tarif-card-selection">
+                            <input type="radio" 
+                                id="tarif_tempo" 
+                                name="tarif_choisi" 
+                                value="tempo">
+                            <label for="tarif_tempo" class="radio-label tarif-label">
+                                <div class="tarif-header">
+                                    <h4>Tempo TRV</h4>
+                                    <span class="tarif-badge expert">Expert</span>
+                                </div>
+                                <div class="tarif-description">
+                                    <p>Tarif variable selon les jours</p>
+                                    <small>Maximum d'économies avec contraintes</small>
+                                </div>
+                                <div class="tarif-price" id="prix-tempo">
+                                    <span class="price-amount">--</span>
+                                    <span class="price-period">€/an</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Type de logement -->
+                <div class="field-group">
+                    <label class="field-label required">
+                        <span class="label-icon">🏠</span>
+                        Type de résidence
+                    </label>
+                    <div class="radio-grid">
+                        <div class="radio-option">
+                            <input type="radio" 
+                                id="residence_principale" 
+                                name="type_logement_usage" 
+                                value="principal">
+                            <label for="residence_principale" class="radio-label">
+                                <div class="option-icon">🏠</div>
+                                <div class="option-content">
+                                    <h4>Résidence principale</h4>
+                                    <p>Votre logement principal</p>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="radio-option">
+                            <input type="radio" 
+                                id="residence_secondaire" 
+                                name="type_logement_usage" 
+                                value="secondaire">
+                            <label for="residence_secondaire" class="radio-label">
+                                <div class="option-icon">🏖️</div>
+                                <div class="option-content">
+                                    <h4>Résidence secondaire</h4>
+                                    <p>Maison de vacances, etc.</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sélection de puissance -->
+                <div class="field-group">
+                    <label class="field-label required">
+                        <span class="label-icon">⚡</span>
+                        Puissance souscrite (kVA)
+                    </label>
+                    <div class="puissance-recommandee">
+                            <div class="recommendation-badge">
+                                <span class="badge-icon">⭐</span>
+                                <span>Recommandé pour vous</span>
+                            </div>
+                            
+                        </div>
+                    <div class="puissance-selection">
+                        
+                       
+                    </div>
+                </div>
+                
+                <!-- Résumé des calculs -->
+                <div class="calculs-resume" id="calculs-selection">
+                    <div class="loading-calculs">
+                        <div class="spinner-mini"></div>
+                        <p>Chargement des calculs...</p>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- ÉTAPE 9: Informations client -->
+        <div class="form-step" data-step="9">
+            <div class="step-header">
+                <h2>👤 Vos informations</h2>
+                <p>Complétez vos coordonnées pour finaliser votre simulation</p>
+            </div>
+            
+            <div class="form-content">
+                <div class="form-grid">
                     
-                    <!-- Bouton envoyer par mail -->
-                    <button type="button" class="btn btn-primary" id="btn-send-email">
-                        <span class="btn-icon">✉️</span>
-                        Recevoir par email
-                    </button>
+                    <!-- Informations obligatoires -->
+                    <div class="field-group">
+                        <label for="client_nom" class="field-label required">
+                            <span class="label-icon">👤</span>
+                            Nom
+                        </label>
+                        <input type="text" 
+                               id="client_nom" 
+                               name="client_nom" 
+                               class="field-input" 
+                               required 
+                               placeholder="Votre nom">
+                        <div class="field-feedback"></div>
+                    </div>
+                    
+                    <div class="field-group">
+                        <label for="client_prenom" class="field-label required">
+                            <span class="label-icon">👤</span>
+                            Prénom
+                        </label>
+                        <input type="text" 
+                               id="client_prenom" 
+                               name="client_prenom" 
+                               class="field-input" 
+                               required 
+                               placeholder="Votre prénom">
+                        <div class="field-feedback"></div>
+                    </div>
+                    
+                    <div class="field-group full-width">
+                        <label for="client_email" class="field-label required">
+                            <span class="label-icon">📧</span>
+                            Adresse email
+                        </label>
+                        <input type="email" 
+                               id="client_email" 
+                               name="client_email" 
+                               class="field-input" 
+                               required 
+                               placeholder="votre.email@exemple.com">
+                        <div class="field-feedback"></div>
+                        <small class="field-hint">
+                            Nécessaire pour recevoir votre simulation par email
+                        </small>
+                    </div>
+                    
+                    <div class="field-group">
+                        <label for="client_telephone" class="field-label required">
+                            <span class="label-icon">📞</span>
+                            Téléphone
+                        </label>
+                        <input type="tel" 
+                               id="client_telephone" 
+                               name="client_telephone" 
+                               class="field-input" 
+                               required 
+                               placeholder="01 23 45 67 89">
+                        <div class="field-feedback"></div>
+                    </div>
+                    
+                    <!-- Informations optionnelles -->
+                    <h3 class="section-title optional">
+                        <span class="section-icon">📍</span>
+                        Adresse (optionnel)
+                    </h3>
+                    
+                    <div class="field-group full-width">
+                        <label for="client_adresse" class="field-label">
+                            <span class="label-icon">🏠</span>
+                            Adresse
+                        </label>
+                        <input type="text" 
+                               id="client_adresse" 
+                               name="client_adresse" 
+                               class="field-input" 
+                               placeholder="Numéro et nom de rue">
+                        <div class="field-feedback"></div>
+                    </div>
+                    
+                    <div class="field-group">
+                        <label for="client_code_postal" class="field-label">
+                            <span class="label-icon">📮</span>
+                            Code postal
+                        </label>
+                        <input type="text" 
+                               id="client_code_postal" 
+                               name="client_code_postal" 
+                               class="field-input" 
+                               pattern="[0-9]{5}" 
+                               placeholder="75001">
+                        <div class="field-feedback"></div>
+                    </div>
+                    
+                    <div class="field-group">
+                        <label for="client_ville" class="field-label">
+                            <span class="label-icon">🏙️</span>
+                            Ville
+                        </label>
+                        <input type="text" 
+                               id="client_ville" 
+                               name="client_ville" 
+                               class="field-input" 
+                               placeholder="Paris">
+                        <div class="field-feedback"></div>
+                    </div>
                     
                 </div>
                 
-                <!-- Message de confirmation (caché par défaut) -->
-                <div class="confirmation-message" id="email-confirmation" style="display: none;">
-                    <div class="success-icon">✅</div>
-                    <p>Votre simulation a été envoyée avec succès à <strong id="email-display"></strong></p>
+                <!-- Consentement -->
+                <div class="consent-section">
+                    <div class="consent-item">
+                        <input type="checkbox" 
+                               id="consent_required" 
+                               name="consent_required" 
+                               required>
+                        <label for="consent_required" class="consent-label">
+                            J'accepte d'être contacté par HTIC pour le suivi de ma demande *
+                        </label>
+                    </div>
+                    
+                    <div class="consent-item">
+                        <input type="checkbox" 
+                               id="consent_newsletter" 
+                               name="consent_newsletter">
+                        <label for="consent_newsletter" class="consent-label">
+                            Je souhaite recevoir les offres et actualités de HTIC par email
+                        </label>
+                    </div>
                 </div>
+                
+            </div>
+        </div>
+        
+        <!-- ÉTAPE 10: Récapitulatif final -->
+        <div class="form-step" data-step="10">
+            <div class="step-header">
+                <h2>📋 Récapitulatif de votre simulation</h2>
+                <p>Vérifiez vos informations avant finalisation</p>
+            </div>
+            
+            <div class="form-content">
+                
+                <!-- Container pour le récapitulatif généré dynamiquement -->
+                <div id="recap-container">
+                    <div class="loading-recap">
+                        <div class="spinner"></div>
+                        <p>Génération du récapitulatif...</p>
+                    </div>
+                </div>
+                
+                <!-- Actions finales -->
+                <div class="final-actions">
+                    <div class="action-card">
+                        <div class="action-icon">📧</div>
+                        <div class="action-content">
+                            <h4>Recevoir par email</h4>
+                            <p>Votre simulation détaillée sera envoyée à votre adresse email</p>
+                        </div>
+                        <button type="button" 
+                                class="btn btn-primary" 
+                                id="btn-send-email-contact">
+                            <span class="btn-icon">📤</span>
+                            Envoyer
+                        </button>
+                    </div>
+                    
+                    <div class="action-card">
+                        <div class="action-icon">📞</div>
+                        <div class="action-content">
+                            <h4>Être rappelé</h4>
+                            <p>Un conseiller vous contactera pour finaliser votre souscription</p>
+                        </div>
+                        <button type="button" 
+                                class="btn btn-secondary" 
+                                id="btn-demande-rappel">
+                            <span class="btn-icon">📞</span>
+                            Demander un rappel
+                        </button>
+                    </div>
+                    
+                    <div class="action-card highlight">
+                        <div class="action-icon">🎯</div>
+                        <div class="action-content">
+                            <h4>Souscrire maintenant</h4>
+                            <p>Finalisez directement votre souscription en ligne</p>
+                        </div>
+                        <button type="button" 
+                                class="btn btn-primary btn-large" 
+                                id="btn-finaliser-souscription">
+                            <span class="btn-icon">✅</span>
+                            Finaliser ma souscription
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Confirmation d'envoi -->
+                <div id="email-confirmation" class="confirmation-message" style="display: none;">
+                    <div class="confirmation-icon">✅</div>
+                    <div class="confirmation-content">
+                        <h4>Email envoyé avec succès !</h4>
+                        <p>Votre simulation a été envoyée à : <span id="email-display"></span></p>
+                        <small>Vérifiez votre boîte de réception et vos spams</small>
+                    </div>
+                </div>
+                
             </div>
         </div>
         

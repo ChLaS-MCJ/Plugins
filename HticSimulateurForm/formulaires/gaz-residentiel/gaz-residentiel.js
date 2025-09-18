@@ -17,6 +17,7 @@ jQuery(document).ready(function ($) {
         setupGazLogic();
         loadCommunes();
         updateConsumptionEstimates();
+        setupEmailActionsGazResidentiel();
     }
 
     function loadConfigData() {
@@ -543,40 +544,52 @@ jQuery(document).ready(function ($) {
     }
 
     function collectAllFormData() {
-        formData = {};
+        const formData = {};
 
-        $('.form-step').each(function () {
-            const $step = $(this);
+        console.log('🔍 DEBUG: Collecte des données du formulaire');
 
-            $step.find('input, select, textarea').each(function () {
-                const $field = $(this);
-                const name = $field.attr('name');
-                const type = $field.attr('type');
+        // Données de base - AVEC DEBUG
+        const superficieElement = $('#superficie');
+        console.log('Élément superficie trouvé:', superficieElement.length > 0);
+        console.log('Valeur superficie:', superficieElement.val());
 
-                if (!name) return;
+        formData.surface = parseFloat(superficieElement.val()) || 0;
 
-                const cleanName = name.replace('[]', '');
+        const nbPersonnesElement = $('#nb_personnes');
+        formData.nb_personnes = parseInt(nbPersonnesElement.val()) || 0;
 
-                if (type === 'radio') {
-                    if ($field.is(':checked')) {
-                        formData[cleanName] = $field.val();
-                    }
-                } else if (type === 'checkbox') {
-                    if (!formData[cleanName]) {
-                        formData[cleanName] = [];
-                    }
+        const typeLogementElement = $('input[name="type_logement"]:checked');
+        formData.type_logement = typeLogementElement.val() || '';
 
-                    if ($field.is(':checked')) {
-                        const value = $field.val();
-                        if (!formData[cleanName].includes(value)) {
-                            formData[cleanName].push(value);
-                        }
-                    }
-                } else if ($field.is('select') || type === 'text' || type === 'number' || type === 'email' || type === 'tel' || $field.is('textarea')) {
-                    formData[cleanName] = $field.val();
-                }
-            });
-        });
+        // Données spécifiques gaz
+        const communeElement = $('#commune');
+        formData.commune = communeElement.val() || '';
+
+        const chauffageGazElement = $('input[name="chauffage_gaz"]:checked');
+        formData.chauffage_gaz = chauffageGazElement.val() || '';
+
+        // Isolation seulement si chauffage au gaz
+        if (formData.chauffage_gaz === 'oui') {
+            const isolationElement = $('input[name="isolation"]:checked');
+            formData.isolation = isolationElement.val() || '';
+        }
+
+        const eauChaudeElement = $('input[name="eau_chaude"]:checked');
+        formData.eau_chaude = eauChaudeElement.val() || '';
+
+        const cuissonElement = $('input[name="cuisson"]:checked');
+        formData.cuisson = cuissonElement.val() || '';
+
+        const offreElement = $('input[name="offre"]:checked');
+        formData.offre = offreElement.val() || '';
+
+        // Si commune "autre", récupérer les infos supplémentaires
+        if (formData.commune === 'autre') {
+            formData.nom_commune_autre = $('#nom_commune_autre').val() || '';
+            formData.type_gaz_autre = $('input[name="type_gaz_autre"]:checked').val() || '';
+        }
+
+        console.log('📊 Données collectées:', formData);
 
         return formData;
     }
@@ -590,10 +603,10 @@ jQuery(document).ready(function ($) {
         const clientData = collectClientData();
 
         // Validation des données essentielles pour le gaz
-        if (!allData.superficie || !allData.nb_personnes || !allData.type_logement || !allData.commune) {
+        if (!allData.surface || !allData.nb_personnes || !allData.type_logement || !allData.commune) {
             showValidationMessage('Des informations obligatoires sont manquantes.');
             console.error('❌ Données manquantes:', {
-                superficie: allData.superficie,
+                superficie: allData.surface,
                 nb_personnes: allData.nb_personnes,
                 type_logement: allData.type_logement,
                 commune: allData.commune
@@ -653,7 +666,6 @@ jQuery(document).ready(function ($) {
                     window.simulationData = userData;
 
                     displayResults(response.data);
-                    setupEmailActions();
                 } else {
                     displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
                 }
@@ -678,78 +690,6 @@ jQuery(document).ready(function ($) {
 
                 displayError(errorMessage);
             }
-        });
-    }
-
-    // ===============================
-    // GESTION EMAIL
-    // ===============================
-
-    function setupEmailActions() {
-        // Bouton envoyer par email
-        $(document).on('click', '#btn-send-email', function () {
-            const $btn = $(this);
-            const originalText = $btn.html();
-
-            // État de chargement
-            $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
-
-            // Préparer les données
-            const emailData = {
-                action: 'htic_send_simulation_email',
-                type: 'gaz-residentiel', // Type modifié pour gaz
-                results: calculationResults,
-                client: {
-                    nom: formData.client_nom,
-                    prenom: formData.client_prenom,
-                    email: formData.client_email,
-                    telephone: formData.client_telephone,
-                    adresse: formData.client_adresse,
-                    code_postal: formData.client_code_postal,
-                    ville: formData.client_ville
-                }
-            };
-
-            // Ajouter le nonce si disponible
-            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
-                emailData.nonce = hticSimulateur.nonce;
-            }
-
-            let ajaxUrl = '/wp-admin/admin-ajax.php';
-            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-                ajaxUrl = hticSimulateur.ajaxUrl;
-            }
-
-            // Envoi AJAX
-            $.ajax({
-                url: ajaxUrl,
-                type: 'POST',
-                data: emailData,
-                success: function (response) {
-                    if (response.success) {
-                        // Afficher la confirmation
-                        $('#email-confirmation').slideDown();
-                        $('#email-display').text(formData.client_email);
-
-                        // Masquer après 5 secondes
-                        setTimeout(() => {
-                            $('#email-confirmation').slideUp();
-                        }, 5000);
-
-                        // Notification
-                        showNotification('✅ Email envoyé avec succès !', 'success');
-                    } else {
-                        showNotification('❌ Erreur lors de l\'envoi : ' + (response.data || 'Erreur inconnue'), 'error');
-                    }
-                },
-                error: function () {
-                    showNotification('❌ Erreur de connexion', 'error');
-                },
-                complete: function () {
-                    // Restaurer le bouton
-                    $btn.prop('disabled', false).html(originalText);
-                }
-            });
         });
     }
 
@@ -1036,13 +976,266 @@ jQuery(document).ready(function ($) {
         formData = {};
         calculationResults = null;
 
-        $('#simulateur-elec-residentiel')[0].reset(); // Garder l'ID original du formulaire
+        $('#simulateur-elec-residentiel')[0].reset();
 
         showStep(1);
         updateProgress();
         updateNavigation();
 
         $('.field-error, .field-success').removeClass('field-error field-success');
+    }
+
+
+    // ===============================
+    // FONCTIONS EMAIL
+    // ===============================
+
+    /**
+     * Validation basique intégrée si EmailValidationSystem n'est pas disponible
+     */
+    function validateEmailData(formType, formData, clientData) {
+        const errors = [];
+        const warnings = [];
+
+        // Validation des données client
+        if (!clientData.email || !clientData.email.trim()) {
+            errors.push({ code: 'MISSING_EMAIL', message: 'Email client requis' });
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(clientData.email)) {
+                errors.push({ code: 'INVALID_EMAIL', message: 'Format email invalide' });
+            }
+        }
+
+        if (!clientData.nom || !clientData.nom.trim()) {
+            errors.push({ code: 'MISSING_NAME', message: 'Nom client requis' });
+        }
+
+        if (!clientData.prenom || !clientData.prenom.trim()) {
+            errors.push({ code: 'MISSING_FIRSTNAME', message: 'Prénom client requis' });
+        }
+
+        // Validation spécifique gaz résidentiel
+        if (formType === 'gaz-residentiel') {
+            if (!formData.surface || formData.surface < 20 || formData.surface > 1000) {
+                errors.push({ code: 'INVALID_SURFACE', message: 'Surface invalide (20-1000 m²)' });
+            }
+            if (!formData.nb_personnes || formData.nb_personnes < 1 || formData.nb_personnes > 20) {
+                errors.push({ code: 'INVALID_PERSONS', message: 'Nombre de personnes invalide (1-20)' });
+            }
+            if (!formData.type_logement) {
+                errors.push({ code: 'MISSING_HOUSING_TYPE', message: 'Type de logement requis' });
+            }
+            if (!formData.commune) {
+                errors.push({ code: 'MISSING_COMMUNE', message: 'Commune requise' });
+            }
+            if (!formData.chauffage_gaz) {
+                errors.push({ code: 'MISSING_HEATING', message: 'Chauffage au gaz requis' });
+            }
+            if (!formData.eau_chaude) {
+                errors.push({ code: 'MISSING_HOT_WATER', message: 'Eau chaude requise' });
+            }
+            if (!formData.cuisson) {
+                errors.push({ code: 'MISSING_COOKING', message: 'Cuisson requise' });
+            }
+            if (!formData.offre) {
+                errors.push({ code: 'MISSING_OFFER', message: 'Type d\'offre requis' });
+            }
+        }
+
+        // Vérifications de sécurité basiques
+        const dangerousPatterns = [/<script/i, /javascript:/i, /<iframe/i];
+        Object.values(clientData).forEach(value => {
+            if (typeof value === 'string') {
+                dangerousPatterns.forEach(pattern => {
+                    if (pattern.test(value)) {
+                        errors.push({ code: 'SECURITY_VIOLATION', message: 'Contenu suspect détecté' });
+                    }
+                });
+            }
+        });
+
+        return {
+            isValid: errors.length === 0,
+            hasWarnings: warnings.length > 0,
+            canSendEmail: errors.length === 0,
+            errors: errors,
+            warnings: warnings
+        };
+    }
+
+    function validateAndSendEmail(formType, formData, clientData, results, successCallback) {
+        console.log('🔍 Début validation email pour:', formType);
+
+        let validationResult;
+
+        // Utiliser EmailValidationSystem si disponible, sinon validation basique
+        if (typeof EmailValidationSystem !== 'undefined') {
+            const validator = new EmailValidationSystem();
+            validationResult = validator.validateForEmail(formType, formData);
+
+            // Validation additionnelle pour les données client
+            const clientValidation = validator.validateForEmail('client', clientData);
+            validationResult.errors.push(...clientValidation.errors);
+            validationResult.warnings.push(...clientValidation.warnings);
+            validationResult.isValid = validationResult.isValid && clientValidation.isValid;
+        } else {
+            // Validation basique intégrée
+            validationResult = validateEmailData(formType, formData, clientData);
+        }
+
+        // Afficher les résultats
+        if (validationResult.warnings.length > 0) {
+            validationResult.warnings.forEach(warning => {
+                console.warn('⚠️ Warning:', warning.message);
+            });
+        }
+
+        if (validationResult.errors.length > 0) {
+            validationResult.errors.forEach(error => {
+                console.error('❌ Error:', error.message);
+            });
+
+            // Afficher les erreurs à l'utilisateur
+            const errorMessages = validationResult.errors.map(e => e.message).join('\n• ');
+            showNotification(`Erreurs de validation:\n• ${errorMessages}`, 'error');
+            return validationResult;
+        }
+
+        // Validation réussie - préparer les données
+        if (validationResult.isValid) {
+            console.log('✅ Validation réussie, préparation des données');
+
+            const emailData = {
+                form_type: formType,
+                validation_timestamp: new Date().toISOString(),
+                validation_warnings: validationResult.warnings.length,
+                form_data: formData,
+                client_data: clientData,
+                results_data: results
+            };
+
+            successCallback(emailData);
+        }
+
+        return validationResult;
+    }
+
+    function setupEmailActionsGazResidentiel() {
+        // Supprimer les anciens handlers pour éviter les doublons
+        $(document).off('click', '#btn-send-email');
+
+        $(document).on('click', '#btn-send-email', function () {
+            const $btn = $(this);
+            const originalText = $btn.html();
+
+            // Vérifier que les résultats sont disponibles
+            if (!window.calculationResults) {
+                showNotification('Aucun résultat de calcul disponible', 'error');
+                return;
+            }
+
+            // Collecter toutes les données avec les IDs corrects
+            const allFormData = collectAllFormData();
+            const clientData = {
+                nom: $('#client_nom').val() || '',
+                prenom: $('#client_prenom').val() || '',
+                email: $('#client_email').val() || '',
+                telephone: $('#client_telephone').val() || '',
+                adresse: $('#client_adresse').val() || '',
+                code_postal: $('#client_code_postal').val() || '',
+                ville: $('#client_ville').val() || ''
+            };
+
+            console.log('Validation email gaz-residentiel');
+            console.log('Données formulaire:', allFormData);
+            console.log('Données client:', clientData);
+
+            // VALIDATION AVANT ENVOI
+            const validationResult = validateAndSendEmail(
+                'gaz-residentiel',
+                allFormData,
+                clientData,
+                window.calculationResults,
+                function (validatedData) {
+                    // Envoi après validation réussie
+                    sendEmailGazResidentiel($btn, originalText, validatedData);
+                }
+            );
+
+            // Log du résultat
+            if (!validationResult.isValid) {
+                console.error('Validation échouée pour gaz-residentiel:', validationResult.errors);
+            }
+        });
+    }
+
+    function sendEmailGazResidentiel($btn, originalText, validatedData) {
+        $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
+
+        // Préparer les données pour l'envoi AJAX
+        const emailData = {
+            action: 'htic_send_simulation_email',
+            type: 'gaz-residentiel',
+            nonce: typeof hticSimulateur !== 'undefined' ? hticSimulateur.nonce : '',
+
+            // Données validées
+            form_type: validatedData.form_type,
+            validation_timestamp: validatedData.validation_timestamp,
+
+            // Données client
+            client: validatedData.client_data,
+
+            // Données de simulation
+            simulation: validatedData.form_data,
+
+            // Résultats
+            results: validatedData.results_data,
+
+            // Date de simulation
+            date_simulation: new Date().toISOString()
+        };
+
+        let ajaxUrl = '/wp-admin/admin-ajax.php';
+        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+            ajaxUrl = hticSimulateur.ajaxUrl;
+        }
+
+        console.log('Envoi données email:', emailData);
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: emailData,
+            success: function (response) {
+                console.log('Réponse serveur:', response);
+
+                if (response.success) {
+                    $('#email-confirmation').slideDown();
+                    $('#email-display').text(validatedData.client_data.email);
+                    showNotification('Email envoyé avec succès !', 'success');
+                } else {
+                    showNotification('Erreur: ' + (response.data || 'Erreur inconnue'), 'error');
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('Erreur AJAX:', error);
+                let errorMessage = 'Erreur lors de l\'envoi de l\'email.';
+
+                if (xhr.status === 0) {
+                    errorMessage = 'Problème de connexion. Vérifiez votre connexion.';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Erreur interne du serveur. Contactez l\'administrateur.';
+                } else if (status === 'timeout') {
+                    errorMessage = 'L\'envoi prend trop de temps. Réessayez.';
+                }
+
+                showNotification(errorMessage, 'error');
+            },
+            complete: function () {
+                $btn.prop('disabled', false).html(originalText);
+            }
+        });
     }
 
     // ===============================

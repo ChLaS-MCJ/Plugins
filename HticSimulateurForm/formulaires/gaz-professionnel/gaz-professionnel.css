@@ -1985,3 +1985,27 @@ select:focus {
         font-size: 10px;
     }
 }
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+    margin: 2rem 0;
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .chart-container {
+        height: 300px;
+        padding: 0.5rem;
+    }
+}
+
+.repartition-content {
+    display: grid;
+    gap: 20px;
+    padding-top: 20px;
+}

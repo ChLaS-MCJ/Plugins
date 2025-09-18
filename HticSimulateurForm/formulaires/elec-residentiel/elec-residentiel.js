@@ -1,139 +1,121 @@
-// elec-residentiel.js - JavaScript complet pour collecte de données et calcul
+// ===============================
+// SIMULATEUR ÉLECTRICITÉ RÉSIDENTIEL - VERSION SIMPLIFIÉE
+// ===============================
 
-jQuery(document).ready(function ($) {
+(function ($) {
+    'use strict';
 
-    let currentStep = 1;
-    const totalSteps = 8;
-    let formData = {};
-    let configData = {};
-    let calculationResults = null;
+    $(document).ready(function () {
 
-    init();
+        // ===============================
+        // VARIABLES GLOBALES
+        // ===============================
 
-    function init() {
-        loadConfigData();
-        setupStepNavigation();
-        setupFormValidation();
-        setupChauffageLogic();
-    }
+        let currentStep = 1;
+        const totalSteps = 10;
+        let formData = {};
+        let configData = {};
+        let calculationResults = null;
 
-    function loadConfigData() {
-        const configElement = document.getElementById('simulateur-config');
-        if (configElement) {
-            try {
-                configData = JSON.parse(configElement.textContent);
-            } catch (e) {
-                console.error('❌ Erreur configuration:', e);
-                configData = {};
+        // ===============================
+        // INITIALISATION
+        // ===============================
+
+        init();
+
+        function init() {
+            loadConfigData();
+            setupEventListeners();
+            updateUI();
+        }
+
+        function loadConfigData() {
+            const configElement = document.getElementById('simulateur-config');
+            if (configElement) {
+                try {
+                    configData = JSON.parse(configElement.textContent);
+                } catch (e) {
+                    console.error('Erreur configuration:', e);
+                    configData = {};
+                }
             }
         }
-    }
 
-    // ===============================
-    // NAVIGATION ENTRE LES ÉTAPES
-    // ===============================
+        // ===============================
+        // GESTION DES ÉVÉNEMENTS
+        // ===============================
 
-    function setupStepNavigation() {
-        $('#btn-next').on('click', function () {
+        function setupEventListeners() {
+            // Navigation
+            $('#btn-next').on('click', handleNext);
+            $('#btn-previous').on('click', handlePrevious);
+            $('#btn-calculate').on('click', handleCalculate);
+            $('#btn-restart').on('click', handleRestart);
+
+            // Navigation par étapes
+            $('.step').on('click', function () {
+                const targetStep = parseInt($(this).data('step'));
+                if (targetStep < currentStep || targetStep === 1) {
+                    saveCurrentStepData();
+                    goToStep(targetStep);
+                }
+            });
+
+            // Validation
+            $('input[required], select[required]').on('blur', function () {
+                validateField($(this));
+            });
+
+            $('input[type="number"]').on('input', function () {
+                validateNumberField($(this));
+            });
+
+            // Chauffage
+            $('input[name="chauffage_electrique"]').on('change', handleChauffageChange);
+
+            // Actions résultats
+            $(document).on('click', '#btn-subscribe', function () {
+                goToStep(8);
+            });
+
+            // Email
+            $(document).on('click', '#btn-send-email-contact', handleEmailSend);
+
+            // Sélections étape 8
+            $(document).on('change', 'input[name="tarif_choisi"]', handleTarifChange);
+            $(document).on('change click', 'input[name="puissance_choisie"]', handlePuissanceChange);
+        }
+
+        // ===============================
+        // HANDLERS
+        // ===============================
+
+        function handleNext() {
             if (validateCurrentStep()) {
                 saveCurrentStepData();
                 goToNextStep();
             }
-        });
+        }
 
-        $('#btn-previous').on('click', function () {
+        function handlePrevious() {
             saveCurrentStepData();
             goToPreviousStep();
-        });
+        }
 
-        $('#btn-calculate').on('click', function () {
+        function handleCalculate() {
             if (validateCurrentStep()) {
                 saveCurrentStepData();
                 calculateResults();
             }
-        });
+        }
 
-        $('#btn-restart').on('click', function () {
+        function handleRestart() {
             if (confirm('Voulez-vous vraiment recommencer la simulation ?')) {
                 restartSimulation();
             }
-        });
-
-        $('.step').on('click', function () {
-            const targetStep = parseInt($(this).data('step'));
-            if (targetStep < currentStep || targetStep === 1) {
-                saveCurrentStepData();
-                goToStep(targetStep);
-            }
-        });
-    }
-
-    function goToNextStep() {
-        if (currentStep < totalSteps) {
-            currentStep++;
-            showStep(currentStep);
-            updateProgress();
-            updateNavigation();
         }
-    }
 
-    function goToPreviousStep() {
-        if (currentStep > 1) {
-            currentStep--;
-            showStep(currentStep);
-            updateProgress();
-            updateNavigation();
-        }
-    }
-
-    function goToStep(stepNumber) {
-        if (stepNumber >= 1 && stepNumber <= totalSteps) {
-            currentStep = stepNumber;
-            showStep(currentStep);
-            updateProgress();
-            updateNavigation();
-        }
-    }
-
-    function showStep(stepNumber) {
-        $('.form-step').removeClass('active');
-        $(`.form-step[data-step="${stepNumber}"]`).addClass('active');
-
-        $('.step').removeClass('active');
-        $(`.step[data-step="${stepNumber}"]`).addClass('active');
-    }
-
-    function updateProgress() {
-        const progressPercent = (currentStep / totalSteps) * 100;
-        $('.progress-fill').css('width', progressPercent + '%');
-    }
-
-    function updateNavigation() {
-        // Bouton Précédent
-        $('#btn-previous').toggle(currentStep > 1);
-
-        // MODIFIÉ : Gestion des boutons pour 8 étapes
-        if (currentStep === 8) { // Étape résultats
-            $('#btn-next, #btn-calculate').hide();
-            $('#btn-restart').show();
-            $('.results-actions').show(); // Afficher les actions email
-        } else if (currentStep === 7) { // Étape client
-            $('#btn-next').hide();
-            $('#btn-calculate').show();
-            $('#btn-restart').hide();
-        } else {
-            $('#btn-next').show();
-            $('#btn-calculate, #btn-restart').hide();
-            $('.results-actions').hide();
-        }
-    }
-
-    // ===============================
-    // LOGIQUE CHAUFFAGE ÉLECTRIQUE
-    // ===============================
-
-    function setupChauffageLogic() {
-        $('input[name="chauffage_electrique"]').on('change', function () {
+        function handleChauffageChange() {
             const value = $(this).val();
             const detailsSection = $('#chauffage-details');
 
@@ -144,407 +126,451 @@ jQuery(document).ready(function ($) {
                 detailsSection.hide();
                 detailsSection.find('input').prop('checked', false).attr('required', false);
             }
-        });
-    }
-
-    // ===============================
-    // VALIDATION
-    // ===============================
-
-    function setupFormValidation() {
-        $('input[required], select[required]').on('blur', function () {
-            validateField($(this));
-        });
-
-        $('input[type="number"]').on('input', function () {
-            validateNumberField($(this));
-        });
-    }
-
-    function validateCurrentStep() {
-        const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
-        let isValid = true;
-
-        currentStepElement.find('.field-error, .field-success').removeClass('field-error field-success');
-
-        switch (currentStep) {
-            case 1:
-                isValid = validateStep1(currentStepElement);
-                break;
-            case 2:
-                isValid = validateStep2(currentStepElement);
-                break;
-            case 3:
-                isValid = validateStep3(currentStepElement);
-                break;
-            case 4:
-                isValid = validateStep4(currentStepElement);
-                break;
-            case 5:
-                isValid = validateStep5(currentStepElement);
-                break;
-            case 6:
-                isValid = validateStep6(currentStepElement);
-                break;
-            case 7:
-                isValid = validateStep7(currentStepElement);
-                break;
         }
 
-        if (!isValid) {
-            showValidationMessage('Veuillez remplir tous les champs obligatoires avant de continuer.');
+        function handleTarifChange() {
+            const tarif = $(this).val();
+            const puissance = $('input[name="puissance_choisie"]:checked').val();
+
+            if (tarif && puissance) {
+                updateCalculsSelection(tarif, puissance);
+            }
         }
 
-        return isValid;
-    }
+        function handlePuissanceChange() {
+            const puissance = parseInt($(this).val());
+            const tarif = $('input[name="tarif_choisi"]:checked').val();
 
-    // Validations par étape
-    function validateStep1(stepElement) {
-        let isValid = true;
+            // Gestion de l'affichage des tarifs selon la puissance
+            updateTarifVisibility(puissance);
 
-        const typeLogement = stepElement.find('input[name="type_logement"]:checked');
-        if (!typeLogement.length) {
-            isValid = false;
+            if (tarif && puissance) {
+                recalculateWithNewPower(tarif, puissance);
+            }
         }
 
-        const surface = stepElement.find('#surface');
-        const surfaceValue = parseInt(surface.val());
-        if (!surfaceValue || surfaceValue < 20 || surfaceValue > 500) {
-            surface.addClass('field-error');
-            isValid = false;
-        } else {
-            surface.addClass('field-success');
+        function handleEmailSend() {
+            const $btn = $(this);
+            const originalText = $btn.html();
+
+            if (!window.calculationResults) {
+                showNotification('Aucun résultat de calcul disponible', 'error');
+                return;
+            }
+
+            const allFormData = collectAllFormData();
+            const clientData = collectClientData();
+
+            sendEmail($btn, originalText, allFormData, clientData, window.calculationResults);
         }
 
-        const nbPersonnes = stepElement.find('#nb_personnes');
-        if (!nbPersonnes.val()) {
-            nbPersonnes.addClass('field-error');
-            isValid = false;
-        } else {
-            nbPersonnes.addClass('field-success');
+        // ===============================
+        // NAVIGATION
+        // ===============================
+
+        function goToNextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateUI();
+            }
         }
 
-        const isolation = stepElement.find('input[name="isolation"]:checked');
-        if (!isolation.length) {
-            isValid = false;
+        function goToPreviousStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
         }
 
-        return isValid;
-    }
+        function goToStep(stepNumber) {
+            if (stepNumber >= 1 && stepNumber <= totalSteps) {
+                currentStep = stepNumber;
+                updateUI();
 
-    function validateStep2(stepElement) {
-        const typeChauffage = stepElement.find('input[name="type_chauffage"]:checked');
-        if (!typeChauffage.length) {
-            if (!stepElement.is(':visible')) return true;
-            return false;
+                if (stepNumber === 8) setupSelectionStep();
+                if (stepNumber === 9) setupContactStep();
+                if (stepNumber === 10) setupRecapStep();
+            }
         }
-        return true;
-    }
 
-    function validateStep3(stepElement) {
-        const typeCuisson = stepElement.find('input[name="type_cuisson"]:checked');
-        if (!typeCuisson.length) {
-            if (!stepElement.is(':visible')) return true;
-            return false;
+        function updateUI() {
+            showStep(currentStep);
+            updateProgress();
+            updateNavigation();
         }
-        return true;
-    }
 
-    function validateStep4(stepElement) {
-        const eauChaude = stepElement.find('input[name="eau_chaude"]:checked');
-        return eauChaude.length > 0;
-    }
+        function showStep(stepNumber) {
+            $('.form-step').removeClass('active');
+            $(`.form-step[data-step="${stepNumber}"]`).addClass('active');
 
-    function validateStep5(stepElement) {
-        const eclairage = stepElement.find('input[name="type_eclairage"]:checked');
-        return eclairage.length > 0;
-    }
+            $('.step').removeClass('active');
+            $(`.step[data-step="${stepNumber}"]`).addClass('active');
+        }
 
-    function validateStep6(stepElement) {
-        const piscine = stepElement.find('input[name="piscine"]:checked');
-        return piscine.length > 0;
-    }
+        function updateProgress() {
+            const progressPercent = (currentStep / totalSteps) * 100;
+            $('.progress-fill').css('width', progressPercent + '%');
+        }
 
-    // AJOUT : Validation étape 7 (client)
-    function validateStep7(stepElement) {
-        let isValid = true;
-        let errors = [];
+        function updateNavigation() {
+            $('#btn-previous').toggle(currentStep > 1);
 
-        // Champs obligatoires
-        const requiredFields = [
-            { id: 'client_nom', label: 'Nom' },
-            { id: 'client_prenom', label: 'Prénom' },
-            { id: 'client_email', label: 'Email' },
-            { id: 'client_telephone', label: 'Téléphone' }
-        ];
+            $('#btn-next, #btn-calculate, #btn-restart, #btn-finalize').hide();
+            $('.results-actions').hide();
 
-        requiredFields.forEach(field => {
-            const $field = stepElement.find(`#${field.id}`);
-            const value = $field.val().trim();
+            switch (currentStep) {
+                case 6:
+                    $('#btn-calculate').show();
+                    break;
+                case 7:
+                    $('#btn-restart').show();
+                    $('.results-actions').show();
+                    break;
+                case 8:
+                case 9:
+                    $('#btn-next').show();
+                    break;
+                case 10:
+                    $('#btn-finalize').show();
+                    break;
+                default:
+                    $('#btn-next').show();
+            }
+        }
 
-            if (!value) {
+        // ===============================
+        // ÉTAPE 8 - VERSION SIMPLIFIÉE
+        // ===============================
+
+        function setupSelectionStep() {
+            if (currentStep === 8 && window.calculationResults) {
+                generateSimplifiedPuissanceOptions();
+                preselectRecommendedOptions();
+            }
+        }
+
+        function generateSimplifiedPuissanceOptions() {
+            const results = window.calculationResults;
+            const puissanceRecommandee = parseInt(results.puissance_recommandee) || 12;
+
+            // Toutes les puissances disponibles
+            const puissances = [3, 6, 9, 12, 15, 18, 24, 30, 36];
+
+            // Remplacer complètement le contenu du container de puissance
+            const $container = $('.puissance-selection');
+
+            let html = `
+                <div class="puissance-grid-simple">
+            `;
+
+            puissances.forEach(puissance => {
+                const isRecommended = puissance === puissanceRecommandee;
+                const starIcon = isRecommended ? '<span class="star-icon">⭐</span>' : '';
+
+                html += `
+                    <div class="puissance-card ${isRecommended ? 'recommended' : ''}">
+                        <input type="radio" 
+                               id="puissance_${puissance}" 
+                               name="puissance_choisie" 
+                               value="${puissance}">
+                        <label for="puissance_${puissance}">
+                            ${starIcon}
+                            <div class="puissance-value">${puissance}</div>
+                            <div class="puissance-unit">kVA</div>
+                        </label>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+
+            $container.html(html);
+
+            console.log('✅ Puissances générées en mode simplifié');
+        }
+
+        function preselectRecommendedOptions() {
+            const results = window.calculationResults;
+            const puissanceRecommandee = parseInt(results.puissance_recommandee) || 12;
+
+            // Gérer l'affichage des tarifs selon la puissance recommandée
+            updateTarifVisibility(puissanceRecommandee);
+
+            // Déterminer le tarif recommandé (en excluant Base si puissance > 6)
+            const tarifs = getTarifsDisponibles(puissanceRecommandee);
+
+            let tarifRecommande = 'base';
+            let tarifMin = Infinity;
+
+            // Comparer uniquement les tarifs disponibles
+            tarifs.forEach(tarifKey => {
+                const tarif = results.tarifs[tarifKey];
+                const total = parseInt(tarif.total_annuel) || 0;
+                if (total < tarifMin) {
+                    tarifMin = total;
+                    tarifRecommande = tarifKey;
+                }
+            });
+
+            // Mise à jour des prix
+            updateAllTarifPrices(results);
+
+            // Sélection automatique
+            setTimeout(() => {
+                $('input[name="tarif_choisi"]').prop('checked', false);
+                $('input[name="puissance_choisie"]').prop('checked', false);
+
+                $(`input[name="tarif_choisi"][value="${tarifRecommande}"]`).prop('checked', true);
+                $(`input[name="puissance_choisie"][value="${puissanceRecommandee}"]`).prop('checked', true);
+
+                updateCalculsSelection(tarifRecommande, puissanceRecommandee);
+            }, 100);
+        }
+
+        // Nouvelle fonction pour gérer la visibilité des tarifs
+        function updateTarifVisibility(puissance) {
+            const $tarifBase = $('.tarif-card-selection').has('input[value="base"]');
+            const $inputBase = $('input[name="tarif_choisi"][value="base"]');
+
+            if (puissance > 6) {
+                // Masquer le tarif Base pour les puissances > 6 kVA
+                $tarifBase.hide();
+
+                // Si Base était sélectionné, décocher et sélectionner HC par défaut
+                if ($inputBase.is(':checked')) {
+                    $inputBase.prop('checked', false);
+                    $('input[name="tarif_choisi"][value="hc"]').prop('checked', true);
+
+                    // Recalculer avec HC
+                    const tarif = 'hc';
+                    if (window.calculationResults) {
+                        updateCalculsSelection(tarif, puissance);
+                        recalculateWithNewPower(tarif, puissance);
+                    }
+                }
+            } else {
+                // Afficher le tarif Base pour les puissances <= 6 kVA
+                $tarifBase.show();
+            }
+        }
+
+        // Fonction pour obtenir les tarifs disponibles selon la puissance
+        function getTarifsDisponibles(puissance) {
+            if (puissance > 6) {
+                return ['hc', 'tempo']; // Seulement HC et Tempo pour > 6 kVA
+            } else {
+                return ['base', 'hc', 'tempo']; // Tous les tarifs pour <= 6 kVA
+            }
+        }
+
+        function setupContactStep() {
+            // Actions étape contact
+        }
+
+        function setupRecapStep() {
+            if (currentStep === 10) {
+                generateRecapitulatif();
+            }
+        }
+
+        // ===============================
+        // VALIDATION
+        // ===============================
+
+        function validateCurrentStep() {
+            const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
+            let isValid = true;
+
+            currentStepElement.find('.field-error, .field-success').removeClass('field-error field-success');
+
+            switch (currentStep) {
+                case 1: isValid = validateStep1(currentStepElement); break;
+                case 2: isValid = validateStep2(currentStepElement); break;
+                case 3: isValid = validateStep3(currentStepElement); break;
+                case 4: isValid = validateStep4(currentStepElement); break;
+                case 5: isValid = validateStep5(currentStepElement); break;
+                case 6: isValid = validateStep6(currentStepElement); break;
+                case 8: isValid = validateStep8(currentStepElement); break;
+                case 9: isValid = validateStep9(currentStepElement); break;
+                default: isValid = true;
+            }
+
+            if (!isValid) {
+                showValidationMessage('Veuillez remplir tous les champs obligatoires avant de continuer.');
+            }
+
+            return isValid;
+        }
+
+        function validateStep1(stepElement) {
+            let isValid = true;
+
+            if (!stepElement.find('input[name="type_logement"]:checked').length) {
                 isValid = false;
-                errors.push(`Le champ "${field.label}" est requis`);
-                $field.addClass('field-error');
-            } else {
-                $field.removeClass('field-error').addClass('field-success');
             }
-        });
 
-        // Validation email
-        const email = stepElement.find('#client_email').val().trim();
-        if (email && !isValidEmail(email)) {
-            isValid = false;
-            errors.push('L\'adresse email n\'est pas valide');
-            stepElement.find('#client_email').addClass('field-error');
+            const surface = stepElement.find('#surface');
+            const surfaceValue = parseInt(surface.val());
+            if (!surfaceValue || surfaceValue < 20 || surfaceValue > 500) {
+                surface.addClass('field-error');
+                isValid = false;
+            } else {
+                surface.addClass('field-success');
+            }
+
+            const nbPersonnes = stepElement.find('#nb_personnes');
+            if (!nbPersonnes.val()) {
+                nbPersonnes.addClass('field-error');
+                isValid = false;
+            } else {
+                nbPersonnes.addClass('field-success');
+            }
+
+            if (!stepElement.find('input[name="isolation"]:checked').length) {
+                isValid = false;
+            }
+
+            return isValid;
         }
 
-        // Validation téléphone
-        const phone = stepElement.find('#client_telephone').val().trim();
-        if (phone && !isValidPhone(phone)) {
-            isValid = false;
-            errors.push('Le numéro de téléphone n\'est pas valide');
-            stepElement.find('#client_telephone').addClass('field-error');
+        function validateStep2(stepElement) {
+            return stepElement.find('input[name="type_chauffage"]:checked').length > 0;
         }
 
-        // Validation code postal (optionnel)
-        const codePostal = stepElement.find('#client_code_postal').val().trim();
-        if (codePostal && !/^[0-9]{5}$/.test(codePostal)) {
-            isValid = false;
-            errors.push('Le code postal doit contenir 5 chiffres');
-            stepElement.find('#client_code_postal').addClass('field-error');
+        function validateStep3(stepElement) {
+            return stepElement.find('input[name="type_cuisson"]:checked').length > 0;
         }
 
-        if (!isValid && errors.length > 0) {
-            showValidationMessage(errors.join('<br>'));
+        function validateStep4(stepElement) {
+            return stepElement.find('input[name="eau_chaude"]:checked').length > 0;
         }
 
-        return isValid;
-    }
-
-
-    // AJOUT : Fonctions de validation
-    function isValidEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
-    }
-
-    function isValidPhone(phone) {
-        const re = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
-        return re.test(phone.replace(/\s/g, ''));
-    }
-
-    // ===============================
-    // COLLECTE DES DONNÉES CLIENT
-    // ===============================
-    function collectClientData() {
-        return {
-            nom: $('#client_nom').val().trim(),
-            prenom: $('#client_prenom').val().trim(),
-            email: $('#client_email').val().trim(),
-            telephone: $('#client_telephone').val().trim(),
-            adresse: $('#client_adresse').val().trim(),
-            code_postal: $('#client_code_postal').val().trim(),
-            ville: $('#client_ville').val().trim()
-        };
-    }
-
-    // Validation des champs
-    function validateField($field) {
-        const fieldType = $field.attr('type');
-        const fieldName = $field.attr('name');
-        let isValid = true;
-
-        $field.removeClass('field-error field-success');
-
-        if (fieldType === 'radio') {
-            isValid = $(`input[name="${fieldName}"]:checked`).length > 0;
-        } else if ($field.is('select')) {
-            isValid = $field.val() !== '' && $field.val() !== null;
-        } else {
-            isValid = $field.val().trim() !== '';
+        function validateStep5(stepElement) {
+            return stepElement.find('input[name="type_eclairage"]:checked').length > 0;
         }
 
-        $field.addClass(isValid ? 'field-success' : 'field-error');
-        return isValid;
-    }
-
-    function validateNumberField($field) {
-        const min = parseFloat($field.attr('min'));
-        const max = parseFloat($field.attr('max'));
-        const value = parseFloat($field.val());
-
-        $field.removeClass('field-error field-success');
-
-        if (isNaN(value)) {
-            $field.addClass('field-error');
-            return false;
+        function validateStep6(stepElement) {
+            return stepElement.find('input[name="piscine"]:checked').length > 0;
         }
 
-        if (!isNaN(min) && value < min) {
-            $field.addClass('field-error');
-            showValidationMessage(`La valeur minimum est ${min}`);
-            return false;
+        function validateStep8(stepElement) {
+            const tarifChoisi = stepElement.find('input[name="tarif_choisi"]:checked').length;
+            const puissanceChoisie = stepElement.find('input[name="puissance_choisie"]:checked').length;
+            const typeLogementUsage = stepElement.find('input[name="type_logement_usage"]:checked').length;
+
+            return tarifChoisi && puissanceChoisie && typeLogementUsage;
         }
 
-        if (!isNaN(max) && value > max) {
-            $field.addClass('field-error');
-            showValidationMessage(`La valeur maximum est ${max}`);
-            return false;
-        }
+        function validateStep9(stepElement) {
+            let isValid = true;
+            const errors = [];
 
-        $field.addClass('field-success');
-        return true;
-    }
+            const requiredFields = [
+                { id: 'client_nom', label: 'Nom' },
+                { id: 'client_prenom', label: 'Prénom' },
+                { id: 'client_email', label: 'Email' },
+                { id: 'client_telephone', label: 'Téléphone' }
+            ];
 
-    // ===============================
-    // COLLECTE DE DONNÉES
-    // ===============================
+            requiredFields.forEach(field => {
+                const $field = stepElement.find(`#${field.id}`);
+                const value = $field.val().trim();
 
-    function saveCurrentStepData() {
-        const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
-
-        currentStepElement.find('input, select, textarea').each(function () {
-            const $field = $(this);
-            const name = $field.attr('name');
-            const type = $field.attr('type');
-
-            if (!name) return;
-
-            const cleanName = name.replace('[]', '');
-
-            if (type === 'radio') {
-                if ($field.is(':checked')) {
-                    formData[cleanName] = $field.val();
-                }
-            } else if (type === 'checkbox') {
-                if (!formData[cleanName]) {
-                    formData[cleanName] = [];
-                }
-
-                const value = $field.val();
-
-                if ($field.is(':checked')) {
-                    if (!formData[cleanName].includes(value)) {
-                        formData[cleanName].push(value);
-                    }
+                if (!value) {
+                    isValid = false;
+                    errors.push(`Le champ "${field.label}" est requis`);
+                    $field.addClass('field-error');
                 } else {
-                    const index = formData[cleanName].indexOf(value);
-                    if (index > -1) {
-                        formData[cleanName].splice(index, 1);
-                    }
+                    $field.removeClass('field-error').addClass('field-success');
                 }
-            } else {
-                formData[cleanName] = $field.val();
+            });
+
+            const email = stepElement.find('#client_email').val().trim();
+            if (email && !isValidEmail(email)) {
+                isValid = false;
+                errors.push('L\'adresse email n\'est pas valide');
+                stepElement.find('#client_email').addClass('field-error');
             }
-        });
 
-    }
+            const phone = stepElement.find('#client_telephone').val().trim();
+            if (phone && !isValidPhone(phone)) {
+                isValid = false;
+                errors.push('Le numéro de téléphone n\'est pas valide');
+                stepElement.find('#client_telephone').addClass('field-error');
+            }
 
-    // ===============================
-    // ENVOI DES RÉSULTATS PAR EMAIL
-    // ===============================
-    function sendResultsByEmail(simulationData, clientData, results) {
-        // Préparer toutes les données pour l'envoi
-        const dataToSend = {
-            action: 'htic_send_simulation_email',
-            nonce: typeof hticSimulateur !== 'undefined' ? hticSimulateur.nonce : '',
-            type: 'elec-residentiel',
+            if (!isValid && errors.length > 0) {
+                showValidationMessage(errors.join('<br>'));
+            }
 
-            // Données client
-            client: {
-                nom: clientData.nom,
-                prenom: clientData.prenom,
-                email: clientData.email,
-                telephone: clientData.telephone,
-                adresse: clientData.adresse,
-                code_postal: clientData.code_postal,
-                ville: clientData.ville
-            },
-
-            // Données de simulation
-            simulation: {
-                // Logement
-                type_logement: simulationData.type_logement,
-                surface: simulationData.surface,
-                nb_personnes: simulationData.nb_personnes,
-                isolation: simulationData.isolation,
-
-                // Chauffage
-                type_chauffage: simulationData.type_chauffage,
-
-                // Équipements
-                electromenagers: simulationData.electromenagers || [],
-                type_cuisson: simulationData.type_cuisson,
-
-                // Eau chaude
-                eau_chaude: simulationData.eau_chaude,
-
-                // Éclairage
-                type_eclairage: simulationData.type_eclairage,
-
-                // Options
-                piscine: simulationData.piscine,
-                equipements_speciaux: simulationData.equipements_speciaux || [],
-                preference_tarif: simulationData.preference_tarif
-            },
-
-            // Résultats calculés
-            resultats: {
-                consommation_annuelle: results.consommation_annuelle,
-                puissance_recommandee: results.puissance_recommandee,
-
-                // Tarifs
-                tarif_base: {
-                    total_annuel: results.tarifs.base.total_annuel,
-                    total_mensuel: results.tarifs.base.total_mensuel,
-                    prix_kwh: results.tarifs.base.prix_kwh
-                },
-                tarif_hc: {
-                    total_annuel: results.tarifs.hc.total_annuel,
-                    total_mensuel: results.tarifs.hc.total_mensuel,
-                    prix_kwh_hp: results.tarifs.hc.prix_kwh_hp,
-                    prix_kwh_hc: results.tarifs.hc.prix_kwh_hc
-                },
-                tarif_tempo: {
-                    total_annuel: results.tarifs.tempo.total_annuel,
-                    total_mensuel: results.tarifs.tempo.total_mensuel
-                },
-
-                // Répartition
-                repartition: results.repartition,
-
-                // Tarif recommandé
-                tarif_recommande: results.tarif_recommande
-            },
-
-            // Date et heure de la simulation
-            date_simulation: new Date().toISOString()
-        };
-
-        // URL AJAX
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
+            return isValid;
         }
 
-        // Envoi AJAX
-        return $.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            data: dataToSend,
-            dataType: 'json',
-            timeout: 30000
-        });
-    }
+        function validateField($field) {
+            const fieldType = $field.attr('type');
+            const fieldName = $field.attr('name');
+            let isValid = true;
 
-    function collectAllFormData() {
-        formData = {};
+            $field.removeClass('field-error field-success');
 
-        $('.form-step').each(function () {
-            const $step = $(this);
+            if (fieldType === 'radio') {
+                isValid = $(`input[name="${fieldName}"]:checked`).length > 0;
+            } else if ($field.is('select')) {
+                isValid = $field.val() !== '' && $field.val() !== null;
+            } else {
+                isValid = $field.val().trim() !== '';
+            }
 
-            $step.find('input, select, textarea').each(function () {
+            $field.addClass(isValid ? 'field-success' : 'field-error');
+            return isValid;
+        }
+
+        function validateNumberField($field) {
+            const min = parseFloat($field.attr('min'));
+            const max = parseFloat($field.attr('max'));
+            const value = parseFloat($field.val());
+
+            $field.removeClass('field-error field-success');
+
+            if (isNaN(value)) {
+                $field.addClass('field-error');
+                return false;
+            }
+
+            if (!isNaN(min) && value < min) {
+                $field.addClass('field-error');
+                showValidationMessage(`La valeur minimum est ${min}`);
+                return false;
+            }
+
+            if (!isNaN(max) && value > max) {
+                $field.addClass('field-error');
+                showValidationMessage(`La valeur maximum est ${max}`);
+                return false;
+            }
+
+            $field.addClass('field-success');
+            return true;
+        }
+
+        function isValidEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        function isValidPhone(phone) {
+            const re = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
+            return re.test(phone.replace(/\s/g, ''));
+        }
+
+        // ===============================
+        // COLLECTE DE DONNÉES
+        // ===============================
+
+        function saveCurrentStepData() {
+            const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
+
+            currentStepElement.find('input, select, textarea').each(function () {
                 const $field = $(this);
                 const name = $field.attr('name');
                 const type = $field.attr('type');
@@ -562,986 +588,911 @@ jQuery(document).ready(function ($) {
                         formData[cleanName] = [];
                     }
 
+                    const value = $field.val();
+
                     if ($field.is(':checked')) {
-                        const value = $field.val();
                         if (!formData[cleanName].includes(value)) {
                             formData[cleanName].push(value);
                         }
+                    } else {
+                        const index = formData[cleanName].indexOf(value);
+                        if (index > -1) {
+                            formData[cleanName].splice(index, 1);
+                        }
                     }
-                } else if ($field.is('select') || type === 'text' || type === 'number' || type === 'email' || type === 'tel' || $field.is('textarea')) {
+                } else {
                     formData[cleanName] = $field.val();
                 }
             });
-        });
-
-        return formData;
-    }
-
-    // ===============================
-    // CALCUL - SIMULATION PERSONNALISÉE
-    // ===============================
-
-    function calculateResults() {
-        const allData = collectAllFormData();
-
-        const clientData = collectClientData();
-
-        if (!allData.surface || !allData.nb_personnes || !allData.type_logement || !allData.isolation) {
-            showValidationMessage('Des informations obligatoires sont manquantes.');
-            console.error('❌ Données manquantes:', {
-                surface: allData.surface,
-                nb_personnes: allData.nb_personnes,
-                type_logement: allData.type_logement,
-                isolation: allData.isolation
-            });
-            return;
         }
 
-        showStep(8);
-        updateProgress();
-        updateNavigation();
+        function collectAllFormData() {
+            formData = {};
 
-        $('#results-container').html(`
-            <div class="loading-state">
-                <div class="loading-spinner"></div>
-                <p>Calcul de votre estimation personnalisée...</p>
-                <small>Traitement des données par le calculateur HTIC...</small>
-            </div>
-        `);
+            $('.form-step').each(function () {
+                const $step = $(this);
 
-        sendDataToCalculator(allData, configData, clientData);
-    }
+                $step.find('input, select, textarea').each(function () {
+                    const $field = $(this);
+                    const name = $field.attr('name');
+                    const type = $field.attr('type');
 
-    // ===============================
-    // ENVOI DONNÉES AU CALCULATEUR
-    // ===============================
+                    if (!name) return;
 
-    function sendDataToCalculator(userData, configData, clientData) {
-        const dataToSend = {
-            action: 'htic_calculate_estimation',
-            type: 'elec-residentiel',
-            user_data: userData,
-            config_data: configData
-        };
+                    const cleanName = name.replace('[]', '');
 
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
-            dataToSend.nonce = hticSimulateur.nonce;
-        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.calculateNonce) {
-            dataToSend.nonce = hticSimulateurUnifix.calculateNonce;
-        }
+                    if (type === 'radio') {
+                        if ($field.is(':checked')) {
+                            formData[cleanName] = $field.val();
+                        }
+                    } else if (type === 'checkbox') {
+                        if (!formData[cleanName]) {
+                            formData[cleanName] = [];
+                        }
 
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
-        } else if (typeof hticSimulateurUnifix !== 'undefined' && hticSimulateurUnifix.ajaxUrl) {
-            ajaxUrl = hticSimulateurUnifix.ajaxUrl;
-        }
-
-        $.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            dataType: 'json',
-            data: dataToSend,
-            timeout: 30000,
-            success: function (response) {
-                if (response.success) {
-                    window.calculationResults = response.data;
-                    window.clientData = clientData;
-                    window.simulationData = userData;
-
-                    displayResults(response.data);
-
-
-                } else {
-                    displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
-                }
-            },
-            error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX:', {
-                    status: status,
-                    error: error,
-                    responseText: xhr.responseText,
-                    statusCode: xhr.status
-                });
-
-                let errorMessage = 'Erreur de connexion lors du calcul';
-
-                if (xhr.status === 0) {
-                    errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
-                } else if (xhr.status === 500) {
-                    errorMessage = 'Erreur interne du serveur. Contactez l\'administrateur.';
-                } else if (status === 'timeout') {
-                    errorMessage = 'Le calcul prend trop de temps. Réessayez.';
-                }
-
-                displayError(errorMessage);
-            }
-        });
-    }
-
-    // ===============================
-    // AJOUT : GESTION EMAIL
-    // ===============================
-
-    /**
- * Validation basique intégrée si EmailValidationSystem n'est pas disponible
- */
-    function validateEmailData(formType, formData, clientData) {
-        const errors = [];
-        const warnings = [];
-
-        // Validation des données client
-        if (!clientData.email || !clientData.email.trim()) {
-            errors.push({ code: 'MISSING_EMAIL', message: 'Email client requis' });
-        } else {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(clientData.email)) {
-                errors.push({ code: 'INVALID_EMAIL', message: 'Format email invalide' });
-            }
-        }
-
-        if (!clientData.nom || !clientData.nom.trim()) {
-            errors.push({ code: 'MISSING_NAME', message: 'Nom client requis' });
-        }
-
-        if (!clientData.prenom || !clientData.prenom.trim()) {
-            errors.push({ code: 'MISSING_FIRSTNAME', message: 'Prénom client requis' });
-        }
-
-        // Validation des données de formulaire essentielles
-        if (formType === 'elec-residentiel') {
-            if (!formData.surface || formData.surface < 20 || formData.surface > 1000) {
-                errors.push({ code: 'INVALID_SURFACE', message: 'Surface invalide (20-1000 m²)' });
-            }
-            if (!formData.nb_personnes || formData.nb_personnes < 1 || formData.nb_personnes > 20) {
-                errors.push({ code: 'INVALID_PERSONS', message: 'Nombre de personnes invalide (1-20)' });
-            }
-            if (!formData.type_logement) {
-                errors.push({ code: 'MISSING_HOUSING_TYPE', message: 'Type de logement requis' });
-            }
-        }
-
-        // Vérifications de sécurité basiques
-        const dangerousPatterns = [/<script/i, /javascript:/i, /<iframe/i];
-        Object.values(clientData).forEach(value => {
-            if (typeof value === 'string') {
-                dangerousPatterns.forEach(pattern => {
-                    if (pattern.test(value)) {
-                        errors.push({ code: 'SECURITY_VIOLATION', message: 'Contenu suspect détecté' });
+                        if ($field.is(':checked')) {
+                            const value = $field.val();
+                            if (!formData[cleanName].includes(value)) {
+                                formData[cleanName].push(value);
+                            }
+                        }
+                    } else if ($field.is('select') || type === 'text' || type === 'number' || type === 'email' || type === 'tel' || $field.is('textarea')) {
+                        formData[cleanName] = $field.val();
                     }
                 });
+            });
+
+            if (!validateFormData()) {
+                return null;
             }
-        });
 
-        return {
-            isValid: errors.length === 0,
-            hasWarnings: warnings.length > 0,
-            canSendEmail: errors.length === 0,
-            errors: errors,
-            warnings: warnings
-        };
-    }
-
-    function validateAndSendEmail(formType, formData, clientData, results, successCallback) {
-        console.log('🔍 Début validation email pour:', formType);
-
-        let validationResult;
-
-        // Utiliser EmailValidationSystem si disponible, sinon validation basique
-        if (typeof EmailValidationSystem !== 'undefined') {
-            const validator = new EmailValidationSystem();
-            validationResult = validator.validateForEmail(formType, formData);
-
-            // Validation additionnelle pour les données client
-            const clientValidation = validator.validateForEmail('client', clientData);
-            validationResult.errors.push(...clientValidation.errors);
-            validationResult.warnings.push(...clientValidation.warnings);
-            validationResult.isValid = validationResult.isValid && clientValidation.isValid;
-        } else {
-            // Validation basique intégrée
-            validationResult = validateEmailData(formType, formData, clientData);
+            return formData;
         }
 
-        // Afficher les résultats
-        if (validationResult.warnings.length > 0) {
-            validationResult.warnings.forEach(warning => {
-                console.warn('⚠️ Warning:', warning.message);
-            });
+        function validateFormData() {
+            const requiredFields = ['type_logement', 'surface', 'nb_personnes', 'isolation', 'type_chauffage', 'type_cuisson', 'eau_chaude', 'type_eclairage', 'piscine'];
+            const missingFields = requiredFields.filter(field => !formData[field] || formData[field] === '');
+
+            if (missingFields.length > 0) {
+                console.error('Champs manquants:', missingFields);
+                showValidationMessage('Données manquantes : ' + missingFields.join(', '));
+                return false;
+            }
+
+            if (!Array.isArray(formData.electromenagers)) {
+                formData.electromenagers = [];
+            }
+            if (!Array.isArray(formData.equipements_speciaux)) {
+                formData.equipements_speciaux = [];
+            }
+
+            formData.surface = parseInt(formData.surface) || 0;
+            formData.nb_personnes = parseInt(formData.nb_personnes) || 1;
+
+            if (formData.surface < 20 || formData.surface > 500) {
+                console.error('Surface invalide:', formData.surface);
+                showValidationMessage('Surface invalide (20-500 m²)');
+                return false;
+            }
+
+            if (formData.nb_personnes < 1 || formData.nb_personnes > 6) {
+                console.error('Nombre de personnes invalide:', formData.nb_personnes);
+                showValidationMessage('Nombre de personnes invalide (1-6)');
+                return false;
+            }
+
+            return true;
         }
 
-        if (validationResult.errors.length > 0) {
-            validationResult.errors.forEach(error => {
-                console.error('❌ Error:', error.message);
-            });
-
-            // Afficher les erreurs à l'utilisateur
-            const errorMessages = validationResult.errors.map(e => e.message).join('\n• ');
-            showNotification(`Erreurs de validation:\n• ${errorMessages}`, 'error');
-            return validationResult;
-        }
-
-        // Validation réussie - préparer les données
-        if (validationResult.isValid) {
-            console.log('✅ Validation réussie, préparation des données');
-
-            const emailData = {
-                form_type: formType,
-                validation_timestamp: new Date().toISOString(),
-                validation_warnings: validationResult.warnings.length,
-                form_data: formData,
-                client_data: clientData,
-                results_data: results
+        function collectClientData() {
+            return {
+                nom: $('#client_nom').val().trim(),
+                prenom: $('#client_prenom').val().trim(),
+                email: $('#client_email').val().trim(),
+                telephone: $('#client_telephone').val().trim(),
+                adresse: $('#client_adresse').val().trim(),
+                code_postal: $('#client_code_postal').val().trim(),
+                ville: $('#client_ville').val().trim()
             };
-
-            successCallback(emailData);
         }
 
-        return validationResult;
-    }
+        // ===============================
+        // CALCULS
+        // ===============================
 
-    function setupEmailActionsElecResidentiel() {
-        $(document).on('click', '#btn-send-email', function () {
-            const $btn = $(this);
-            const originalText = $btn.html();
+        function calculateResults() {
+            console.log('Début du calcul...');
 
-            // Vérifier que les résultats sont disponibles
-            if (!window.calculationResults) {
-                showNotification('❌ Aucun résultat de calcul disponible', 'error');
+            const allData = collectAllFormData();
+            const clientData = collectClientData();
+
+            if (!allData) {
+                console.error('Échec de collecte des données');
                 return;
             }
 
-            // Collecter toutes les données
-            const allFormData = collectAllFormData();
-            const clientData = {
-                nom: $('#client_nom').val() || '',
-                prenom: $('#client_prenom').val() || '',
-                email: $('#client_email').val() || '',
-                telephone: $('#client_telephone').val() || '',
-                adresse: $('#client_adresse').val() || '',
-                code_postal: $('#client_code_postal').val() || '',
-                ville: $('#client_ville').val() || ''
+            showStep(7);
+            updateProgress();
+            updateNavigation();
+
+            $('#results-container').html(`
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Calcul de votre estimation personnalisée...</p>
+                    <small>Traitement des données par le calculateur HTIC...</small>
+                </div>
+            `);
+
+            sendDataToCalculator(allData, configData, clientData);
+        }
+
+        function sendDataToCalculator(userData, configData, clientData) {
+            const dataToSend = {
+                action: 'htic_calculate_estimation',
+                type: 'elec-residentiel',
+                user_data: userData,
+                config_data: configData,
+                nonce: (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) ? hticSimulateur.nonce : ''
             };
 
-            console.log('📋 Validation email elec-residentiel');
-            console.log('📊 Données formulaire:', allFormData);
-            console.log('👤 Données client:', clientData);
-
-            // VALIDATION AVANT ENVOI
-            const validationResult = validateAndSendEmail(
-                'elec-residentiel',
-                allFormData,
-                clientData,
-                window.calculationResults,
-                function (validatedData) {
-                    // Envoi après validation réussie
-                    sendEmailElecResidentiel($btn, originalText, validatedData);
-                }
-            );
-
-            // Log du résultat
-            if (!validationResult.isValid) {
-                console.error('❌ Validation échouée pour elec-residentiel:', validationResult.errors);
+            let ajaxUrl = '/wp-admin/admin-ajax.php';
+            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+                ajaxUrl = hticSimulateur.ajaxUrl;
             }
-        });
-    }
 
-    function sendEmailElecResidentiel($btn, originalText, validatedData) {
-        $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                dataType: 'json',
+                data: dataToSend,
+                timeout: 30000,
+                success: function (response) {
+                    if (response.success) {
+                        window.calculationResults = response.data;
+                        window.clientData = clientData;
+                        window.simulationData = userData;
+                        displayResults(response.data);
+                    } else {
+                        displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Erreur AJAX:', { status, error, responseText: xhr.responseText });
 
-        // Préparer les données pour l'envoi AJAX
-        const emailData = {
-            action: 'htic_send_simulation_email',
-            type: 'elec-residentiel',
-            nonce: typeof hticSimulateur !== 'undefined' ? hticSimulateur.nonce : '',
+                    let errorMessage = 'Erreur de connexion lors du calcul';
+                    if (xhr.status === 0) {
+                        errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
+                    } else if (xhr.status === 500) {
+                        errorMessage = 'Erreur interne du serveur.';
+                    } else if (status === 'timeout') {
+                        errorMessage = 'Le calcul prend trop de temps. Réessayez.';
+                    }
 
-            // Données validées
-            form_type: validatedData.form_type,
-            validation_timestamp: validatedData.validation_timestamp,
-
-            // Données client
-            client: validatedData.client_data,
-
-            // Données de simulation
-            simulation: validatedData.form_data,
-
-            // Résultats
-            results: validatedData.results_data,
-
-            // Date de simulation
-            date_simulation: new Date().toISOString()
-        };
-
-        let ajaxUrl = '/wp-admin/admin-ajax.php';
-        if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-            ajaxUrl = hticSimulateur.ajaxUrl;
+                    displayError(errorMessage);
+                }
+            });
         }
 
-        console.log('📤 Envoi données email:', emailData);
-
-        $.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            data: emailData,
-            success: function (response) {
-                console.log('📥 Réponse serveur:', response);
-
-                if (response.success) {
-                    $('#email-confirmation').slideDown();
-                    $('#email-display').text(validatedData.client_data.email);
-                    showNotification('✅ Email envoyé avec succès !', 'success');
-                } else {
-                    showNotification('❌ Erreur : ' + (response.data || 'Erreur inconnue'), 'error');
-                }
-            },
-            error: function (xhr, status, error) {
-                console.error('❌ Erreur AJAX:', { status, error, response: xhr.responseText });
-                showNotification('❌ Erreur de connexion', 'error');
-            },
-            complete: function () {
-                $btn.prop('disabled', false).html(originalText);
+        function displayResults(results) {
+            if (!results || !results.consommation_annuelle || !results.tarifs) {
+                displayError('Données de résultats incomplètes');
+                return;
             }
-        });
-    }
 
-    // Fonction de notification
-    function showNotification(message, type = 'info') {
-        // Supprimer les notifications existantes
-        $('.notification').remove();
+            const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
+            const puissanceRecommandee = results.puissance_recommandee || '12';
 
-        const $notification = $(`
-        <div class="notification notification-${type}">
-            ${message}
-        </div>
-    `);
+            const tarifBase = results.tarifs.base || {};
+            const tarifHC = results.tarifs.hc || {};
+            const tarifTempo = results.tarifs.tempo || {};
 
-        $('body').append($notification);
+            const totalAnnuelBase = parseInt(tarifBase.total_annuel) || 0;
+            const totalAnnuelHC = parseInt(tarifHC.total_annuel) || 0;
+            const totalAnnuelTempo = parseInt(tarifTempo.total_annuel) || 0;
 
-        // Animation d'entrée
-        setTimeout(() => {
-            $notification.addClass('show');
-        }, 100);
+            const totalMensuelBase = Math.round(totalAnnuelBase / 10);
+            const totalMensuelHC = Math.round(totalAnnuelHC / 10);
+            const totalMensuelTempo = Math.round(totalAnnuelTempo / 10);
 
-        // Suppression après 4 secondes
-        setTimeout(() => {
-            $notification.removeClass('show');
+            const tarifMin = Math.min(totalAnnuelBase, totalAnnuelHC, totalAnnuelTempo);
+            const tarifMax = Math.max(totalAnnuelBase, totalAnnuelHC, totalAnnuelTempo);
+            const economie = tarifMax - tarifMin;
+
+            let tarifRecommande = 'base';
+            if (totalAnnuelHC === tarifMin) tarifRecommande = 'hc';
+            if (totalAnnuelTempo === tarifMin) tarifRecommande = 'tempo';
+
+            const resultsHtml = `
+                <div class="results-summary">
+                    <div class="result-card main-result">
+                        <div class="result-icon">⚡</div>
+                        <h3>Votre consommation estimée</h3>
+                        <div class="big-number">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
+                        <p>Puissance recommandée : <strong>${puissanceRecommandee} kVA</strong></p>
+                    </div>
+                    
+                    <div class="tarifs-comparison">
+                        <h3>💰 Comparaison des tarifs</h3>
+                        <div class="tarifs-grid">
+                            <div class="tarif-card ${tarifRecommande === 'base' ? 'recommended' : ''}">
+                                <h4>Base TRV</h4>
+                                <div class="tarif-prix">${totalAnnuelBase.toLocaleString()}€ <span>/an (TTC)</span></div>
+                                <div class="tarif-mensuel">${totalMensuelBase.toLocaleString()}€/mois*</div>
+                                <div class="tarif-details">
+                                    <small>Prix unique : ${tarifBase.prix_kwh || '0.2516'}€/kWh</small>
+                                </div>
+                                ${tarifRecommande === 'base' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
+                                <small class="tarif-note">* Moyenne mensuelle calculée sur 10 mois</small>
+                            </div>
+                            
+                            <div class="tarif-card ${tarifRecommande === 'hc' ? 'recommended' : ''}">
+                                <h4>Heures Creuses TRV</h4>
+                                <div class="tarif-prix">${totalAnnuelHC.toLocaleString()}€ <span>/an (TTC)</span></div>
+                                <div class="tarif-mensuel">${totalMensuelHC.toLocaleString()}€/mois*</div>
+                                <div class="tarif-details">
+                                    <small>HP: ${tarifHC.prix_kwh_hp || '0.27'}€ | HC: ${tarifHC.prix_kwh_hc || '0.2068'}€</small>
+                                </div>
+                                ${tarifRecommande === 'hc' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
+                                <small class="tarif-note">* Moyenne mensuelle calculée sur 10 mois</small>
+                            </div>
+                            
+                            <div class="tarif-card ${tarifRecommande === 'tempo' ? 'recommended' : ''}">
+                                <h4>Tempo TRV</h4>
+                                <div class="tarif-prix">${totalAnnuelTempo.toLocaleString()}€ <span>/an (TTC)</span></div>
+                                <div class="tarif-mensuel">${totalMensuelTempo.toLocaleString()}€/mois*</div>
+                                <div class="tarif-details">
+                                    <small>300j bleus, 43j blancs, 22j rouges</small>
+                                </div>
+                                ${tarifRecommande === 'tempo' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
+                                <small class="tarif-note">* Moyenne mensuelle calculée sur 10 mois</small>
+                            </div>
+                        </div>
+                        
+                        ${economie > 0 ? `
+                        <div class="economies">
+                            <p>💡 <strong>Économies potentielles :</strong> jusqu'à ${economie.toLocaleString()}€/an en choisissant le bon tarif !</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="repartition-conso">
+                        <div class="repartition-header">
+                            <h3>Répartition de votre consommation</h3>
+                            <p class="repartition-subtitle">Analyse détaillée par poste de consommation</p>
+                        </div>
+                        ${generateConsumptionBreakdown(results)}
+                    </div>
+                    
+                    <div class="results-actions">
+                        <button class="btn btn-outline" onclick="location.reload()">
+                            🔄 Nouvelle simulation
+                        </button>
+                        <button class="btn btn-primary btn-large" id="btn-subscribe">
+                            📝 Je souscris
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            $('#results-container').html(resultsHtml);
+            $('.results-summary').hide().fadeIn(600);
+
             setTimeout(() => {
-                $notification.remove();
-            }, 300);
-        }, 4000);
-    }
-
-    // ===============================
-    // AFFICHAGE RÉSULTATS (reste identique)
-    // ===============================
-
-    function displayResults(results) {
-
-        if (!results || !results.consommation_annuelle || !results.tarifs) {
-            displayError('Données de résultats incomplètes');
-            return;
+                createConsumptionPieChart();
+            }, 500);
         }
 
-        const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
-        const puissanceRecommandee = results.puissance_recommandee || '12';
+        function displayError(message) {
+            $('#results-container').html(`
+                <div class="error-state">
+                    <div class="error-icon">❌</div>
+                    <h3>Erreur lors du calcul</h3>
+                    <p>${message}</p>
+                    <div class="error-actions">
+                        <button class="btn btn-primary" onclick="location.reload()">🔄 Recharger la page</button>
+                        <button class="btn btn-secondary" id="btn-back-to-form">← Retour au formulaire</button>
+                    </div>
+                </div>
+            `);
 
-        const tarifBase = results.tarifs.base || {};
-        const tarifHC = results.tarifs.hc || {};
-        const tarifTempo = results.tarifs.tempo || {};
+            $('#btn-back-to-form').on('click', function () {
+                goToStep(6);
+            });
+        }
 
-        const totalAnnuelBase = parseInt(tarifBase.total_annuel) || 0;
-        const totalMensuelBase = parseInt(tarifBase.total_mensuel) || Math.round(totalAnnuelBase / 12);
+        // ===============================
+        // GESTION ÉTAPE 8
+        // ===============================
 
-        const totalAnnuelHC = parseInt(tarifHC.total_annuel) || 0;
-        const totalMensuelHC = parseInt(tarifHC.total_mensuel) || Math.round(totalAnnuelHC / 12);
+        function updateCalculsSelection(tarif, puissance) {
+            const results = window.calculationResults;
+            if (!results || !results.tarifs) return;
 
-        const totalAnnuelTempo = parseInt(tarifTempo.total_annuel) || 0;
-        const totalMensuelTempo = parseInt(tarifTempo.total_mensuel) || Math.round(totalAnnuelTempo / 12);
+            const tarifData = results.tarifs[tarif] || {};
+            const totalAnnuel = parseInt(tarifData.total_annuel) || 0;
+            const totalMensuel = Math.round(totalAnnuel / 10);
+            const consommation = parseInt(results.consommation_annuelle) || 0;
 
-        const tarifs = {
-            'base': totalAnnuelBase,
-            'hc': totalAnnuelHC,
-            'tempo': totalAnnuelTempo
-        };
+            const calculHTML = `
+                <div class="calcul-resume">
+                    <h4>Votre sélection :</h4>
+                    <div class="calcul-item">
+                        <span class="label">Tarif :</span>
+                        <span class="value">${getTarifLabel(tarif)}</span>
+                    </div>
+                    <div class="calcul-item">
+                        <span class="label">Puissance :</span>
+                        <span class="value">${puissance} kVA</span>
+                    </div>
+                    <div class="calcul-item">
+                        <span class="label">Consommation estimée :</span>
+                        <span class="value">${consommation.toLocaleString()} kWh/an</span>
+                    </div>
+                    <div class="calcul-item highlight">
+                        <span class="label">Coût annuel :</span>
+                        <span class="value">${totalAnnuel.toLocaleString()}€ TTC</span>
+                    </div>
+                    <div class="calcul-item">
+                        <span class="label">Coût mensuel moyen :</span>
+                        <span class="value">${totalMensuel.toLocaleString()}€/mois (10 mois)</span>
+                    </div>
+                </div>
+            `;
 
-        const tarifMin = Math.min(totalAnnuelBase, totalAnnuelHC, totalAnnuelTempo);
-        const tarifMax = Math.max(totalAnnuelBase, totalAnnuelHC, totalAnnuelTempo);
-        const economie = tarifMax - tarifMin;
+            $('#calculs-selection').html(calculHTML);
+        }
 
-        let tarifRecommande = 'base';
-        if (totalAnnuelHC === tarifMin) tarifRecommande = 'hc';
-        if (totalAnnuelTempo === tarifMin) tarifRecommande = 'tempo';
+        function updateAllTarifPrices(results) {
+            if (!results || !results.tarifs) return;
 
-        const repartition = results.repartition || {};
-        const chauffage = parseInt(repartition.chauffage) || 0;
-        const eauChaude = parseInt(repartition.eau_chaude) || 0;
-        const electromenagers = parseInt(repartition.electromenagers) || 0;
-        const eclairage = parseInt(repartition.eclairage) || 0;
-        const multimedia = parseInt(repartition.multimedia) || 0;
+            const tarifBase = parseInt(results.tarifs.base?.total_annuel) || 0;
+            const tarifHC = parseInt(results.tarifs.hc?.total_annuel) || 0;
+            const tarifTempo = parseInt(results.tarifs.tempo?.total_annuel) || 0;
 
-        let equipementsSpeciaux = 0;
-        if (typeof repartition.equipements_speciaux === 'object') {
-            for (let key in repartition.equipements_speciaux) {
-                equipementsSpeciaux += parseInt(repartition.equipements_speciaux[key]) || 0;
+            updateTarifPrice('prix-base', tarifBase);
+            updateTarifPrice('prix-hc', tarifHC);
+            updateTarifPrice('prix-tempo', tarifTempo);
+
+            updatePrixMensuels('prix-base', Math.round(tarifBase / 10));
+            updatePrixMensuels('prix-hc', Math.round(tarifHC / 10));
+            updatePrixMensuels('prix-tempo', Math.round(tarifTempo / 10));
+        }
+
+        function updateTarifPrice(containerId, prix) {
+            const container = $('#' + containerId);
+            if (container.length) {
+                const priceElement = container.find('.price-amount');
+                if (priceElement.length) {
+                    priceElement.text(prix.toLocaleString());
+                }
             }
-        } else {
-            equipementsSpeciaux = parseInt(repartition.equipements_speciaux) || 0;
         }
 
-        const autres = parseInt(repartition.autres) || 0;
+        function updatePrixMensuels(containerId, prixMensuel) {
+            const container = $('#' + containerId);
+            let mensuelElement = container.find('.price-mensuel');
 
-        // Le HTML des résultats reste identique à votre version originale
-        const resultsHtml = `
-        <div class="results-summary">
-            <!-- Résultat principal -->
-            <div class="result-card main-result">
-                <div class="result-icon">⚡</div>
-                <h3>Votre consommation estimée</h3>
-                <div class="big-number">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
-                <p>Puissance recommandée : <strong>${puissanceRecommandee} kVA</strong></p>
-            </div>
-            
-            <!-- Comparaison des 3 tarifs -->
-            <div class="tarifs-comparison">
-                <h3>💰 Comparaison des tarifs</h3>
-                <div class="tarifs-grid" style="grid-template-columns: repeat(3, 1fr);">
-                    <!-- TARIF BASE TRV -->
-                    <div class="tarif-card ${tarifRecommande === 'base' ? 'recommended' : ''}">
-                        <h4>Base TRV</h4>
-                        <div class="tarif-prix">${totalAnnuelBase.toLocaleString()}€<span>/an</span></div>
-                        <div class="tarif-mensuel">${totalMensuelBase.toLocaleString()}€/mois</div>
-                        <div class="tarif-details">
-                            <small>Prix unique : ${tarifBase.prix_kwh || '0.2516'}€/kWh</small>
-                        </div>
-                        ${tarifRecommande === 'base' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
+            if (mensuelElement.length === 0) {
+                container.append(`
+                    <div class="price-mensuel">
+                        <span class="mensuel-amount">${prixMensuel.toLocaleString()}</span>
+                        <span class="mensuel-period">€/mois*</span>
                     </div>
-                    
-                    <!-- TARIF HEURES CREUSES -->
-                    <div class="tarif-card ${tarifRecommande === 'hc' ? 'recommended' : ''}">
-                        <h4>Heures Creuses TRV</h4>
-                        <div class="tarif-prix">${totalAnnuelHC.toLocaleString()}€<span>/an</span></div>
-                        <div class="tarif-mensuel">${totalMensuelHC.toLocaleString()}€/mois</div>
-                        <div class="tarif-details">
-                            <small>HP: ${tarifHC.prix_kwh_hp || '0.27'}€ | HC: ${tarifHC.prix_kwh_hc || '0.2068'}€</small>
-                        </div>
-                        ${tarifRecommande === 'hc' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
-                    </div>
-                    
-                    <!-- TARIF TEMPO -->
-                    <div class="tarif-card ${tarifRecommande === 'tempo' ? 'recommended' : ''}">
-                        <h4>Tempo TRV</h4>
-                        <div class="tarif-prix">${totalAnnuelTempo.toLocaleString()}€<span>/an</span></div>
-                        <div class="tarif-mensuel">${totalMensuelTempo.toLocaleString()}€/mois</div>
-                        <div class="tarif-details">
-                            <small>300j bleus, 43j blancs, 22j rouges</small>
-                        </div>
-                        ${tarifRecommande === 'tempo' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
-                    </div>
+                `);
+            } else {
+                mensuelElement.find('.mensuel-amount').text(prixMensuel.toLocaleString());
+            }
+        }
+
+        function recalculateWithNewPower(tarif, nouvellePuissance) {
+            $('#calculs-selection').html('<div class="loading-mini">Recalcul en cours...</div>');
+
+            const allData = collectAllFormData();
+            allData.puissance_forcee = nouvellePuissance;
+
+            const dataToSend = {
+                action: 'htic_calculate_estimation',
+                type: 'elec-residentiel',
+                user_data: allData,
+                config_data: configData,
+                nonce: (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) ? hticSimulateur.nonce : ''
+            };
+
+            let ajaxUrl = '/wp-admin/admin-ajax.php';
+            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+                ajaxUrl = hticSimulateur.ajaxUrl;
+            }
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                dataType: 'json',
+                data: dataToSend,
+                success: function (response) {
+                    if (response.success) {
+                        window.calculationResults = response.data;
+                        updateAllTarifPrices(response.data);
+                        updateCalculsSelection(tarif, nouvellePuissance);
+                    } else {
+                        $('#calculs-selection').html('<div class="error-mini">Erreur de calcul</div>');
+                    }
+                },
+                error: function () {
+                    $('#calculs-selection').html('<div class="error-mini">Erreur de connexion</div>');
+                }
+            });
+        }
+
+        // ===============================
+        // EMAIL
+        // ===============================
+
+        function sendEmail($btn, originalText, formData, clientData, results) {
+            $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
+
+            const emailData = {
+                action: 'htic_send_simulation_email',
+                type: 'elec-residentiel',
+                nonce: typeof hticSimulateur !== 'undefined' ? hticSimulateur.nonce : '',
+                client: clientData,
+                simulation: formData,
+                results: results,
+                date_simulation: new Date().toISOString()
+            };
+
+            let ajaxUrl = '/wp-admin/admin-ajax.php';
+            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+                ajaxUrl = hticSimulateur.ajaxUrl;
+            }
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: emailData,
+                success: function (response) {
+                    if (response.success) {
+                        $('#email-confirmation').slideDown();
+                        $('#email-display').text(clientData.email);
+                        showNotification('✅ Email envoyé avec succès !', 'success');
+                    } else {
+                        showNotification('❌ Erreur : ' + (response.data || 'Erreur inconnue'), 'error');
+                    }
+                },
+                error: function () {
+                    showNotification('❌ Erreur de connexion', 'error');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+
+        // ===============================
+        // GÉNÉRATION DE CONTENU
+        // ===============================
+
+        function generateConsumptionBreakdown(results) {
+            const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
+            const repartition = results.repartition || {};
+
+            const chartData = [];
+            const chartLabels = [];
+            const chartColors = [];
+
+            const colorMap = {
+                'chauffage': '#FF6384',
+                'eau_chaude': '#36A2EB',
+                'electromenagers': '#FFCE56',
+                'eclairage': '#4BC0C0',
+                'multimedia': '#9966FF',
+                'equipements_speciaux': '#FF9F40',
+                'autres': '#C9CBCF'
+            };
+
+            let breakdownHtml = `
+                <div class="chart-container" style="margin: 20px 0; text-align: center; min-height: 400px;">
+                    <canvas id="consumptionPieChart" width="400" height="400"></canvas>
                 </div>
-                
-                ${economie > 0 ? `
-                <div class="economies">
-                    <p>💡 <strong>Économies potentielles :</strong> jusqu'à ${economie.toLocaleString()}€/an en choisissant le bon tarif !</p>
-                    <p style="font-size: 0.9em; color: #666; margin-top: 0.5rem;">
-                        ${tarifRecommande === 'tempo' ?
-                    '⚠️ Le tarif Tempo nécessite de décaler votre consommation hors jours rouges.' :
-                    tarifRecommande === 'hc' ?
-                        '⏰ Les Heures Creuses nécessitent de décaler 40% de votre consommation la nuit.' :
-                        '✅ Le tarif Base est simple, sans contrainte horaire.'}
-                    </p>
-                </div>
-                ` : ''}
-                
-                
-                ${tarifTempo.details_periodes ? `
-                <div class="tempo-details">
-                    <div class="tempo-header">
-                        <div class="tempo-icon"></div>
-                        <div class="tempo-title">
-                            <h4>Détails du tarif Tempo</h4>
-                            <div class="tempo-subtitle">Répartition sur 365 jours</div>
-                        </div>
-                    </div>
-                    
-                    <div class="tempo-periods">
-                        <!-- Jours Bleus -->
-                        <div class="period-card period-bleu">
-                            <div class="period-header">
-                                <span class="period-name">Jours Bleus</span>
-                                <span class="period-days">${tarifTempo.details_periodes.bleu.jours} jours</span>
-                            </div>
-                            <div class="period-cost">${Math.round(tarifTempo.details_periodes.bleu.cout_total).toLocaleString()}€</div>
-                            <div class="period-details">
-                                <div class="period-detail-row">
-                                    <span class="detail-label">Heures Pleines:</span>
-                                    <span class="detail-value">${tarifTempo.details_periodes.bleu.hp_prix}€/kWh</span>
-                                </div>
-                                <div class="period-detail-row">
-                                    <span class="detail-label">Heures Creuses:</span>
-                                    <span class="detail-value">${tarifTempo.details_periodes.bleu.hc_prix}€/kWh</span>
-                                </div>
-                                <div class="period-detail-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);">
-                                    <span class="detail-label">% de l'année:</span>
-                                    <span class="detail-value">82%</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Jours Blancs -->
-                        <div class="period-card period-blanc">
-                            <div class="period-indicator"></div>
-                            <div class="period-header">
-                                <span class="period-name">Jours Blancs</span>
-                                <span class="period-days">${tarifTempo.details_periodes.blanc.jours} jours</span>
-                            </div>
-                            <div class="period-cost">${Math.round(tarifTempo.details_periodes.blanc.cout_total).toLocaleString()}€</div>
-                            <div class="period-details">
-                                <div class="period-detail-row">
-                                    <span class="detail-label">Heures Pleines:</span>
-                                    <span class="detail-value">${tarifTempo.details_periodes.blanc.hp_prix}€/kWh</span>
-                                </div>
-                                <div class="period-detail-row">
-                                    <span class="detail-label">Heures Creuses:</span>
-                                    <span class="detail-value">${tarifTempo.details_periodes.blanc.hc_prix}€/kWh</span>
-                                </div>
-                                <div class="period-detail-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);">
-                                    <span class="detail-label">% de l'année:</span>
-                                    <span class="detail-value">12%</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Jours Rouges -->
-                        <div class="period-card period-rouge">
-                            <div class="period-indicator"></div>
-                            <div class="period-header">
-                                <span class="period-name">Jours Rouges</span>
-                                <span class="period-days">${tarifTempo.details_periodes.rouge.jours} jours</span>
-                            </div>
-                            <div class="period-cost">${Math.round(tarifTempo.details_periodes.rouge.cout_total).toLocaleString()}€</div>
-                            <div class="period-details">
-                                <div class="period-detail-row">
-                                    <span class="detail-label">Heures Pleines:</span>
-                                    <span class="detail-value" style="color: #c62828;">${tarifTempo.details_periodes.rouge.hp_prix}€/kWh</span>
-                                </div>
-                                <div class="period-detail-row">
-                                    <span class="detail-label">Heures Creuses:</span>
-                                    <span class="detail-value">${tarifTempo.details_periodes.rouge.hc_prix}€/kWh</span>
-                                </div>
-                                <div class="period-detail-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);">
-                                    <span class="detail-label">% de l'année:</span>
-                                    <span class="detail-value">6%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tempo-footer">
-                        <div class="tempo-info">
-                            <strong>💡 Conseil :</strong> Le tarif Tempo est avantageux si vous pouvez réduire fortement votre consommation les 22 jours rouges (tarif jusqu'à 4× plus cher en heures pleines). Idéal avec un chauffage d'appoint non électrique.
-                        </div>
-                    </div>
-                </div>
-                ` : ''}
-            </div>
-            
-            <!-- Répartition de la consommation -->
-            <div class="repartition-conso">
-                <div class="repartition-header">
-                    <h3>Répartition de votre consommation</h3>
-                    <p class="repartition-subtitle">Analyse détaillée par poste de consommation</p>
-                </div>
-                
                 <div class="repartition-content">
-                    ${chauffage > 0 ? `
-                    <div class="repartition-item chauffage">
+            `;
+
+            Object.keys(repartition).forEach(key => {
+                let value = 0;
+
+                if (key === 'equipements_speciaux') {
+                    if (typeof repartition[key] === 'object' && repartition[key] !== null) {
+                        for (let subKey in repartition[key]) {
+                            value += parseInt(repartition[key][subKey]) || 0;
+                        }
+                    } else {
+                        value = parseInt(repartition[key]) || 0;
+                    }
+                } else {
+                    value = parseInt(repartition[key]) || 0;
+                }
+
+                const percentage = Math.round(value / consommationAnnuelle * 100);
+
+                chartData.push(value);
+                chartLabels.push(getConsumptionLabel(key));
+                chartColors.push(colorMap[key] || '#C9CBCF');
+
+                breakdownHtml += `
+                    <div class="repartition-item ${key}">
                         <div class="item-header">
                             <div class="item-info">
-                                <div class="item-icon">🔥</div>
+                                <div class="item-icon">${getConsumptionIcon(key)}</div>
                                 <div class="item-details">
-                                    <div class="item-name">Chauffage</div>
-                                    <div class="item-value">${chauffage.toLocaleString()} kWh/an</div>
+                                    <div class="item-name">${getConsumptionLabel(key)}</div>
+                                    <div class="item-value">${value.toLocaleString()} kWh/an</div>
                                 </div>
                             </div>
                             <div class="item-stats">
-                                <div class="item-percentage">${Math.round(chauffage / consommationAnnuelle * 100)}%</div>
+                                <div class="item-percentage">${percentage}%</div>
                                 <div class="item-kwh">du total</div>
                             </div>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${Math.round(chauffage / consommationAnnuelle * 100)}%"></div>
+                            <div class="progress-fill" style="width: ${percentage}%; background-color: ${colorMap[key] || '#C9CBCF'}"></div>
                         </div>
-                    </div>` : ''}
+                    </div>
+                `;
+            });
+
+            breakdownHtml += `</div>`;
+
+            window.chartData = {
+                data: chartData,
+                labels: chartLabels,
+                colors: chartColors
+            };
+
+            return breakdownHtml;
+        }
+
+        function generateRecapitulatif() {
+            const allData = collectAllFormData();
+            const clientData = collectClientData();
+            const results = window.calculationResults;
+
+            const recapHTML = `
+                <div class="recapitulatif-complet">
+                    <h3>Récapitulatif de votre simulation</h3>
                     
-                    ${eauChaude > 0 ? `
-                    <div class="repartition-item eau-chaude">
-                        <div class="item-header">
-                            <div class="item-info">
-                                <div class="item-icon">💧</div>
-                                <div class="item-details">
-                                    <div class="item-name">Eau chaude</div>
-                                    <div class="item-value">${eauChaude.toLocaleString()} kWh/an</div>
-                                </div>
+                    <div class="recap-section">
+                        <h4>🏠 Votre logement</h4>
+                        <div class="recap-grid">
+                            <div class="recap-item">
+                                <span class="label">Type :</span>
+                                <span class="value">${getLogementLabel(allData.type_logement)}</span>
                             </div>
-                            <div class="item-stats">
-                                <div class="item-percentage">${Math.round(eauChaude / consommationAnnuelle * 100)}%</div>
-                                <div class="item-kwh">du total</div>
+                            <div class="recap-item">
+                                <span class="label">Surface :</span>
+                                <span class="value">${allData.surface} m²</span>
+                            </div>
+                            <div class="recap-item">
+                                <span class="label">Occupants :</span>
+                                <span class="value">${allData.nb_personnes} personne(s)</span>
+                            </div>
+                            <div class="recap-item">
+                                <span class="label">Isolation :</span>
+                                <span class="value">${getIsolationLabel(allData.isolation)}</span>
                             </div>
                         </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${Math.round(eauChaude / consommationAnnuelle * 100)}%"></div>
-                        </div>
-                    </div>` : ''}
+                    </div>
                     
-                    ${electromenagers > 0 ? `
-                    <div class="repartition-item electromenager">
-                        <div class="item-header">
-                            <div class="item-info">
-                                <div class="item-icon">🔌</div>
-                                <div class="item-details">
-                                    <div class="item-name">Électroménager</div>
-                                    <div class="item-value">${electromenagers.toLocaleString()} kWh/an</div>
-                                </div>
+                    <div class="recap-section">
+                        <h4>⚡ Vos équipements</h4>
+                        <div class="recap-grid">
+                            <div class="recap-item">
+                                <span class="label">Chauffage :</span>
+                                <span class="value">${getHeatingLabel(allData.type_chauffage)}</span>
                             </div>
-                            <div class="item-stats">
-                                <div class="item-percentage">${Math.round(electromenagers / consommationAnnuelle * 100)}%</div>
-                                <div class="item-kwh">du total</div>
+                            <div class="recap-item">
+                                <span class="label">Cuisson :</span>
+                                <span class="value">${getCuissonLabel(allData.type_cuisson)}</span>
+                            </div>
+                            <div class="recap-item">
+                                <span class="label">Eau chaude :</span>
+                                <span class="value">${allData.eau_chaude}</span>
+                            </div>
+                            <div class="recap-item">
+                                <span class="label">Éclairage :</span>
+                                <span class="value">${getEclairageLabel(allData.type_eclairage)}</span>
                             </div>
                         </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${Math.round(electromenagers / consommationAnnuelle * 100)}%"></div>
-                        </div>
-                    </div>` : ''}
+                    </div>
                     
-                    ${eclairage > 0 ? `
-                    <div class="repartition-item eclairage">
-                        <div class="item-header">
-                            <div class="item-info">
-                                <div class="item-icon">💡</div>
-                                <div class="item-details">
-                                    <div class="item-name">Éclairage</div>
-                                    <div class="item-value">${eclairage.toLocaleString()} kWh/an</div>
-                                </div>
+                    <div class="recap-section highlight">
+                        <h4>📋 Votre formule</h4>
+                        <div class="recap-grid">
+                            <div class="recap-item">
+                                <span class="label">Tarif :</span>
+                                <span class="value">${getTarifLabel(allData.tarif_choisi)}</span>
                             </div>
-                            <div class="item-stats">
-                                <div class="item-percentage">${Math.round(eclairage / consommationAnnuelle * 100)}%</div>
-                                <div class="item-kwh">du total</div>
+                            <div class="recap-item">
+                                <span class="label">Puissance :</span>
+                                <span class="value">${allData.puissance_choisie} kVA</span>
+                            </div>
+                            <div class="recap-item">
+                                <span class="label">Coût annuel :</span>
+                                <span class="value">${getTotalAnnuelChoisi(results, allData.tarif_choisi)}€ TTC</span>
                             </div>
                         </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${Math.round(eclairage / consommationAnnuelle * 100)}%"></div>
-                        </div>
-                    </div>` : ''}
+                    </div>
                     
-                    ${multimedia > 0 ? `
-                    <div class="repartition-item multimedia">
-                        <div class="item-header">
-                            <div class="item-info">
-                                <div class="item-icon">📺</div>
-                                <div class="item-details">
-                                    <div class="item-name">Multimédia</div>
-                                    <div class="item-value">${multimedia.toLocaleString()} kWh/an</div>
-                                </div>
+                    <div class="recap-section">
+                        <h4>👤 Vos informations</h4>
+                        <div class="recap-grid">
+                            <div class="recap-item">
+                                <span class="label">Nom :</span>
+                                <span class="value">${clientData.nom} ${clientData.prenom}</span>
                             </div>
-                            <div class="item-stats">
-                                <div class="item-percentage">${Math.round(multimedia / consommationAnnuelle * 100)}%</div>
-                                <div class="item-kwh">du total</div>
+                            <div class="recap-item">
+                                <span class="label">Email :</span>
+                                <span class="value">${clientData.email}</span>
                             </div>
+                            <div class="recap-item">
+                                <span class="label">Téléphone :</span>
+                                <span class="value">${clientData.telephone}</span>
+                            </div>
+                            ${clientData.adresse ? `
+                            <div class="recap-item">
+                                <span class="label">Adresse :</span>
+                                <span class="value">${clientData.adresse} ${clientData.code_postal} ${clientData.ville}</span>
+                            </div>
+                            ` : ''}
                         </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${Math.round(multimedia / consommationAnnuelle * 100)}%"></div>
-                        </div>
-                    </div>` : ''}
-                    
-                    ${equipementsSpeciaux > 0 ? `
-                    <div class="repartition-item equipements">
-                        <div class="item-header">
-                            <div class="item-info">
-                                <div class="item-icon">⚡</div>
-                                <div class="item-details">
-                                    <div class="item-name">Équipements spéciaux</div>
-                                    <div class="item-value">${equipementsSpeciaux.toLocaleString()} kWh/an</div>
-                                </div>
-                            </div>
-                            <div class="item-stats">
-                                <div class="item-percentage">${Math.round(equipementsSpeciaux / consommationAnnuelle * 100)}%</div>
-                                <div class="item-kwh">du total</div>
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${Math.round(equipementsSpeciaux / consommationAnnuelle * 100)}%"></div>
-                        </div>
-                    </div>` : ''}
-                    
-                    ${autres > 0 ? `
-                    <div class="repartition-item autres">
-                        <div class="item-header">
-                            <div class="item-info">
-                                <div class="item-icon">📊</div>
-                                <div class="item-details">
-                                    <div class="item-name">Autres</div>
-                                    <div class="item-value">${autres.toLocaleString()} kWh/an</div>
-                                </div>
-                            </div>
-                            <div class="item-stats">
-                                <div class="item-percentage">${Math.round(autres / consommationAnnuelle * 100)}%</div>
-                                <div class="item-kwh">du total</div>
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${Math.round(autres / consommationAnnuelle * 100)}%"></div>
-                        </div>
-                    </div>` : ''}
-                </div>
-                
-            </div>
-            
-            <!-- Récapitulatif -->
-            <div class="recap-section">
-                <div class="recap-header">
-                    <h3>Récapitulatif complet de votre simulation</h3>
-                </div>
-                
-                <div class="recap-content">
-                    <div class="recap-categories">
-                        
-                        <!-- Logement -->
-                        <div class="recap-category">
-                            <div class="category-header">
-                                <div class="category-icon">🏠</div>
-                                <div class="category-title">Logement</div>
-                            </div>
-                            <div class="category-items">
-                                <div class="recap-item">
-                                    <span class="recap-label">Type de logement</span>
-                                    <span class="recap-value">${getLogementLabel(results.recap?.type_logement)}</span>
-                                </div>
-                                <div class="recap-item">
-                                    <span class="recap-label">Surface habitable</span>
-                                    <span class="recap-value highlight">${results.recap?.surface || '0'} m²</span>
-                                </div>
-                                <div class="recap-item">
-                                    <span class="recap-label">Nombre d'occupants</span>
-                                    <span class="recap-value">${results.recap?.nb_personnes || '0'} personne${results.recap?.nb_personnes > 1 ? 's' : ''}</span>
-                                </div>
-                                <div class="recap-item">
-                                    <span class="recap-label">Isolation thermique</span>
-                                    <span class="recap-value ${getIsolationClass(results.recap?.isolation)}">${getIsolationLabel(results.recap?.isolation)}</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Chauffage & Climatisation -->
-                        <div class="recap-category">
-                            <div class="category-header">
-                                <div class="category-icon">🌡️</div>
-                                <div class="category-title">Chauffage & Climatisation</div>
-                            </div>
-                            <div class="category-items">
-                                <div class="recap-item">
-                                    <span class="recap-label">Mode de chauffage principal</span>
-                                    <span class="recap-value highlight">${getHeatingLabel(results.recap?.type_chauffage)}</span>
-                                </div>
-                                <div class="recap-item">
-                                    <span class="recap-label">Consommation estimée</span>
-                                    <span class="recap-value">${(results.repartition?.chauffage || 0).toLocaleString()} kWh/an</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Suite du récapitulatif... (reste identique) -->
-                        
                     </div>
                 </div>
-            </div>
-            
-            <!-- Actions MODIFIÉES avec bouton email -->
-            <div class="results-actions">
-                <button class="btn btn-primary" id="btn-send-email">✉️ Recevoir par email</button>
-                <button class="btn btn-secondary" onclick="location.reload()">🔄 Nouvelle simulation</button>
-            </div>
-            
-            <!-- Message de confirmation email (caché par défaut) -->
-            <div class="confirmation-message" id="email-confirmation" style="display: none;">
-                <div class="success-icon">✅</div>
-                <p>Votre simulation a été envoyée avec succès à <strong id="email-display"></strong></p>
-            </div>
-        </div>
-    `;
+            `;
 
-        $('#results-container').html(resultsHtml);
-        $('.results-summary').hide().fadeIn(600);
-
-        setupEmailActionsElecResidentiel();
-    }
-
-    // ===============================
-    // FONCTIONS UTILITAIRES (reste identique)
-    // ===============================
-
-    function getIsolationClass(isolation) {
-        switch (isolation) {
-            case 'renovation':
-            case 'apres_2000':
-                return 'success';
-            case '1980_2000':
-                return 'warning';
-            case 'avant_1980':
-                return 'warning';
-            default:
-                return '';
+            $('#recap-container').html(recapHTML);
         }
-    }
 
-    function getLogementLabel(type) {
-        const labels = {
-            'maison': '🏠 Maison',
-            'appartement': '🏢 Appartement'
-        };
-        return labels[type] || type;
-    }
+        // ===============================
+        // GRAPHIQUE
+        // ===============================
 
-    function getHeatingLabel(type) {
-        const labels = {
-            'convecteurs': '🔥 Convecteurs électriques',
-            'inertie': '🌡️ Radiateurs à inertie',
-            'clim_reversible': '❄️ Climatisation réversible',
-            'pac': '💨 Pompe à chaleur',
-            'autre': '🚫 Pas de chauffage électrique'
-        };
-        return labels[type] || type;
-    }
+        function createConsumptionPieChart() {
+            if (typeof Chart === 'undefined') {
+                loadChartJS().then(() => {
+                    createChart();
+                }).catch(error => {
+                    console.error('Erreur chargement Chart.js:', error);
+                });
+                return;
+            }
 
-    function getIsolationLabel(code) {
-        const labels = {
-            'avant_1980': 'Avant 1980 (faible isolation)',
-            '1980_2000': '1980-2000 (isolation moyenne)',
-            'apres_2000': 'Après 2000 (bonne isolation)',
-            'renovation': 'Rénovation récente (très bonne isolation)'
-        };
-        return labels[code] || code;
-    }
+            createChart();
+        }
 
-    function getCuissonLabel(code) {
-        const labels = {
-            'plaque_induction': 'Plaques à induction',
-            'plaque_vitroceramique': 'Plaques vitrocéramiques',
-            'autre': 'Autre (gaz, mixte...)'
-        };
-        return labels[code] || code;
-    }
+        function loadChartJS() {
+            return new Promise((resolve, reject) => {
+                if (typeof Chart !== 'undefined') {
+                    resolve();
+                    return;
+                }
 
-    function getEclairageLabel(code) {
-        const labels = {
-            'led': 'LED (basse consommation)',
-            'incandescence_halogene': 'Incandescence ou halogène'
-        };
-        return labels[code] || code;
-    }
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Impossible de charger Chart.js'));
+                document.head.appendChild(script);
+            });
+        }
 
-    function getPiscineLabel(code) {
-        const labels = {
-            'simple': 'Piscine simple (filtration)',
-            'chauffee': 'Piscine chauffée',
-            'non': 'Pas de piscine'
-        };
-        return labels[code] || code;
-    }
+        function createChart() {
+            const ctx = document.getElementById('consumptionPieChart');
 
-    function getElectromenagerLabel(code) {
-        const labels = {
-            'lave_linge': 'Lave-linge',
-            'seche_linge': 'Sèche-linge',
-            'refrigerateur': 'Réfrigérateur',
-            'lave_vaisselle': 'Lave-vaisselle',
-            'four': 'Four',
-            'congelateur': 'Congélateur',
-            'cave_a_vin': 'Cave à vin'
-        };
-        return labels[code] || code;
-    }
+            if (!ctx || !window.chartData || !window.chartData.data || window.chartData.data.length === 0) {
+                console.error('Impossible de créer le graphique');
+                return;
+            }
 
-    function getEquipementSpecialLabel(code) {
-        const labels = {
-            'spa_jacuzzi': 'Spa/Jacuzzi',
-            'voiture_electrique': 'Voiture électrique',
-            'aquarium': 'Aquarium',
-            'climatiseur_mobile': 'Climatiseur mobile'
-        };
-        return labels[code] || code;
-    }
+            if (window.consumptionChart) {
+                window.consumptionChart.destroy();
+            }
 
-    function getPreferenceLabel(code) {
-        const labels = {
-            'indifferent': 'Indifférent',
-            'hc': 'Optimisé Heures Creuses',
-            'base': 'Tarif Base'
-        };
-        return labels[code] || code;
-    }
+            try {
+                window.consumptionChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: window.chartData.labels,
+                        datasets: [{
+                            data: window.chartData.data,
+                            backgroundColor: window.chartData.colors,
+                            borderColor: '#fff',
+                            borderWidth: 2,
+                            hoverBorderWidth: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    padding: 20,
+                                    usePointStyle: true,
+                                    font: { size: 14 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = window.chartData.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: ${value.toLocaleString()} kWh (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            animateRotate: true,
+                            duration: 1500
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Erreur lors de la création du chart:', error);
+            }
+        }
 
-    function displayError(message) {
-        $('#results-container').html(`
-            <div class="error-state">
-                <div class="error-icon">❌</div>
-                <h3>Erreur lors du calcul</h3>
-                <p>${message}</p>
-                <div class="error-actions">
-                    <button class="btn btn-primary" onclick="location.reload()">🔄 Recharger</button>
-                    <button class="btn btn-secondary" id="btn-back-to-form">← Retour au formulaire</button>
+        // ===============================
+        // UTILITAIRES
+        // ===============================
+
+        function showValidationMessage(message) {
+            $('.validation-message').remove();
+
+            const $message = $(`<div class="validation-message">${message}</div>`);
+            const activeStep = $('.form-step.active');
+            const stepHeader = activeStep.find('.step-header');
+
+            stepHeader.after($message);
+            $message.hide().slideDown(300);
+
+            setTimeout(() => {
+                $message.slideUp(300, () => $message.remove());
+            }, 5000);
+        }
+
+        function showNotification(message, type = 'info') {
+            $('.notification').remove();
+
+            const $notification = $(`
+                <div class="notification notification-${type}">
+                    ${message}
                 </div>
-            </div>
-        `);
+            `);
 
-        $('#btn-back-to-form').on('click', function () {
-            goToStep(6);
-        });
-    }
+            $('body').append($notification);
 
-    function showValidationMessage(message) {
-        $('.validation-message').remove();
+            setTimeout(() => {
+                $notification.addClass('show');
+            }, 100);
 
-        const $message = $(`<div class="validation-message">${message}</div>`);
-        const activeStep = $('.form-step.active');
-        const stepHeader = activeStep.find('.step-header');
+            setTimeout(() => {
+                $notification.removeClass('show');
+                setTimeout(() => {
+                    $notification.remove();
+                }, 300);
+            }, 4000);
+        }
 
-        stepHeader.after($message);
-        $message.hide().slideDown(300);
+        function restartSimulation() {
+            currentStep = 1;
+            formData = {};
+            calculationResults = null;
 
-        setTimeout(() => {
-            $message.slideUp(300, () => $message.remove());
-        }, 5000);
-    }
+            $('#simulateur-elec-residentiel')[0].reset();
+            $('.field-error, .field-success').removeClass('field-error field-success');
 
-    function restartSimulation() {
-        currentStep = 1;
-        formData = {};
-        calculationResults = null;
+            updateUI();
+        }
 
-        $('#simulateur-elec-residentiel')[0].reset();
+        function getTarifLabel(tarif) {
+            const labels = {
+                'base': 'Base TRV',
+                'hc': 'Heures Creuses TRV',
+                'tempo': 'Tempo TRV'
+            };
+            return labels[tarif] || tarif;
+        }
 
-        showStep(1);
-        updateProgress();
-        updateNavigation();
+        function getTotalAnnuelChoisi(results, tarif) {
+            if (!results || !results.tarifs || !results.tarifs[tarif]) return 0;
+            return parseInt(results.tarifs[tarif].total_annuel) || 0;
+        }
 
-        $('.field-error, .field-success').removeClass('field-error field-success');
-    }
+        function getConsumptionLabel(key) {
+            const labels = {
+                'chauffage': 'Chauffage',
+                'eau_chaude': 'Eau chaude',
+                'electromenagers': 'Électroménager',
+                'eclairage': 'Éclairage',
+                'multimedia': 'Multimédia',
+                'equipements_speciaux': 'Équipements spéciaux',
+                'autres': 'Autres'
+            };
+            return labels[key] || key;
+        }
 
-    // ===============================
-    // FONCTIONS GLOBALES
-    // ===============================
+        function getConsumptionIcon(key) {
+            const icons = {
+                'chauffage': '🔥',
+                'eau_chaude': '💧',
+                'electromenagers': '🔌',
+                'eclairage': '💡',
+                'multimedia': '📺',
+                'equipements_speciaux': '⚡',
+                'autres': '📊'
+            };
+            return icons[key] || '📊';
+        }
 
-    window.downloadPDF = function () {
-        alert('Fonction de téléchargement PDF en cours de développement');
-    };
+        function getLogementLabel(type) {
+            const labels = {
+                'maison': '🏠 Maison',
+                'appartement': '🏢 Appartement'
+            };
+            return labels[type] || type;
+        }
 
-    // API publique pour récupérer les données
-    window.HticSimulateurData = {
-        getCurrentData: () => formData,
-        getAllData: collectAllFormData,
-        getConfigData: () => configData,
-        getCurrentStep: () => currentStep,
-        goToStep: goToStep,
-        testEmailValidation: () => validateEmailData('elec-residentiel', collectAllFormData(), collectClientData())
-    };
+        function getIsolationLabel(code) {
+            const labels = {
+                'avant_1980': 'Avant 1980 (faible isolation)',
+                '1980_2000': '1980-2000 (isolation moyenne)',
+                'apres_2000': 'Après 2000 (bonne isolation)',
+                'renovation': 'Rénovation récente (très bonne isolation)'
+            };
+            return labels[code] || code;
+        }
 
-});
+        function getHeatingLabel(type) {
+            const labels = {
+                'convecteurs': '🔥 Convecteurs électriques',
+                'inertie': '🌡️ Radiateurs à inertie',
+                'clim_reversible': '❄️ Climatisation réversible',
+                'pac': '💨 Pompe à chaleur',
+                'autre': '🚫 Pas de chauffage électrique'
+            };
+            return labels[type] || type;
+        }
+
+        function getCuissonLabel(code) {
+            const labels = {
+                'plaque_induction': 'Plaques à induction',
+                'plaque_vitroceramique': 'Plaques vitrocéramiques',
+                'autre': 'Autre (gaz, mixte...)'
+            };
+            return labels[code] || code;
+        }
+
+        function getEclairageLabel(code) {
+            const labels = {
+                'led': 'LED (basse consommation)',
+                'incandescence_halogene': 'Incandescence ou halogène'
+            };
+            return labels[code] || code;
+        }
+
+        // ===============================
+        // API PUBLIQUE
+        // ===============================
+
+        window.HticSimulateurData = {
+            getCurrentData: () => formData,
+            getAllData: collectAllFormData,
+            getConfigData: () => configData,
+            getCurrentStep: () => currentStep,
+            goToStep: goToStep
+        };
+
+    });
+
+})(jQuery);

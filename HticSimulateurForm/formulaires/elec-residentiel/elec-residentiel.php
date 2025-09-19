@@ -746,140 +746,291 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
         <!-- ÉTAPE 9: Informations client -->
         <div class="form-step" data-step="9">
             <div class="step-header">
-                <h2>👤 Vos informations</h2>
-                <p>Complétez vos coordonnées pour finaliser votre simulation</p>
+                <h2>Informations de contact</h2>
+                <p>Dernière étape avant votre souscription</p>
             </div>
             
             <div class="form-content">
-                <div class="form-grid">
-                    
-                    <!-- Informations obligatoires -->
-                    <div class="field-group">
-                        <label for="client_nom" class="field-label required">
-                            <span class="label-icon">👤</span>
-                            Nom
-                        </label>
-                        <input type="text" 
-                               id="client_nom" 
-                               name="client_nom" 
-                               class="field-input" 
-                               required 
-                               placeholder="Votre nom">
-                        <div class="field-feedback"></div>
+                
+                <!-- Localisation -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon location">📍</div>
+                        <div class="card-title">Localisation</div>
                     </div>
                     
-                    <div class="field-group">
-                        <label for="client_prenom" class="field-label required">
-                            <span class="label-icon">👤</span>
-                            Prénom
-                        </label>
-                        <input type="text" 
-                               id="client_prenom" 
-                               name="client_prenom" 
-                               class="field-input" 
-                               required 
-                               placeholder="Votre prénom">
-                        <div class="field-feedback"></div>
+                    <div class="card-body">
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="pdl_adresse" 
+                                    name="pdl_adresse" 
+                                    placeholder=" " 
+                                    >
+                                <label for="pdl_adresse">Point de livraison</label>
+                                <span class="input-hint">Format: BT/40001/000001</span>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="numero_compteur" 
+                                    name="numero_compteur" 
+                                    placeholder=" " 
+                                    >
+                                <label for="numero_compteur">N° Point Référence Mesure</label>
+                                <span class="input-hint">Écran N°6 Linky</span>
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="toggle-btn" id="btn-no-info">
+                            <span class="toggle-text">Je n'ai pas ces informations</span>
+                            <span class="toggle-icon">+</span>
+                        </button>
+                        
+                        <div class="collapsible-section" id="address-section">
+                            <div class="dual-input">
+                                <div class="input-box flex-2">
+                                    <input type="text" 
+                                        id="client_adresse" 
+                                        name="client_adresse" 
+                                        placeholder=" ">
+                                    <label for="client_adresse">Adresse complète</label>
+                                </div>
+                                
+                                <div class="input-box">
+                                    <input type="text" 
+                                        id="client_code_postal" 
+                                        name="client_code_postal" 
+                                        placeholder=" " 
+                                        maxlength="5">
+                                    <label for="client_code_postal">Code postal</label>
+                                </div>
+                            </div>
+                            
+                            <div class="dual-input">
+                                <div class="input-box">
+                                    <input type="text" 
+                                        id="client_complement" 
+                                        name="client_complement" 
+                                        placeholder=" ">
+                                    <label for="client_complement">Complément (optionnel)</label>
+                                </div>
+                                
+                                <div class="input-box">
+                                    <input type="text" 
+                                        id="client_ville" 
+                                        name="client_ville" 
+                                        placeholder=" ">
+                                    <label for="client_ville">Ville</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="field-group full-width">
-                        <label for="client_email" class="field-label required">
-                            <span class="label-icon">📧</span>
-                            Adresse email
-                        </label>
-                        <input type="email" 
-                               id="client_email" 
-                               name="client_email" 
-                               class="field-input" 
-                               required 
-                               placeholder="votre.email@exemple.com">
-                        <div class="field-feedback"></div>
-                        <small class="field-hint">
-                            Nécessaire pour recevoir votre simulation par email
-                        </small>
-                    </div>
-                    
-                    <div class="field-group">
-                        <label for="client_telephone" class="field-label required">
-                            <span class="label-icon">📞</span>
-                            Téléphone
-                        </label>
-                        <input type="tel" 
-                               id="client_telephone" 
-                               name="client_telephone" 
-                               class="field-input" 
-                               required 
-                               placeholder="01 23 45 67 89">
-                        <div class="field-feedback"></div>
-                    </div>
-                    
-                    <!-- Informations optionnelles -->
-                    <h3 class="section-title optional">
-                        <span class="section-icon">📍</span>
-                        Adresse (optionnel)
-                    </h3>
-                    
-                    <div class="field-group full-width">
-                        <label for="client_adresse" class="field-label">
-                            <span class="label-icon">🏠</span>
-                            Adresse
-                        </label>
-                        <input type="text" 
-                               id="client_adresse" 
-                               name="client_adresse" 
-                               class="field-input" 
-                               placeholder="Numéro et nom de rue">
-                        <div class="field-feedback"></div>
-                    </div>
-                    
-                    <div class="field-group">
-                        <label for="client_code_postal" class="field-label">
-                            <span class="label-icon">📮</span>
-                            Code postal
-                        </label>
-                        <input type="text" 
-                               id="client_code_postal" 
-                               name="client_code_postal" 
-                               class="field-input" 
-                               pattern="[0-9]{5}" 
-                               placeholder="75001">
-                        <div class="field-feedback"></div>
-                    </div>
-                    
-                    <div class="field-group">
-                        <label for="client_ville" class="field-label">
-                            <span class="label-icon">🏙️</span>
-                            Ville
-                        </label>
-                        <input type="text" 
-                               id="client_ville" 
-                               name="client_ville" 
-                               class="field-input" 
-                               placeholder="Paris">
-                        <div class="field-feedback"></div>
-                    </div>
-                    
                 </div>
                 
-                <!-- Consentement -->
-                <div class="consent-section">
-                    <div class="consent-item">
-                        <input type="checkbox" 
-                               id="consent_required" 
-                               name="consent_required" 
-                               required>
-                        <label for="consent_required" class="consent-label">
-                            J'accepte d'être contacté par HTIC pour le suivi de ma demande *
-                        </label>
+                <!-- Ancien locataire -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon user">👤</div>
+                        <div class="card-title">Ancien locataire <span class="optional">(optionnel)</span></div>
                     </div>
                     
-                    <div class="consent-item">
-                        <input type="checkbox" 
-                               id="consent_newsletter" 
-                               name="consent_newsletter">
-                        <label for="consent_newsletter" class="consent-label">
-                            Je souhaite recevoir les offres et actualités de HTIC par email
-                        </label>
+                    <div class="card-body">
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="ancien_nom" 
+                                    name="ancien_nom" 
+                                    placeholder=" ">
+                                <label for="ancien_nom">Nom</label>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="ancien_prenom" 
+                                    name="ancien_prenom" 
+                                    placeholder=" ">
+                                <label for="ancien_prenom">Prénom</label>
+                            </div>
+                        </div>
+                        
+                        <div class="input-box">
+                            <input type="text" 
+                                id="ancien_numero_compteur" 
+                                name="ancien_numero_compteur" 
+                                placeholder=" ">
+                            <label for="ancien_numero_compteur">Numéro de compteur</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Informations personnelles -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon profile">✏️</div>
+                        <div class="card-title">Vos informations</div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="client_nom" 
+                                    name="client_nom" 
+                                    placeholder=" " 
+                                    >
+                                <label for="client_nom">Nom *</label>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="client_prenom" 
+                                    name="client_prenom" 
+                                    placeholder=" " 
+                                    >
+                                <label for="client_prenom">Prénom *</label>
+                            </div>
+                        </div>
+                        
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="email" 
+                                    id="client_email" 
+                                    name="client_email" 
+                                    placeholder=" " 
+                                    >
+                                <label for="client_email">Email *</label>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="tel" 
+                                    id="client_telephone" 
+                                    name="client_telephone" 
+                                    placeholder=" " 
+                                    >
+                                <label for="client_telephone">Téléphone *</label>
+                            </div>
+                        </div>
+                        
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="date" 
+                                    id="client_date_naissance" 
+                                    name="client_date_naissance" 
+                                    >
+                                <label for="client_date_naissance">Date de naissance *</label>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="client_lieu_naissance" 
+                                    name="client_lieu_naissance" 
+                                    placeholder=" ">
+                                <label for="client_lieu_naissance">Lieu de naissance</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documents -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon documents">📎</div>
+                        <div class="card-title">Documents requis</div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="upload-grid">
+                            <div class="upload-card" data-file="rib_file">
+                                <div class="upload-visual">
+                                    <div class="upload-type rib">🏦</div>
+                                    <h4>RIB</h4>
+                                    <p>Relevé d'Identité Bancaire</p>
+                                </div>
+                                <div class="upload-action">
+                                    <button type="button" class="upload-trigger">Parcourir</button>
+                                    <span class="upload-info">PDF, JPG, PNG - 5Mo max</span>
+                                </div>
+                                <input type="file" 
+                                    id="rib_file" 
+                                    name="rib_file" 
+                                    accept=".pdf,.jpg,.jpeg,.png" 
+                                    >
+                                <div class="upload-result" id="rib-status"></div>
+                            </div>
+                            
+                            <div class="upload-card" data-file="carte_identite_recto">
+                                <div class="upload-visual">
+                                    <div class="upload-type identity">🆔</div>
+                                    <h4>Pièce d'identité</h4>
+                                    <p>Recto</p>
+                                </div>
+                                <div class="upload-action">
+                                    <button type="button" class="upload-trigger">Parcourir</button>
+                                    <span class="upload-info">JPG, PNG - 5Mo max</span>
+                                </div>
+                                <input type="file" 
+                                    id="carte_identite_recto" 
+                                    name="carte_identite_recto" 
+                                    accept=".jpg,.jpeg,.png" 
+                                    >
+                                <div class="upload-result" id="recto-status"></div>
+                            </div>
+                            
+                            <div class="upload-card" data-file="carte_identite_verso">
+                                <div class="upload-visual">
+                                    <div class="upload-type identity">🆔</div>
+                                    <h4>Pièce d'identité</h4>
+                                    <p>Verso</p>
+                                </div>
+                                <div class="upload-action">
+                                    <button type="button" class="upload-trigger">Parcourir</button>
+                                    <span class="upload-info">JPG, PNG - 5Mo max</span>
+                                </div>
+                                <input type="file" 
+                                    id="carte_identite_verso" 
+                                    name="carte_identite_verso" 
+                                    accept=".jpg,.jpeg,.png" 
+                                    >
+                                <div class="upload-result" id="verso-status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Conditions -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon validation">✅</div>
+                        <div class="card-title">Validation finale</div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="check-list">
+                            <label class="check-item">
+                                <input type="checkbox" 
+                                    id="accept_conditions" 
+                                    name="accept_conditions" 
+                                    >
+                                <span class="checkmark"></span>
+                                <span class="check-text">
+                                    J'accepte les <a href="#" target="_blank">conditions générales</a> 
+                                    et <a href="#" target="_blank">conditions particulières</a>
+                                </span>
+                            </label>
+                            
+                            <label class="check-item">
+                                <input type="checkbox" 
+                                    id="accept_prelevement" 
+                                    name="accept_prelevement" 
+                                    >
+                                <span class="checkmark"></span>
+                                <span class="check-text">
+                                    J'autorise le prélèvement automatique
+                                </span>
+                            </label>
+                            
+                        </div>
                     </div>
                 </div>
                 
@@ -890,49 +1041,20 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
         <div class="form-step" data-step="10">
             <div class="step-header">
                 <h2>📋 Récapitulatif de votre simulation</h2>
-                <p>Vérifiez vos informations avant finalisation</p>
+                <p>Vérifiez toutes vos informations avant finalisation</p>
             </div>
             
             <div class="form-content">
-                
                 <!-- Container pour le récapitulatif généré dynamiquement -->
-                <div id="recap-container">
+                <div id="recap-container-final">
                     <div class="loading-recap">
                         <div class="spinner"></div>
-                        <p>Génération du récapitulatif...</p>
+                        <p>Génération du récapitulatif complet...</p>
                     </div>
                 </div>
                 
                 <!-- Actions finales -->
                 <div class="final-actions">
-                    <div class="action-card">
-                        <div class="action-icon">📧</div>
-                        <div class="action-content">
-                            <h4>Recevoir par email</h4>
-                            <p>Votre simulation détaillée sera envoyée à votre adresse email</p>
-                        </div>
-                        <button type="button" 
-                                class="btn btn-primary" 
-                                id="btn-send-email-contact">
-                            <span class="btn-icon">📤</span>
-                            Envoyer
-                        </button>
-                    </div>
-                    
-                    <div class="action-card">
-                        <div class="action-icon">📞</div>
-                        <div class="action-content">
-                            <h4>Être rappelé</h4>
-                            <p>Un conseiller vous contactera pour finaliser votre souscription</p>
-                        </div>
-                        <button type="button" 
-                                class="btn btn-secondary" 
-                                id="btn-demande-rappel">
-                            <span class="btn-icon">📞</span>
-                            Demander un rappel
-                        </button>
-                    </div>
-                    
                     <div class="action-card highlight">
                         <div class="action-icon">🎯</div>
                         <div class="action-content">
@@ -947,17 +1069,6 @@ $config_data = get_option('htic_simulateur_elec_residentiel_data', array());
                         </button>
                     </div>
                 </div>
-                
-                <!-- Confirmation d'envoi -->
-                <div id="email-confirmation" class="confirmation-message" style="display: none;">
-                    <div class="confirmation-icon">✅</div>
-                    <div class="confirmation-content">
-                        <h4>Email envoyé avec succès !</h4>
-                        <p>Votre simulation a été envoyée à : <span id="email-display"></span></p>
-                        <small>Vérifiez votre boîte de réception et vos spams</small>
-                    </div>
-                </div>
-                
             </div>
         </div>
         

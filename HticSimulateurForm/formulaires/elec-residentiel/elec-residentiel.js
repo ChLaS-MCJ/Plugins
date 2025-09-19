@@ -84,6 +84,17 @@
             // Sélections étape 8
             $(document).on('change', 'input[name="tarif_choisi"]', handleTarifChange);
             $(document).on('change click', 'input[name="puissance_choisie"]', handlePuissanceChange);
+
+            $('#simulateur-elec-residentiel').on('submit', function (e) {
+                e.preventDefault();
+                console.log('Soumission du formulaire bloquée');
+                return false;
+            });
+
+            // S'assurer que les boutons de type button ne soumettent pas le formulaire
+            $('button[type="button"]').on('click', function (e) {
+                e.stopPropagation();
+            });
         }
 
         // ===============================
@@ -172,6 +183,15 @@
             if (currentStep < totalSteps) {
                 currentStep++;
                 updateUI();
+
+                if (currentStep === 9) {
+                    console.log('Navigation suivant -> étape 9');
+                    initStep9();
+                } else if (currentStep === 8) {
+                    setupSelectionStep();
+                } else if (currentStep === 10) {
+                    setupRecapStep();
+                }
             }
         }
 
@@ -187,9 +207,14 @@
                 currentStep = stepNumber;
                 updateUI();
 
-                if (stepNumber === 8) setupSelectionStep();
-                if (stepNumber === 9) setupContactStep();
-                if (stepNumber === 10) setupRecapStep();
+                if (stepNumber === 8) {
+                    setupSelectionStep();
+                } else if (stepNumber === 9) {
+                    console.log('🎯 Appel de initStep9()');
+                    initStep9();
+                } else if (stepNumber === 10) {
+                    setupRecapStep();
+                }
             }
         }
 
@@ -363,13 +388,118 @@
             }
         }
 
-        function setupContactStep() {
-            // Actions étape contact
+
+        function initStep9() {
+            console.log('🚀 Initialisation étape 9');
+
+            // Toggle pour l'adresse
+            const toggleBtn = document.getElementById('btn-no-info');
+            const addressSection = document.getElementById('address-section');
+
+            if (toggleBtn && addressSection) {
+                // Nettoyer les anciens listeners
+                $(toggleBtn).off('click');
+
+                $(toggleBtn).on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation(); // Empêcher la propagation
+                    console.log('Toggle cliqué');
+
+                    $(this).toggleClass('active');
+                    $(addressSection).toggleClass('show');
+
+                    const toggleText = $(this).find('.toggle-text');
+                    const toggleIcon = $(this).find('.toggle-icon');
+
+                    if ($(this).hasClass('active')) {
+                        toggleIcon.text('×');
+                        toggleText.text("Masquer l'adresse");
+                    } else {
+                        toggleIcon.text('+');
+                        toggleText.text("Je n'ai pas ces informations");
+                    }
+                });
+            }
+
+            // Upload de fichiers
+            $('.form-step[data-step="9"] .upload-card').each(function () {
+                const card = $(this);
+                const trigger = card.find('.upload-trigger');
+                const fileInput = card.find('input[type="file"]');
+                const resultDiv = card.find('.upload-result');
+
+                if (trigger.length && fileInput.length) {
+                    trigger.off('click').on('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fileInput.click();
+                    });
+
+                    card.off('click').on('click', function (e) {
+                        if (!$(e.target).is(trigger) && !$(e.target).is(fileInput)) {
+                            e.preventDefault();
+                            fileInput.click();
+                        }
+                    });
+
+                    fileInput.off('change').on('change', function () {
+                        if (this.files && this.files[0]) {
+                            const file = this.files[0];
+                            const maxSize = 5 * 1024 * 1024;
+
+                            if (file.size > maxSize) {
+                                card.removeClass('has-file');
+                                resultDiv.text('❌ Fichier trop volumineux').addClass('error');
+                                this.value = '';
+                                return;
+                            }
+
+                            card.addClass('has-file');
+                            let fileName = file.name;
+                            if (fileName.length > 20) {
+                                fileName = fileName.substring(0, 17) + '...';
+                            }
+                            resultDiv.text('✅ ' + fileName).addClass('success').removeClass('error');
+                        } else {
+                            card.removeClass('has-file');
+                            resultDiv.text('');
+                        }
+                    });
+                }
+            });
+
+            // Validation email
+            $('#client_email').off('blur').on('blur', function () {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (this.value && !emailRegex.test(this.value)) {
+                    $(this).addClass('field-error');
+                } else {
+                    $(this).removeClass('field-error');
+                }
+            });
+
+            // Formatage téléphone
+            $('#client_telephone').off('input').on('input', function () {
+                let value = this.value.replace(/\D/g, '');
+                if (value.length > 0) {
+                    const parts = value.match(/.{1,2}/g);
+                    if (parts) {
+                        this.value = parts.slice(0, 5).join(' ');
+                    }
+                }
+            });
+
+            // Code postal
+            $('#client_code_postal').off('input').on('input', function () {
+                this.value = this.value.replace(/\D/g, '').slice(0, 5);
+            });
+
+            console.log('✅ Étape 9 initialisée avec succès');
         }
 
         function setupRecapStep() {
             if (currentStep === 10) {
-                generateRecapitulatif();
+                generateRecapitulatifFinal();
             }
         }
 
@@ -462,45 +592,82 @@
         }
 
         function validateStep9(stepElement) {
-            let isValid = true;
-            const errors = [];
+            console.log('🔍 Validation étape 9');
 
+            let isValid = true;
+
+            // Liste des champs à valider
             const requiredFields = [
-                { id: 'client_nom', label: 'Nom' },
-                { id: 'client_prenom', label: 'Prénom' },
-                { id: 'client_email', label: 'Email' },
-                { id: 'client_telephone', label: 'Téléphone' }
+                'client_nom', 'client_prenom', 'client_email',
+                'client_telephone', 'client_date_naissance'
             ];
 
-            requiredFields.forEach(field => {
-                const $field = stepElement.find(`#${field.id}`);
-                const value = $field.val().trim();
+            const requiredFiles = [
+                'rib_file', 'carte_identite_recto', 'carte_identite_verso'
+            ];
 
-                if (!value) {
+            const requiredCheckboxes = [
+                'accept_conditions', 'accept_prelevement'
+            ];
+
+            // Vérifier les champs texte
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && !field.value.trim()) {
+                    $(field).addClass('field-error');
                     isValid = false;
-                    errors.push(`Le champ "${field.label}" est requis`);
-                    $field.addClass('field-error');
-                } else {
-                    $field.removeClass('field-error').addClass('field-success');
+                } else if (field) {
+                    $(field).removeClass('field-error');
                 }
             });
 
-            const email = stepElement.find('#client_email').val().trim();
-            if (email && !isValidEmail(email)) {
-                isValid = false;
-                errors.push('L\'adresse email n\'est pas valide');
-                stepElement.find('#client_email').addClass('field-error');
-            }
+            // Vérifier les fichiers
+            requiredFiles.forEach(fileId => {
+                const file = document.getElementById(fileId);
+                if (file && !file.files.length) {
+                    $(file).closest('.upload-card').addClass('upload-error');
+                    isValid = false;
+                } else if (file) {
+                    $(file).closest('.upload-card').removeClass('upload-error');
+                }
+            });
 
-            const phone = stepElement.find('#client_telephone').val().trim();
-            if (phone && !isValidPhone(phone)) {
-                isValid = false;
-                errors.push('Le numéro de téléphone n\'est pas valide');
-                stepElement.find('#client_telephone').addClass('field-error');
-            }
+            // Vérifier les checkboxes
+            requiredCheckboxes.forEach(checkboxId => {
+                const checkbox = document.getElementById(checkboxId);
+                if (checkbox && !checkbox.checked) {
+                    $(checkbox).closest('.check-item').addClass('field-error');
+                    isValid = false;
+                } else if (checkbox) {
+                    $(checkbox).closest('.check-item').removeClass('field-error');
+                }
+            });
 
-            if (!isValid && errors.length > 0) {
-                showValidationMessage(errors.join('<br>'));
+            // Vérifier l'adresse SI elle est visible
+            const addressSection = document.getElementById('address-section');
+            if (addressSection && $(addressSection).hasClass('show')) {
+                const addressFields = ['client_adresse', 'client_code_postal', 'client_ville'];
+                addressFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value.trim()) {
+                        $(field).addClass('field-error');
+                        isValid = false;
+                    } else if (field) {
+                        $(field).removeClass('field-error');
+                    }
+                });
+            } else {
+                // Si l'adresse n'est PAS visible, vérifier PDL et compteur
+                const pdlFields = ['pdl_adresse', 'numero_compteur'];
+                pdlFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value.trim()) {
+                        $(field).addClass('field-error');
+                        isValid = false;
+                    } else if (field) {
+                        $(field).removeClass('field-error');
+                    }
+                });
             }
 
             return isValid;
@@ -751,6 +918,7 @@
                         window.calculationResults = response.data;
                         window.clientData = clientData;
                         window.simulationData = userData;
+                        window.originalRecommendedPower = response.data.puissance_recommandee;
                         displayResults(response.data);
                     } else {
                         displayError('Erreur lors du calcul: ' + (response.data || 'Erreur inconnue'));
@@ -882,6 +1050,369 @@
             }, 500);
         }
 
+        function generateRecapitulatifFinal() {
+            console.log('🎯 Génération du récapitulatif complet étape 10');
+
+            // Collecter toutes les données
+            const allData = collectAllFormData();
+            const clientData = collectClientData();
+            const results = window.calculationResults;
+
+            // DEBUG COMPLET
+            console.group('📊 DEBUG DONNÉES ÉTAPE 10');
+            console.log('allData:', allData);
+            console.log('clientData:', clientData);
+            console.log('results:', results);
+            console.log('window.calculationResults:', window.calculationResults);
+            console.log('window.originalRecommendedPower:', window.originalRecommendedPower);
+            console.groupEnd();
+
+            if (!allData || !results) {
+                console.error('❌ Données manquantes pour le récapitulatif');
+                $('#recap-container-final').html(`
+            <div class="error-state">
+                <div class="error-icon">❌</div>
+                <h3>Erreur</h3>
+                <p>Impossible de générer le récapitulatif. Données manquantes.</p>
+                <div style="margin-top: 1rem; padding: 1rem; background: #f3f4f6; border-radius: 8px; font-family: monospace; font-size: 0.875rem;">
+                    <strong>Debug Info:</strong><br>
+                    allData: ${allData ? 'OK' : 'MANQUANT'}<br>
+                    results: ${results ? 'OK' : 'MANQUANT'}<br>
+                    currentStep: ${currentStep}
+                </div>
+            </div>
+        `);
+                return;
+            }
+
+            // Calculs pour l'affichage
+            const tarifChoisi = allData.tarif_choisi || 'base';
+            const puissanceChoisie = allData.puissance_choisie || results.puissance_recommandee;
+
+            // AJOUTER CETTE LIGNE MANQUANTE
+            const puissanceOriginaleRecommandee = window.originalRecommendedPower || results.puissance_recommandee;
+
+            const totalAnnuel = getTotalAnnuelChoisi(results, tarifChoisi);
+            const totalMensuel = Math.round(totalAnnuel / 10);
+            const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
+
+            console.group('📋 CALCULS RÉCAPITULATIF');
+            console.log('tarifChoisi:', tarifChoisi);
+            console.log('puissanceChoisie:', puissanceChoisie);
+            console.log('puissanceOriginaleRecommandee:', puissanceOriginaleRecommandee); // Ajouter ce log
+            console.log('totalAnnuel:', totalAnnuel);
+            console.log('totalMensuel:', totalMensuel);
+            console.log('consommationAnnuelle:', consommationAnnuelle);
+            console.groupEnd();
+
+            // Générer le HTML complet
+            const recapHTML = `
+        <div class="recap-complet">
+            
+            <!-- SECTION FORMULE SÉLECTIONNÉE -->
+            <div class="formule-selectionnee">
+                <div class="formule-header">
+                    <span class="formule-icon">⚡</span>
+                    <h3>Votre formule d'électricité</h3>
+                </div>
+                
+                <div class="formule-details">
+                    <div class="formule-main">
+                        <div class="formule-item tarif">
+                            <div class="formule-label">Tarif sélectionné</div>
+                            <div class="formule-value">${getTarifLabel(tarifChoisi)}</div>
+                            <div class="formule-badge">${getBadgeTarif(tarifChoisi)}</div>
+                        </div>
+                        
+                        <div class="formule-divider"></div>
+                        
+                        <div class="formule-item puissance">
+                            <div class="formule-label">Puissance souscrite</div>
+                            <div class="formule-value">${puissanceChoisie} kVA</div>
+                            <div class="formule-badge ${puissanceChoisie == puissanceOriginaleRecommandee ? 'recommended' : ''}">
+                                ${puissanceChoisie == puissanceOriginaleRecommandee ? '⭐ Recommandée' : 'Personnalisée'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="formule-costs">
+                        <div class="cost-card annual">
+                            <div class="cost-icon">📅</div>
+                            <div class="cost-details">
+                                <div class="cost-label">Coût annuel TTC</div>
+                                <div class="cost-amount">${totalAnnuel.toLocaleString()}€</div>
+                            </div>
+                        </div>
+                        
+                        <div class="cost-card monthly">
+                            <div class="cost-icon">📆</div>
+                            <div class="cost-details">
+                                <div class="cost-label">Moyenne mensuelle</div>
+                                <div class="cost-amount">${totalMensuel.toLocaleString()}€<span>/mois</span></div>
+                                <div class="cost-note">Sur 10 mois</div>
+                            </div>
+                        </div>
+                        
+                        <div class="cost-card consumption">
+                            <div class="cost-icon">⚡</div>
+                            <div class="cost-details">
+                                <div class="cost-label">Consommation estimée</div>
+                                <div class="cost-amount">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECTION LOGEMENT -->
+            <div class="recap-section-detail">
+                <h3 class="section-header-detail">
+                    <span class="section-icon-detail">🏠</span>
+                    Caractéristiques du logement
+                </h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Type de logement</span>
+                        <span class="detail-value">${allData.type_logement === 'maison' ? '🏠 Maison' : '🏢 Appartement'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Surface habitable</span>
+                        <span class="detail-value">${allData.surface} m²</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Nombre d'occupants</span>
+                        <span class="detail-value">${allData.nb_personnes} personne(s)</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Isolation</span>
+                        <span class="detail-value">${getIsolationLabel(allData.isolation)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Type de résidence</span>
+                        <span class="detail-value highlight">${allData.type_logement_usage === 'principal' ? '🏠 Résidence principale' : '🏖️ Résidence secondaire'}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECTION ÉQUIPEMENTS -->
+            <div class="recap-section-detail">
+                <h3 class="section-header-detail">
+                    <span class="section-icon-detail">🔥</span>
+                    Chauffage et équipements
+                </h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Chauffage principal</span>
+                        <span class="detail-value">${getHeatingLabel(allData.type_chauffage)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Eau chaude sanitaire</span>
+                        <span class="detail-value">${allData.eau_chaude === 'oui' ? '💧 Électrique' : '🔥 Autre énergie'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Type de cuisson</span>
+                        <span class="detail-value">${getCuissonLabel(allData.type_cuisson)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Éclairage principal</span>
+                        <span class="detail-value">${allData.type_eclairage === 'led' ? '💡 LED' : '🔆 Halogène/Incandescence'}</span>
+                    </div>
+                </div>
+                
+                <!-- Électroménagers -->
+                <div style="grid-column: 1 / -1; margin-top: 1.5rem;">
+                    <h4 style="margin-bottom: 0.75rem; color: #374151;">Électroménagers sélectionnés :</h4>
+                    <div class="equipment-tags">
+                        ${allData.electromenagers && allData.electromenagers.length > 0
+                    ? allData.electromenagers.map(eq => `
+                                <span class="equipment-tag">
+                                    ${getElectromenagerIcon(eq)} ${getElectromenagerLabel(eq)}
+                                </span>
+                            `).join('')
+                    : '<span class="equipment-tag none">Aucun électroménager sélectionné</span>'
+                }
+                    </div>
+                </div>
+                
+                <!-- Piscine -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                    <div class="detail-item">
+                        <span class="detail-label">Piscine</span>
+                        <span class="detail-value">${getPiscineLabel(allData.piscine)}</span>
+                    </div>
+                </div>
+                
+                <!-- Équipements spéciaux -->
+                ${allData.equipements_speciaux && allData.equipements_speciaux.length > 0 ? `
+                <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                    <h4 style="margin-bottom: 0.75rem; color: #374151;">Autres équipements spéciaux :</h4>
+                    <div class="equipment-tags">
+                        ${allData.equipements_speciaux.map(eq => `
+                            <span class="equipment-tag special">
+                                ${getEquipementSpecialIcon(eq)} ${getEquipementSpecialLabel(eq)}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : `
+                <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                    <h4 style="margin-bottom: 0.75rem; color: #374151;">Autres équipements spéciaux :</h4>
+                    <div class="equipment-tags">
+                        <span class="equipment-tag none">Aucun équipement spécial</span>
+                    </div>
+                </div>
+                `}
+            </div>
+            
+            <!-- SECTION INFORMATIONS PERSONNELLES -->
+            <div class="recap-section-detail">
+                <h3 class="section-header-detail">
+                    <span class="section-icon-detail">👤</span>
+                    Vos informations personnelles
+                </h3>
+                <div class="detail-grid">
+                    ${clientData.nom ? `
+                    <div class="detail-item">
+                        <span class="detail-label">Nom complet</span>
+                        <span class="detail-value">${clientData.nom} ${clientData.prenom}</span>
+                    </div>` : ''}
+                    
+                    ${clientData.email ? `
+                    <div class="detail-item">
+                        <span class="detail-label">Email</span>
+                        <span class="detail-value">${clientData.email}</span>
+                    </div>` : ''}
+                    
+                    ${clientData.telephone ? `
+                    <div class="detail-item">
+                        <span class="detail-label">Téléphone</span>
+                        <span class="detail-value">${clientData.telephone}</span>
+                    </div>` : ''}
+                    
+                    ${getAdditionalClientInfo()}
+                </div>
+                
+                ${clientData.adresse ? `
+                <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                    <div class="detail-item">
+                        <span class="detail-label">Adresse complète</span>
+                        <span class="detail-value">${clientData.adresse}<br>${clientData.code_postal} ${clientData.ville}</span>
+                    </div>
+                </div>` : ''}
+            </div>
+            
+            <!-- SECTION DOCUMENTS ET VALIDATION -->
+            <div class="recap-section-detail">
+                <h3 class="section-header-detail">
+                    <span class="section-icon-detail">📎</span>
+                    Documents et validations
+                </h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Documents fournis</span>
+                        <span class="detail-value">
+                            ${getUploadedFiles()}
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Conditions acceptées</span>
+                        <span class="detail-value success">✅ Conditions générales et prélèvement</span>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    `;
+
+            // Injecter le HTML
+            $('#recap-container-final').html(recapHTML);
+
+            // Configurer le bouton de finalisation
+            $('#btn-finaliser-souscription').off('click').on('click', function () {
+                finaliserSouscription();
+            });
+        }
+
+        // Nouvelles fonctions helper pour l'étape 10
+        function getAdditionalClientInfo() {
+            let html = '';
+
+            const dateNaissance = $('#client_date_naissance').val();
+            if (dateNaissance) {
+                html += `
+            <div class="detail-item">
+                <span class="detail-label">Date de naissance</span>
+                <span class="detail-value">${dateNaissance}</span>
+            </div>
+        `;
+            }
+
+            const lieuNaissance = $('#client_lieu_naissance').val();
+            if (lieuNaissance) {
+                html += `
+            <div class="detail-item">
+                <span class="detail-label">Lieu de naissance</span>
+                <span class="detail-value">${lieuNaissance}</span>
+            </div>
+        `;
+            }
+
+            const pdlAdresse = $('#pdl_adresse').val();
+            if (pdlAdresse) {
+                html += `
+            <div class="detail-item">
+                <span class="detail-label">Point de livraison</span>
+                <span class="detail-value">${pdlAdresse}</span>
+            </div>
+        `;
+            }
+
+            const numeroCompteur = $('#numero_compteur').val();
+            if (numeroCompteur) {
+                html += `
+            <div class="detail-item">
+                <span class="detail-label">N° Point Référence Mesure</span>
+                <span class="detail-value">${numeroCompteur}</span>
+            </div>
+        `;
+            }
+
+            return html;
+        }
+
+        function getUploadedFiles() {
+            const documents = [];
+
+            if ($('#rib_file')[0] && $('#rib_file')[0].files.length > 0) {
+                documents.push('✅ RIB');
+            }
+
+            if ($('#carte_identite_recto')[0] && $('#carte_identite_recto')[0].files.length > 0) {
+                documents.push('✅ Pièce identité recto');
+            }
+
+            if ($('#carte_identite_verso')[0] && $('#carte_identite_verso')[0].files.length > 0) {
+                documents.push('✅ Pièce identité verso');
+            }
+
+            return documents.length > 0 ? documents.join('<br>') : 'Aucun document uploadé';
+        }
+
+        function finaliserSouscription() {
+            console.log('Finalisation de la souscription...');
+
+            const $btn = $('#btn-finaliser-souscription');
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner"></span> Traitement en cours...');
+
+            // Simuler l'envoi (remplace par ta vraie logique)
+            setTimeout(() => {
+                showSuccessMessage();
+                $btn.prop('disabled', false).html(originalHtml);
+            }, 2000);
+        }
+
+
         function displayError(message) {
             $('#results-container').html(`
                 <div class="error-state">
@@ -1011,6 +1542,11 @@
                 success: function (response) {
                     if (response.success) {
                         window.calculationResults = response.data;
+
+                        if (!window.originalRecommendedPower) {
+                            window.originalRecommendedPower = response.data.puissance_recommandee;
+                        }
+
                         updateAllTarifPrices(response.data);
                         updateCalculsSelection(tarif, nouvellePuissance);
                     } else {
@@ -1150,104 +1686,43 @@
             return breakdownHtml;
         }
 
-        function generateRecapitulatif() {
-            const allData = collectAllFormData();
-            const clientData = collectClientData();
-            const results = window.calculationResults;
+        function finaliserSouscription() {
+            console.log('Finalisation de la souscription...');
 
-            const recapHTML = `
-                <div class="recapitulatif-complet">
-                    <h3>Récapitulatif de votre simulation</h3>
-                    
-                    <div class="recap-section">
-                        <h4>🏠 Votre logement</h4>
-                        <div class="recap-grid">
-                            <div class="recap-item">
-                                <span class="label">Type :</span>
-                                <span class="value">${getLogementLabel(allData.type_logement)}</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Surface :</span>
-                                <span class="value">${allData.surface} m²</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Occupants :</span>
-                                <span class="value">${allData.nb_personnes} personne(s)</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Isolation :</span>
-                                <span class="value">${getIsolationLabel(allData.isolation)}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="recap-section">
-                        <h4>⚡ Vos équipements</h4>
-                        <div class="recap-grid">
-                            <div class="recap-item">
-                                <span class="label">Chauffage :</span>
-                                <span class="value">${getHeatingLabel(allData.type_chauffage)}</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Cuisson :</span>
-                                <span class="value">${getCuissonLabel(allData.type_cuisson)}</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Eau chaude :</span>
-                                <span class="value">${allData.eau_chaude}</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Éclairage :</span>
-                                <span class="value">${getEclairageLabel(allData.type_eclairage)}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="recap-section highlight">
-                        <h4>📋 Votre formule</h4>
-                        <div class="recap-grid">
-                            <div class="recap-item">
-                                <span class="label">Tarif :</span>
-                                <span class="value">${getTarifLabel(allData.tarif_choisi)}</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Puissance :</span>
-                                <span class="value">${allData.puissance_choisie} kVA</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Coût annuel :</span>
-                                <span class="value">${getTotalAnnuelChoisi(results, allData.tarif_choisi)}€ TTC</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="recap-section">
-                        <h4>👤 Vos informations</h4>
-                        <div class="recap-grid">
-                            <div class="recap-item">
-                                <span class="label">Nom :</span>
-                                <span class="value">${clientData.nom} ${clientData.prenom}</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Email :</span>
-                                <span class="value">${clientData.email}</span>
-                            </div>
-                            <div class="recap-item">
-                                <span class="label">Téléphone :</span>
-                                <span class="value">${clientData.telephone}</span>
-                            </div>
-                            ${clientData.adresse ? `
-                            <div class="recap-item">
-                                <span class="label">Adresse :</span>
-                                <span class="value">${clientData.adresse} ${clientData.code_postal} ${clientData.ville}</span>
-                            </div>
-                            ` : ''}
-                        </div>
-                    </div>
+            // Afficher un loader
+            const $btn = $('#btn-finaliser-souscription');
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner"></span> Traitement en cours...');
+
+            // Simuler l'envoi (remplacer par votre vraie logique)
+            setTimeout(() => {
+                // Afficher le message de succès
+                showSuccessMessage();
+                $btn.prop('disabled', false).html(originalHtml);
+            }, 2000);
+        }
+
+        function showSuccessMessage() {
+            const successHtml = `
+        <div class="success-overlay" id="success-modal">
+            <div class="success-content">
+                <div class="success-icon">🎉</div>
+                <h2>Félicitations !</h2>
+                <p class="success-main">Votre souscription a été enregistrée avec succès</p>
+                <div class="success-details">
+                    <p>Numéro de dossier : <strong>#${Math.floor(Math.random() * 900000) + 100000}</strong></p>
+                    <p>Un email de confirmation vous a été envoyé</p>
+                    <p>Notre équipe vous contactera sous 24h</p>
                 </div>
-            `;
+                <button class="btn btn-primary" onclick="location.reload()">
+                    Faire une nouvelle simulation
+                </button>
+            </div>
+        </div>
+    `;
 
-            $('#recap-container').html(recapHTML);
+            $('body').append(successHtml);
+            $('#success-modal').fadeIn();
         }
 
         // ===============================
@@ -1480,6 +1955,71 @@
             };
             return labels[code] || code;
         }
+
+        function getElectromenagerIcon(code) {
+            const icons = {
+                'lave_linge': '👕',
+                'seche_linge': '🌪️',
+                'refrigerateur': '🧊',
+                'lave_vaisselle': '🍽️',
+                'four': '🔥',
+                'congelateur': '❄️',
+                'cave_a_vin': '🍷'
+            };
+            return icons[code] || '🔌';
+        }
+
+        function getElectromenagerLabel(code) {
+            const labels = {
+                'lave_linge': 'Lave-linge',
+                'seche_linge': 'Sèche-linge',
+                'refrigerateur': 'Réfrigérateur',
+                'lave_vaisselle': 'Lave-vaisselle',
+                'four': 'Four',
+                'congelateur': 'Congélateur',
+                'cave_a_vin': 'Cave à vin'
+            };
+            return labels[code] || code;
+        }
+
+        function getBadgeTarif(tarif) {
+            const badges = {
+                'base': 'Simple',
+                'hc': 'Économique',
+                'tempo': 'Expert'
+            };
+            return badges[tarif] || '';
+        }
+
+        function getEquipementSpecialIcon(code) {
+            const icons = {
+                'spa_jacuzzi': '🛁',
+                'voiture_electrique': '🚗',
+                'aquarium': '🐠',
+                'climatiseur_mobile': '🌬️'
+            };
+            return icons[code] || '⚡';
+        }
+
+        function getEquipementSpecialLabel(code) {
+            const labels = {
+                'spa_jacuzzi': 'Spa/Jacuzzi',
+                'voiture_electrique': 'Voiture électrique',
+                'aquarium': 'Aquarium',
+                'climatiseur_mobile': 'Climatiseur mobile'
+            };
+            return labels[code] || code;
+        }
+
+        function getPiscineLabel(value) {
+            const labels = {
+                'simple': '🏊 Piscine simple (filtration)',
+                'chauffee': '🌊 Piscine chauffée',
+                'non': '🚫 Pas de piscine'
+            };
+            return labels[value] || value;
+        }
+
 
         // ===============================
         // API PUBLIQUE

@@ -49,7 +49,14 @@ class HticSimulateurEnergieAdmin {
         add_action('wp_ajax_htic_recalculate_with_power', array($this, 'ajax_recalculate_with_power'));
         add_action('wp_ajax_nopriv_htic_recalculate_with_power', array($this, 'ajax_recalculate_with_power'));
 
+        add_action('wp_ajax_process_electricity_form', array($this, 'process_electricity_form'));
+        add_action('wp_ajax_nopriv_process_electricity_form', array($this, 'process_electricity_form'));
+        
+        // Initialiser le système d'emails
+        $this->init_email_system();
 
+        // Test email Brevo
+        add_action('wp_ajax_test_brevo_email', array($this, 'test_brevo_email'));
     }
         
     public function activate() {
@@ -102,11 +109,20 @@ class HticSimulateurEnergieAdmin {
 
         add_submenu_page(
             'htic-simulateur-energie',
-            'Formulaire de Contact',
-            'Contact',
+            'Configuration Emails (Brevo)',
+            'Emails Brevo',
             'manage_options',
-            'htic-contact-form',
-            array($this, 'contact_admin_page')
+            'htic-brevo-config',
+            array($this, 'brevo_config_page')
+        );
+        
+        add_submenu_page(
+            'htic-simulateur-energie',
+            'Simulations reçues',
+            'Simulations',
+            'manage_options',
+            'htic-simulations-list',
+            array($this, 'simulations_list_page')
         );
     }
     
@@ -117,6 +133,9 @@ class HticSimulateurEnergieAdmin {
         register_setting('htic_simulateur_gaz_professionnel', 'htic_simulateur_gaz_professionnel_data');
 
         register_setting('htic_contact_settings', 'htic_contact_email');
+
+        register_setting('htic_brevo_settings', 'brevo_api_key');
+        register_setting('htic_brevo_settings', 'ges_notification_email');
     }
     
     public function enqueue_admin_scripts($hook) {
@@ -403,43 +422,142 @@ class HticSimulateurEnergieAdmin {
             return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         }
     }
-                
-        // ================================
-        // GESTION DES RESSOURCES
-        // ================================
-        
-        private function enqueue_formulaire_assets($type) {
-            $formulaire_path = HTIC_SIMULATEUR_PATH . 'formulaires/' . $type . '/';
-            $formulaire_url = HTIC_SIMULATEUR_URL . 'formulaires/' . $type . '/';
-            
-            $js_file = $formulaire_path . $type . '.js';
 
-            
-            if (file_exists($js_file)) {
-               wp_enqueue_script(
-                'htic-simulateur-' . $type . '-js', 
-                $formulaire_url . $type . '.js', 
-                array('jquery'), 
-                HTIC_SIMULATEUR_VERSION, 
-                true
-            );
+    public function process_electricity_form() {
+        // Vérifier le nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+            wp_send_json_error('Erreur de sécurité');
+            return;
+        }
         
-            // CETTE PARTIE EST CRUCIALE
-            wp_localize_script(
-                'htic-simulateur-' . $type . '-js', 
-                'hticSimulateur', 
-                array(
-                    'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'nonce' => wp_create_nonce('htic_simulateur_calculate'),
-                    'type' => $type,
-                    'restUrl' => rest_url('htic-simulateur/v1/')
-                )
-            );
+        // Récupérer les données JSON
+        $form_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : array();
+        
+        if (empty($form_data)) {
+            wp_send_json_error('Aucune donnée reçue');
+            return;
+        }
+        
+        // Traiter les fichiers uploadés
+        $uploaded_files = $this->process_uploaded_files();
+        
+        try {
+            // Inclure EmailHandler
+            require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
+            
+            // Ajouter les fichiers aux données
+            $form_data['uploaded_files'] = $uploaded_files;
+            
+            // Traiter avec EmailHandler
+            $emailHandler = new EmailHandler();
+            $result = $emailHandler->processFormData(json_encode($form_data));
+            
+            // Nettoyer les fichiers temporaires après envoi
+            $this->cleanup_uploaded_files($uploaded_files);
+            
+            if ($result['success']) {
+                // Sauvegarder en base
+                $this->save_simulation_to_db($form_data);
                 
+                wp_send_json_success([
+                    'message' => 'Simulation envoyée avec succès',
+                    'referenceNumber' => 'SIM-' . date('Ymd') . '-' . rand(1000, 9999)
+                ]);
             } else {
-                error_log("ERROR: File not found for: " . $type . " at path: " . $js_file);
+                wp_send_json_error($result['message']);
+            }
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Erreur: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Traiter les fichiers uploadés
+     */
+    private function process_uploaded_files() {
+        $files = array();
+        
+        // Liste des fichiers attendus
+        $expected_files = array('rib_file', 'carte_identite_recto', 'carte_identite_verso');
+        
+        foreach ($expected_files as $file_key) {
+            if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
+                $upload_dir = wp_upload_dir();
+                $temp_dir = $upload_dir['basedir'] . '/temp-documents';
+                
+                if (!file_exists($temp_dir)) {
+                    wp_mkdir_p($temp_dir);
+                }
+                
+                $file_extension = pathinfo($_FILES[$file_key]['name'], PATHINFO_EXTENSION);
+                $safe_filename = $file_key . '_' . time() . '.' . $file_extension;
+                $file_path = $temp_dir . '/' . $safe_filename;
+                
+                if (move_uploaded_file($_FILES[$file_key]['tmp_name'], $file_path)) {
+                    $files[$file_key] = array(
+                        'path' => $file_path,
+                        'name' => $_FILES[$file_key]['name'],
+                        'type' => $_FILES[$file_key]['type'],
+                        'size' => $_FILES[$file_key]['size']
+                    );
+                    
+                    error_log("Fichier uploadé: $file_key -> $file_path");
+                }
             }
         }
+        
+        return $files;
+    }
+
+    /**
+     * Nettoyer les fichiers temporaires
+     */
+    private function cleanup_uploaded_files($files) {
+        foreach ($files as $file_info) {
+            if (isset($file_info['path']) && file_exists($file_info['path'])) {
+                unlink($file_info['path']);
+            }
+        }
+    }
+
+
+    // ================================
+    // GESTION DES RESSOURCES
+    // ================================
+    
+    private function enqueue_formulaire_assets($type) {
+        $formulaire_path = HTIC_SIMULATEUR_PATH . 'formulaires/' . $type . '/';
+        $formulaire_url = HTIC_SIMULATEUR_URL . 'formulaires/' . $type . '/';
+        
+        $js_file = $formulaire_path . $type . '.js';
+
+        
+        if (file_exists($js_file)) {
+            wp_enqueue_script(
+            'htic-simulateur-' . $type . '-js', 
+            $formulaire_url . $type . '.js', 
+            array('jquery'), 
+            HTIC_SIMULATEUR_VERSION, 
+            true
+        );
+    
+        // CETTE PARTIE EST CRUCIALE
+        wp_localize_script(
+            'htic-simulateur-' . $type . '-js', 
+            'hticSimulateur', 
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('htic_simulateur_calculate'),
+                'type' => $type,
+                'restUrl' => rest_url('htic-simulateur/v1/')
+            )
+        );
+            
+        } else {
+            error_log("ERROR: File not found for: " . $type . " at path: " . $js_file);
+        }
+    }
    
     // ================================
     // ADMIN INTERFACE
@@ -504,6 +622,698 @@ class HticSimulateurEnergieAdmin {
             </div>
         </div>
         <?php
+    }
+
+    public function brevo_config_page() {
+        // Sauvegarder si formulaire soumis
+        if (isset($_POST['submit'])) {
+            update_option('brevo_api_key', sanitize_text_field($_POST['brevo_api_key']));
+            update_option('ges_notification_email', sanitize_email($_POST['ges_notification_email']));
+            echo '<div class="notice notice-success"><p>Configuration Brevo sauvegardée!</p></div>';
+        }
+        
+        $brevo_api_key = get_option('brevo_api_key', '');
+        $ges_email = get_option('ges_notification_email', 'commercial@ges-solutions.fr');
+        ?>
+        <div class="wrap">
+            <h1>⚡ Configuration Emails - Brevo</h1>
+            
+            <div class="card">
+                <h2>Configuration API Brevo</h2>
+                <p>Configurez ici vos paramètres pour l'envoi d'emails via Brevo (ex-SendinBlue)</p>
+                
+                <form method="post" action="">
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="brevo_api_key">Clé API Brevo</label>
+                            </th>
+                            <td>
+                                <input type="text" id="brevo_api_key" name="brevo_api_key" 
+                                    value="<?php echo esc_attr($brevo_api_key); ?>" 
+                                    class="regular-text" placeholder="xkeysib-XXXXX" />
+                                <p class="description">
+                                    Trouvable dans votre compte Brevo > SMTP & API > API Keys
+                                </p>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">
+                                <label for="ges_notification_email">Email notification GES</label>
+                            </th>
+                            <td>
+                                <input type="email" id="ges_notification_email" name="ges_notification_email" 
+                                    value="<?php echo esc_attr($ges_email); ?>" 
+                                    class="regular-text" />
+                                <p class="description">
+                                    Email qui recevra les notifications de nouvelles simulations
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <?php submit_button('Sauvegarder la configuration'); ?>
+                </form>
+            </div>
+            
+            <div class="card">
+                <h2>📧 Comment configurer Brevo</h2>
+                <ol>
+                    <li>Créez un compte sur <a href="https://www.brevo.com" target="_blank">Brevo.com</a></li>
+                    <li>Allez dans <strong>SMTP & API</strong> > <strong>API Keys</strong></li>
+                    <li>Créez une nouvelle clé API et copiez-la ici</li>
+                    <li>Les emails utiliseront automatiquement votre template HTML personnalisé</li>
+                </ol>
+                
+                <h3>Template utilisé :</h3>
+                <p>Le système utilise le template <code>base-template.php</code> qui génère :</p>
+                <ul>
+                    <li>✅ Un email personnalisé pour le client</li>
+                    <li>✅ Un email détaillé pour GES</li>
+                    <li>✅ Un PDF récapitulatif en pièce jointe</li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h2>🧪 Test d'envoi</h2>
+                <p>Testez la configuration en envoyant un email de test :</p>
+                <button type="button" class="button button-primary" id="test-brevo-email">
+                    Envoyer un email de test
+                </button>
+                <div id="test-result"></div>
+            </div>
+        </div>
+        
+        <script>
+        jQuery(document).ready(function($) {
+            $('#test-brevo-email').on('click', function() {
+                var $btn = $(this);
+                var $result = $('#test-result');
+                
+                $btn.prop('disabled', true).text('Envoi en cours...');
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'test_brevo_email',
+                        nonce: '<?php echo wp_create_nonce('test_brevo'); ?>'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $result.html('<div class="notice notice-success"><p>' + response.data + '</p></div>');
+                        } else {
+                            $result.html('<div class="notice notice-error"><p>' + response.data + '</p></div>');
+                        }
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).text('Envoyer un email de test');
+                    }
+                });
+            });
+        });
+        </script>
+        <?php
+        }
+
+        public function simulations_list_page() {
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'simulations_electricite';
+            
+            // Mettre à jour la structure de la table si nécessaire
+            $this->upgrade_simulations_table();
+            
+            // Traitement des actions
+            if (isset($_POST['action']) && wp_verify_nonce($_POST['nonce'], 'simulation_action')) {
+                $this->handle_simulation_action($_POST);
+            }
+            
+            // Vérifier si la table existe
+            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name;
+            
+            if (!$table_exists) {
+                $this->create_simulations_table();
+            }
+            
+            // Récupérer les simulations
+            $simulations = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC LIMIT 50");
+            ?>
+            
+            <div class="wrap">
+                <h1>Simulations Électricité Reçues</h1>
+                
+                <?php if (empty($simulations)) : ?>
+                    <div class="notice notice-info">
+                        <p>Aucune simulation reçue pour le moment.</p>
+                    </div>
+                <?php else : ?>
+                
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th width="12%">Date</th>
+                            <th width="15%">Type</th>
+                            <th width="18%">Nom</th>
+                            <th width="20%">Email</th>
+                            <th width="12%">Téléphone</th>
+                            <th width="8%">CP</th>
+                            <th width="12%">Estimation</th>
+                            <th width="10%">Statut</th>
+                            <th width="15%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($simulations as $sim) : ?>
+                        <tr>
+                            <td><?php echo date('d/m/Y H:i', strtotime($sim->created_at)); ?></td>
+                            <td>
+                                <span class="simulation-type type-<?php echo $this->get_simulation_type($sim); ?>">
+                                    <?php echo $this->get_simulation_type_label($sim); ?>
+                                </span>
+                            </td>
+                            <td><?php echo esc_html($sim->first_name . ' ' . $sim->last_name); ?></td>
+                            <td>
+                                <a href="mailto:<?php echo esc_attr($sim->email); ?>">
+                                    <?php echo esc_html($sim->email); ?>
+                                </a>
+                            </td>
+                            <td>
+                                <a href="tel:<?php echo esc_attr($sim->phone); ?>">
+                                    <?php echo esc_html($sim->phone); ?>
+                                </a>
+                            </td>
+                            <td><?php echo esc_html($sim->postal_code); ?></td>
+                            <td>
+                                <strong><?php echo number_format($sim->monthly_estimate, 2, ',', ' '); ?> €/mois</strong>
+                            </td>
+                            <td>
+                                <form method="post" style="margin: 0;">
+                                    <?php wp_nonce_field('simulation_action', 'nonce'); ?>
+                                    <input type="hidden" name="action" value="update_status">
+                                    <input type="hidden" name="sim_id" value="<?php echo $sim->id; ?>">
+                                    <select name="status" onchange="this.form.submit()" class="status-select status-<?php echo $sim->status; ?>">
+                                        <option value="non_traite" <?php selected($sim->status, 'non_traite'); ?>>❌ Non traité</option>
+                                        <option value="en_cours" <?php selected($sim->status, 'en_cours'); ?>>⏳ En cours</option>
+                                        <option value="traite" <?php selected($sim->status, 'traite'); ?>>✅ Traité</option>
+                                    </select>
+                                </form>
+                            </td>
+                            <td>
+                                <button class="button button-small view-details" 
+                                        data-id="<?php echo $sim->id; ?>">
+                                    👁️ Détails
+                                </button>
+                                
+                                <form method="post" style="display: inline-block; margin-left: 5px;" 
+                                    onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette simulation ?');">
+                                    <?php wp_nonce_field('simulation_action', 'nonce'); ?>
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="sim_id" value="<?php echo $sim->id; ?>">
+                                    <button type="submit" class="button button-small button-link-delete">
+                                        🗑️ Supprimer
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                
+                <?php endif; ?>
+            </div>
+            
+            <!-- Modal pour les détails -->
+            <div id="simulation-modal" style="display:none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Détails de la simulation</h2>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body" id="simulation-details"></div>
+                </div>
+            </div>
+            
+            <style>
+            .simulation-type {
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .type-elec-residentiel {
+                background: #e0f2fe;
+                color: #0277bd;
+            }
+            
+            .type-elec-professionnel {
+                background: #f3e5f5;
+                color: #7b1fa2;
+            }
+            
+            .type-gaz-residentiel {
+                background: #fff3e0;
+                color: #f57c00;
+            }
+            
+            .type-gaz-professionnel {
+                background: #e8f5e8;
+                color: #388e3c;
+            }
+            
+            .status-select {
+                border: none;
+                padding: 4px 6px;
+                border-radius: 4px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            
+            .status-select.status-non_traite {
+                background: #ffebee;
+                color: #c62828;
+            }
+            
+            .status-select.status-en_cours {
+                background: #fff8e1;
+                color: #f57c00;
+            }
+            
+            .status-select.status-traite {
+                background: #e8f5e8;
+                color: #2e7d32;
+            }
+            
+            #simulation-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.7);
+                z-index: 100000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .modal-content {
+                background: white;
+                max-width: 800px;
+                max-height: 90vh;
+                overflow-y: auto;
+                border-radius: 8px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            }
+            
+            .modal-header {
+                padding: 20px;
+                border-bottom: 1px solid #e0e0e0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f5f5f5;
+            }
+            
+            .modal-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #666;
+            }
+            
+            .modal-body {
+                padding: 20px;
+            }
+            
+            .detail-section {
+                margin-bottom: 25px;
+                padding: 15px;
+                background: #f9f9f9;
+                border-radius: 8px;
+            }
+            
+            .detail-section h4 {
+                margin: 0 0 15px 0;
+                color: #333;
+                border-bottom: 2px solid #e0e0e0;
+                padding-bottom: 8px;
+            }
+            
+            .detail-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 15px;
+            }
+            
+            .detail-item {
+                display: flex;
+                justify-content: space-between;
+                padding: 8px 0;
+                border-bottom: 1px solid #e8e8e8;
+            }
+            
+            .detail-label {
+                font-weight: 600;
+                color: #555;
+            }
+            
+            .detail-value {
+                color: #333;
+                text-align: right;
+            }
+            
+            .highlight-value {
+                background: #e3f2fd;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-weight: 600;
+            }
+            </style>
+            
+            <script>
+            jQuery(document).ready(function($) {
+                $('.view-details').on('click', function() {
+                    var simId = $(this).data('id');
+                    
+                    // Ici on va chercher les détails via AJAX
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'get_simulation_details',
+                            sim_id: simId,
+                            nonce: '<?php echo wp_create_nonce('get_details'); ?>'
+                        },
+                        success: function(response) {
+                            $('#simulation-details').html(response);
+                            $('#simulation-modal').show();
+                        }
+                    });
+                });
+                
+                $('.modal-close').on('click', function() {
+                    $('#simulation-modal').hide();
+                });
+                
+                $(document).on('click', function(e) {
+                    if (e.target.id === 'simulation-modal') {
+                        $('#simulation-modal').hide();
+                    }
+                });
+            });
+            </script>
+            <?php
+        }
+
+        private function get_simulation_type($sim) {
+    // Analyser les données JSON pour déterminer le type
+    $data = json_decode($sim->data_json, true);
+    
+    if (isset($data['type'])) {
+        return $data['type'];
+    }
+    
+    // Si pas de type, deviner basé sur les données disponibles
+    if (isset($data['housingType'])) {
+        return 'elec-residentiel'; // Par défaut pour l'électricité résidentielle
+    }
+    
+    return 'unknown';
+}
+
+private function get_simulation_type_label($sim) {
+    $type = $this->get_simulation_type($sim);
+    
+    $labels = array(
+        'elec-residentiel' => 'Élec. Résidentiel',
+        'elec-professionnel' => 'Élec. Professionnel', 
+        'gaz-residentiel' => 'Gaz Résidentiel',
+        'gaz-professionnel' => 'Gaz Professionnel',
+        'unknown' => 'Non défini'
+    );
+    
+    return $labels[$type] ?? 'Inconnu';
+}
+
+private function handle_simulation_action($post_data) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'simulations_electricite';
+    
+    switch($post_data['action']) {
+        case 'update_status':
+            $wpdb->update(
+                $table_name,
+                array('status' => sanitize_text_field($post_data['status'])),
+                array('id' => intval($post_data['sim_id']))
+            );
+            echo '<div class="notice notice-success"><p>Statut mis à jour!</p></div>';
+            break;
+            
+        case 'delete':
+            $wpdb->delete($table_name, array('id' => intval($post_data['sim_id'])));
+            echo '<div class="notice notice-success"><p>Simulation supprimée!</p></div>';
+            break;
+    }
+}
+
+        private function handle_simulation_actions() {
+            // Enregistrer les actions AJAX
+            add_action('wp_ajax_update_simulation_status', array($this, 'ajax_update_simulation_status'));
+            add_action('wp_ajax_delete_simulation', array($this, 'ajax_delete_simulation'));
+            add_action('wp_ajax_get_simulation_details', array($this, 'ajax_get_simulation_details'));
+        }
+
+        public function ajax_update_simulation_status() {
+            if (!wp_verify_nonce($_POST['nonce'], 'simulation_action') || !current_user_can('manage_options')) {
+                wp_send_json_error('Non autorisé');
+            }
+            
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'simulations_electricite';
+            
+            $id = intval($_POST['id']);
+            $status = sanitize_text_field($_POST['status']);
+            
+            $valid_statuses = array('non_traite', 'en_cours', 'traite');
+            if (!in_array($status, $valid_statuses)) {
+                wp_send_json_error('Statut invalide');
+            }
+            
+            $update_data = array('status' => $status);
+            if ($status === 'traite') {
+                $update_data['treated_at'] = current_time('mysql');
+                $update_data['treated_by'] = get_current_user_id();
+            }
+            
+            $result = $wpdb->update(
+                $table_name,
+                $update_data,
+                array('id' => $id)
+            );
+            
+            if ($result !== false) {
+                wp_send_json_success('Statut mis à jour');
+            } else {
+                wp_send_json_error('Erreur lors de la mise à jour');
+            }
+        }
+
+        public function ajax_delete_simulation() {
+            if (!wp_verify_nonce($_POST['nonce'], 'simulation_action') || !current_user_can('manage_options')) {
+                wp_send_json_error('Non autorisé');
+            }
+            
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'simulations_electricite';
+            
+            $id = intval($_POST['id']);
+            
+            $result = $wpdb->delete($table_name, array('id' => $id));
+            
+            if ($result !== false) {
+                wp_send_json_success('Simulation supprimée');
+            } else {
+                wp_send_json_error('Erreur lors de la suppression');
+            }
+        }
+
+        public function ajax_get_simulation_details() {
+            if (!wp_verify_nonce($_POST['nonce'], 'simulation_action') || !current_user_can('manage_options')) {
+                wp_send_json_error('Non autorisé');
+            }
+            
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'simulations_electricite';
+            
+            $id = intval($_POST['id']);
+            $sim = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $id));
+            
+            if (!$sim) {
+                wp_send_json_error('Simulation non trouvée');
+            }
+            
+            $data = json_decode($sim->data_json, true);
+            
+            ob_start();
+            ?>
+            <div class="simulation-detail-view">
+                <div class="detail-section">
+                    <h4>Informations client</h4>
+                    <p><strong>Nom:</strong> <?php echo esc_html($sim->first_name . ' ' . $sim->last_name); ?></p>
+                    <p><strong>Email:</strong> <?php echo esc_html($sim->email); ?></p>
+                    <p><strong>Téléphone:</strong> <?php echo esc_html($sim->phone); ?></p>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Détails logement</h4>
+                    <p><strong>Surface:</strong> <?php echo esc_html($sim->surface); ?> m²</p>
+                    <p><strong>Residents:</strong> <?php echo esc_html($sim->residents); ?></p>
+                    <p><strong>Type:</strong> <?php echo esc_html($sim->housing_type); ?></p>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Estimation</h4>
+                    <p><strong>Consommation annuelle:</strong> <?php echo number_format($sim->annual_consumption); ?> kWh</p>
+                    <p><strong>Tarif choisi:</strong> <?php echo esc_html($sim->tarif_chosen); ?></p>
+                    <p><strong>Puissance:</strong> <?php echo esc_html($sim->power_chosen); ?> kVA</p>
+                    <p><strong>Estimation mensuelle:</strong> <?php echo number_format($sim->monthly_estimate, 2); ?> €</p>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Données brutes</h4>
+                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto;">
+        <?php echo json_encode($data, JSON_PRETTY_PRINT); ?>
+                    </pre>
+                </div>
+            </div>
+            <?php
+            
+            wp_send_json_success(ob_get_clean());
+        }
+
+        private function get_status_label($status) {
+            $labels = array(
+                'non_traite' => 'Non traitée',
+                'en_cours' => 'En cours',
+                'traite' => 'Traitée'
+            );
+            return $labels[$status] ?? $status;
+        }
+
+
+    // Sauvegarder la simulation en base
+    private function save_simulation_to_db($data) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'simulations_electricite';
+        
+        $wpdb->insert(
+            $table_name,
+            [
+                'first_name' => $data['firstName'],
+                'last_name' => $data['lastName'],
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'postal_code' => $data['postalCode'],
+                'housing_type' => $data['housingType'],
+                'surface' => $data['surface'],
+                'residents' => $data['residents'],
+                'annual_consumption' => $data['annualConsumption'],
+                'monthly_estimate' => $data['monthlyEstimate'],
+                'tarif_chosen' => $data['pricingType'],
+                'power_chosen' => $data['contractPower'],
+                'data_json' => json_encode($data),
+                'created_at' => current_time('mysql')
+            ]
+        );
+    }
+
+
+    public function test_brevo_email() {
+        if (!wp_verify_nonce($_POST['nonce'], 'test_brevo')) {
+            wp_send_json_error('Erreur de sécurité');
+            return;
+        }
+        
+        $api_key = get_option('brevo_api_key');
+        if (empty($api_key)) {
+            wp_send_json_error('Clé API Brevo non configurée');
+            return;
+        }
+        
+        // Créer des données de test
+        $test_data = [
+            'firstName' => 'Test',
+            'lastName' => 'Simulation',
+            'email' => get_option('admin_email'),
+            'phone' => '01 23 45 67 89',
+            'postalCode' => '75001',
+            'housingType' => 'appartement',
+            'surface' => '80',
+            'residents' => '2',
+            'monthlyEstimate' => 125.50,
+            'annualConsumption' => 3500
+        ];
+        
+        // Tester l'envoi
+        require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
+        $emailHandler = new EmailHandler();
+        $result = $emailHandler->processFormData(json_encode($test_data));
+        
+        if ($result['success']) {
+            wp_send_json_success('Email de test envoyé avec succès à ' . $test_data['email']);
+        } else {
+            wp_send_json_error('Erreur: ' . $result['message']);
+        }
+    }
+
+    // Méthode pour créer la table des simulations
+    private function create_simulations_table() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'simulations_electricite';
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+            id INT(11) NOT NULL AUTO_INCREMENT,
+            first_name VARCHAR(100),
+            last_name VARCHAR(100),
+            email VARCHAR(100),
+            phone VARCHAR(20),
+            postal_code VARCHAR(10),
+            housing_type VARCHAR(50),
+            surface INT(11),
+            residents INT(11),
+            annual_consumption INT(11),
+            monthly_estimate DECIMAL(10,2),
+            tarif_chosen VARCHAR(50),
+            power_chosen INT(11),
+            data_json TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
+        
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
+    }
+
+    private function upgrade_simulations_table() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'simulations_electricite';
+        
+        // Vérifier si la colonne status existe
+        $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_name LIKE 'status'");
+        
+        if (empty($column_exists)) {
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN status VARCHAR(50) DEFAULT 'non_traite' AFTER data_json");
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN notes TEXT AFTER status");
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN treated_at DATETIME NULL AFTER notes");
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN treated_by BIGINT(20) NULL AFTER treated_at");
+        }
     }
     
     // ================================

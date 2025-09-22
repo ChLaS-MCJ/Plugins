@@ -78,22 +78,22 @@
                 goToStep(8);
             });
 
-            // Email
-            $(document).on('click', '#btn-send-email-contact', handleEmailSend);
-
             // Sélections étape 8
             $(document).on('change', 'input[name="tarif_choisi"]', handleTarifChange);
             $(document).on('change click', 'input[name="puissance_choisie"]', handlePuissanceChange);
 
             $('#simulateur-elec-residentiel').on('submit', function (e) {
                 e.preventDefault();
-                console.log('Soumission du formulaire bloquée');
                 return false;
             });
 
             // S'assurer que les boutons de type button ne soumettent pas le formulaire
             $('button[type="button"]').on('click', function (e) {
                 e.stopPropagation();
+            });
+
+            $(document).on('click', '.error-message .close-btn', function () {
+                $(this).closest('.error-message').remove();
             });
         }
 
@@ -160,20 +160,6 @@
             }
         }
 
-        function handleEmailSend() {
-            const $btn = $(this);
-            const originalText = $btn.html();
-
-            if (!window.calculationResults) {
-                showNotification('Aucun résultat de calcul disponible', 'error');
-                return;
-            }
-
-            const allFormData = collectAllFormData();
-            const clientData = collectClientData();
-
-            sendEmail($btn, originalText, allFormData, clientData, window.calculationResults);
-        }
 
         // ===============================
         // NAVIGATION
@@ -185,7 +171,6 @@
                 updateUI();
 
                 if (currentStep === 9) {
-                    console.log('Navigation suivant -> étape 9');
                     initStep9();
                 } else if (currentStep === 8) {
                     setupSelectionStep();
@@ -210,7 +195,6 @@
                 if (stepNumber === 8) {
                     setupSelectionStep();
                 } else if (stepNumber === 9) {
-                    console.log('🎯 Appel de initStep9()');
                     initStep9();
                 } else if (stepNumber === 10) {
                     setupRecapStep();
@@ -311,7 +295,6 @@
 
             $container.html(html);
 
-            console.log('✅ Puissances générées en mode simplifié');
         }
 
         function preselectRecommendedOptions() {
@@ -390,7 +373,6 @@
 
 
         function initStep9() {
-            console.log('🚀 Initialisation étape 9');
 
             // Toggle pour l'adresse
             const toggleBtn = document.getElementById('btn-no-info');
@@ -403,7 +385,6 @@
                 $(toggleBtn).on('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation(); // Empêcher la propagation
-                    console.log('Toggle cliqué');
 
                     $(this).toggleClass('active');
                     $(addressSection).toggleClass('show');
@@ -494,7 +475,6 @@
                 this.value = this.value.replace(/\D/g, '').slice(0, 5);
             });
 
-            console.log('✅ Étape 9 initialisée avec succès');
         }
 
         function setupRecapStep() {
@@ -592,7 +572,6 @@
         }
 
         function validateStep9(stepElement) {
-            console.log('🔍 Validation étape 9');
 
             let isValid = true;
 
@@ -868,7 +847,6 @@
         // ===============================
 
         function calculateResults() {
-            console.log('Début du calcul...');
 
             const allData = collectAllFormData();
             const clientData = collectClientData();
@@ -1051,21 +1029,10 @@
         }
 
         function generateRecapitulatifFinal() {
-            console.log('🎯 Génération du récapitulatif complet étape 10');
 
-            // Collecter toutes les données
             const allData = collectAllFormData();
             const clientData = collectClientData();
             const results = window.calculationResults;
-
-            // DEBUG COMPLET
-            console.group('📊 DEBUG DONNÉES ÉTAPE 10');
-            console.log('allData:', allData);
-            console.log('clientData:', clientData);
-            console.log('results:', results);
-            console.log('window.calculationResults:', window.calculationResults);
-            console.log('window.originalRecommendedPower:', window.originalRecommendedPower);
-            console.groupEnd();
 
             if (!allData || !results) {
                 console.error('❌ Données manquantes pour le récapitulatif');
@@ -1096,14 +1063,6 @@
             const totalMensuel = Math.round(totalAnnuel / 10);
             const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
 
-            console.group('📋 CALCULS RÉCAPITULATIF');
-            console.log('tarifChoisi:', tarifChoisi);
-            console.log('puissanceChoisie:', puissanceChoisie);
-            console.log('puissanceOriginaleRecommandee:', puissanceOriginaleRecommandee); // Ajouter ce log
-            console.log('totalAnnuel:', totalAnnuel);
-            console.log('totalMensuel:', totalMensuel);
-            console.log('consommationAnnuelle:', consommationAnnuelle);
-            console.groupEnd();
 
             // Générer le HTML complet
             const recapHTML = `
@@ -1399,7 +1358,6 @@
         }
 
         function finaliserSouscription() {
-            console.log('Finalisation de la souscription...');
 
             const $btn = $('#btn-finaliser-souscription');
             const originalHtml = $btn.html();
@@ -1563,42 +1521,144 @@
         // EMAIL
         // ===============================
 
-        function sendEmail($btn, originalText, formData, clientData, results) {
-            $btn.prop('disabled', true).html('<span class="spinner"></span> Envoi en cours...');
+        function envoyerDonneesAuServeur() {
 
-            const emailData = {
-                action: 'htic_send_simulation_email',
-                type: 'elec-residentiel',
-                nonce: typeof hticSimulateur !== 'undefined' ? hticSimulateur.nonce : '',
-                client: clientData,
-                simulation: formData,
-                results: results,
-                date_simulation: new Date().toISOString()
-            };
+            // Récupérer toutes les données déjà collectées et calculées
+            const allFormData = collectAllFormData();
+            const clientData = collectClientData();
+            const results = window.calculationResults;
 
-            let ajaxUrl = '/wp-admin/admin-ajax.php';
-            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-                ajaxUrl = hticSimulateur.ajaxUrl;
+            // Vérifier qu'on a bien toutes les données
+            if (!allFormData || !clientData || !results) {
+                console.error('❌ Données manquantes pour l\'envoi');
+                showNotification('Données incomplètes', 'error');
+                return;
             }
 
+            // CRÉER UN FORMDATA POUR TOUT
+            const formData = new FormData();
+
+            // Ajouter l'action et le nonce
+            formData.append('action', 'process_electricity_form');
+            formData.append('nonce', hticSimulateur.nonce);
+
+            // Préparer l'objet complet avec TOUTES les données existantes
+            const dataToSend = {
+                // Informations personnelles (depuis étape 9)
+                firstName: clientData.nom || $('#client_nom').val(),
+                lastName: clientData.prenom || $('#client_prenom').val(),
+                email: clientData.email || $('#client_email').val(),
+                phone: clientData.telephone || $('#client_telephone').val(),
+                postalCode: $('#client_code_postal').val() || clientData.code_postal,
+
+                // Adresse complète si disponible
+                adresse: clientData.adresse || $('#client_adresse').val(),
+                ville: clientData.ville || $('#client_ville').val(),
+
+                // Infos supplémentaires
+                dateNaissance: $('#client_date_naissance').val(),
+                lieuNaissance: $('#client_lieu_naissance').val(),
+                pdlAdresse: $('#pdl_adresse').val(),
+                numeroCompteur: $('#numero_compteur').val(),
+
+                // Données du logement (depuis les étapes 1-6)
+                housingType: allFormData.type_logement,
+                surface: allFormData.surface,
+                residents: allFormData.nb_personnes,
+                isolation: allFormData.isolation,
+
+                // Chauffage et équipements
+                heatingType: allFormData.type_chauffage,
+                chauffageElectrique: allFormData.chauffage_electrique,
+                waterHeating: allFormData.eau_chaude,
+                typeCuisson: allFormData.type_cuisson,
+                typeEclairage: allFormData.type_eclairage,
+                piscine: allFormData.piscine,
+
+                // Équipements
+                appliances: {
+                    electromenagers: allFormData.electromenagers || [],
+                    equipementsSpeciaux: allFormData.equipements_speciaux || []
+                },
+
+                // Sélections finales (étape 8)
+                pricingType: allFormData.tarif_choisi,
+                contractPower: allFormData.puissance_choisie,
+                typeLogementUsage: allFormData.type_logement_usage,
+
+                // Résultats des calculs (déjà calculés par votre système)
+                annualConsumption: results.consommation_annuelle,
+                monthlyEstimate: getTotalMensuelFromResults(results, allFormData.tarif_choisi),
+
+                // Détails des tarifs calculés
+                tarifs: {
+                    base: results.tarifs.base,
+                    hc: results.tarifs.hc,
+                    tempo: results.tarifs.tempo
+                },
+
+                // Répartition de la consommation
+                repartition: results.repartition,
+
+                // Résumé final
+                summary: {
+                    provider: 'GES Solutions',
+                    tarifChoisi: allFormData.tarif_choisi,
+                    puissanceChoisie: allFormData.puissance_choisie,
+                    totalAnnuel: getTotalAnnuelChoisi(results, allFormData.tarif_choisi),
+                    totalMensuel: getTotalMensuelFromResults(results, allFormData.tarif_choisi),
+                    consommationAnnuelle: results.consommation_annuelle,
+                    puissanceRecommandee: results.puissance_recommandee
+                },
+
+                // Timestamp
+                timestamp: new Date().toISOString()
+            };
+
+            // Ajouter les données JSON au FormData
+            formData.append('form_data', JSON.stringify(dataToSend));
+
+            // Ajouter les fichiers uploadés
+            const ribFile = document.getElementById('rib_file');
+            const carteRectoFile = document.getElementById('carte_identite_recto');
+            const carteVersoFile = document.getElementById('carte_identite_verso');
+
+            if (ribFile && ribFile.files[0]) {
+                formData.append('rib_file', ribFile.files[0]);
+            }
+
+            if (carteRectoFile && carteRectoFile.files[0]) {
+                formData.append('carte_identite_recto', carteRectoFile.files[0]);
+            }
+
+            if (carteVersoFile && carteVersoFile.files[0]) {
+                formData.append('carte_identite_verso', carteVersoFile.files[0]);
+            }
+
+            // Afficher le loader
+            afficherLoader();
+
+            // UTILISER FORMDATA DANS L'AJAX
             $.ajax({
-                url: ajaxUrl,
+                url: hticSimulateur.ajaxUrl,
                 type: 'POST',
-                data: emailData,
+                data: formData,
+                processData: false, // OBLIGATOIRE pour FormData
+                contentType: false, // OBLIGATOIRE pour FormData
+                dataType: 'json',
                 success: function (response) {
+                    cacherLoader();
+
                     if (response.success) {
-                        $('#email-confirmation').slideDown();
-                        $('#email-display').text(clientData.email);
-                        showNotification('✅ Email envoyé avec succès !', 'success');
+                        afficherMessageSucces(response.message);
                     } else {
-                        showNotification('❌ Erreur : ' + (response.data || 'Erreur inconnue'), 'error');
+                        afficherMessageErreur(response.message || 'Une erreur est survenue');
                     }
                 },
-                error: function () {
-                    showNotification('❌ Erreur de connexion', 'error');
-                },
-                complete: function () {
-                    $btn.prop('disabled', false).html(originalText);
+                error: function (xhr, status, error) {
+                    console.error('❌ Erreur AJAX:', error);
+                    cacherLoader();
+                    afficherMessageErreur('Erreur de connexion au serveur');
                 }
             });
         }
@@ -1687,19 +1747,7 @@
         }
 
         function finaliserSouscription() {
-            console.log('Finalisation de la souscription...');
-
-            // Afficher un loader
-            const $btn = $('#btn-finaliser-souscription');
-            const originalHtml = $btn.html();
-            $btn.prop('disabled', true).html('<span class="spinner"></span> Traitement en cours...');
-
-            // Simuler l'envoi (remplacer par votre vraie logique)
-            setTimeout(() => {
-                // Afficher le message de succès
-                showSuccessMessage();
-                $btn.prop('disabled', false).html(originalHtml);
-            }, 2000);
+            envoyerDonneesAuServeur();
         }
 
         function showSuccessMessage() {
@@ -2020,6 +2068,113 @@
             return labels[value] || value;
         }
 
+        function getTotalMensuelFromResults(results, tarifChoisi) {
+            if (!results || !results.tarifs || !results.tarifs[tarifChoisi]) return 0;
+            const totalAnnuel = parseInt(results.tarifs[tarifChoisi].total_annuel) || 0;
+            return Math.round(totalAnnuel / 10); // Sur 10 mois comme dans votre code
+        }
+
+        // Fonctions UI pour le loader et les messages
+        function afficherLoader() {
+            // Si un loader existe déjà, ne pas en créer un nouveau
+            if ($('#ajax-loader').length) return;
+
+            const loader = `
+        <div id="ajax-loader" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                    background: rgba(0,0,0,0.7); display: flex; 
+                    justify-content: center; align-items: center; z-index: 99999;">
+            <div style="background: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                <div class="spinner" style="border: 5px solid #f3f3f3; border-top: 5px solid #667eea; 
+                            border-radius: 50%; width: 60px; height: 60px; 
+                            animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                <h3 style="margin: 0 0 10px 0; color: #333;">Envoi en cours...</h3>
+                <p style="margin: 0; font-size: 14px; color: #666;">
+                    Génération du PDF et envoi des emails<br>
+                    <small>Veuillez patienter quelques instants</small>
+                </p>
+            </div>
+        </div>
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+            $('body').append(loader);
+        }
+
+        function cacherLoader() {
+            $('#ajax-loader').fadeOut(300, function () {
+                $(this).remove();
+            });
+        }
+
+        function afficherMessageSucces(message) {
+            // Supprimer les anciens messages
+            $('.ajax-message').remove();
+
+            const successHtml = `
+        <div class="ajax-message success-message" style="position: fixed; top: 20px; right: 20px; 
+                    background: linear-gradient(135deg, #82C720 0%, #82C720 100%); color: white; 
+                    padding: 20px 30px; border-radius: 10px; box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2); 
+                    z-index: 100000; max-width: 400px; animation: slideIn 0.5s ease;">
+            <div style="display: flex; align-items: center;">
+                <span style="font-size: 24px; margin-right: 15px;">✅</span>
+                <div>
+                    <h4 style="margin: 0 0 5px 0; font-size: 16px; colors:white;">Succès !</h4>
+                </div>
+            </div>
+        </div>
+        <style>
+            @keyframes slideIn {
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        </style>
+    `;
+
+            $('body').append(successHtml);
+
+            setTimeout(() => {
+                // Rediriger vers votre page de remerciement
+                window.location.href = '/merci';
+            }, 1500);
+
+            // Auto-fermeture après 5 secondes
+            setTimeout(() => {
+                $('.success-message').fadeOut(500, function () {
+                    $(this).remove();
+                });
+            }, 5000);
+        }
+
+        function afficherMessageErreur(message) {
+            // Supprimer les anciens messages
+            $('.ajax-message').remove();
+
+            const errorHtml = `
+        <div class="ajax-message error-message" style="position: fixed; top: 20px; right: 20px; 
+                    background: #dc3545; color: white; padding: 20px 30px; 
+                    border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); 
+                    z-index: 100000; max-width: 400px; animation: slideIn 0.5s ease;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; flex: 1;">
+                    <span style="font-size: 24px; margin-right: 15px;">❌</span>
+                    <div>
+                        <h4 style="margin: 0 0 5px 0; font-size: 16px;">Erreur</h4>
+                        <p style="margin: 0; font-size: 14px; opacity: 0.95;">${message}</p>
+                    </div>
+                </div>
+                <button class="close-btn" style="background: white; color: #dc3545; border: none; 
+                    padding: 5px 10px; border-radius: 5px; cursor: pointer; 
+                    margin-left: 15px; font-weight: bold;">✕</button>
+            </div>
+        </div>
+    `;
+
+            $('body').append(errorHtml);
+        }
 
         // ===============================
         // API PUBLIQUE

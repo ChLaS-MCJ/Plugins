@@ -1,70 +1,82 @@
 <?php
 /**
- *  Template Elec residentiel :
- * 
+ * Template Email Électricité Résidentielle - Version simplifiée
+ * includes/SendEmail/templates/elec-residentiel.php
  */
 
-require_once plugin_dir_path(__FILE__) . 'base-template.php';
+// Inclure le template de base
+require_once __DIR__ . '/base-template.php';
 
-$title = 'Votre simulation électricité résidentielle';
-$results = $data['results'];
-$simulation = $data['simulation'];
+$title = 'Votre simulation électricité GES Solutions';
 
-// Contenu spécifique électricité résidentiel
+// Préparer les données client pour le template de base
+$client = [
+    'nom' => $data['client']['nom'] ?? '',
+    'prenom' => $data['client']['prenom'] ?? ''
+];
+
+// Contenu simplifié
 ob_start();
 ?>
-<p>Voici les résultats de votre simulation électricité personnalisée :</p>
 
-<div class="result-box">
-    <h3>📊 Résultats de votre simulation</h3>
+<div class="result-box" style="background-color: #f8f9fa; border-left: 4px solid #222F46;">
+    <h3 style="color: #222F46;">✅ Simulation bien reçue !</h3>
+    <p>Nous avons bien reçu votre demande de simulation pour votre contrat d'électricité.</p>
     
-    <?php if (isset($results['consommation_annuelle'])): ?>
-    <p><strong>Consommation annuelle estimée :</strong> 
-       <span class="highlight"><?php echo number_format($results['consommation_annuelle']); ?> kWh/an</span>
+    <p style="margin-top: 20px;">
+        <strong style="font-size: 18px; color: #222F46;">Votre estimation mensuelle :</strong><br>
+        <span style="font-size: 32px; color: #82C720; font-weight: bold;">
+            <?php echo number_format($data['results']['estimation_mensuelle'] ?? 0, 0, ',', ' '); ?> €
+        </span>
+        <span style="font-size: 14px; color: #666;">TTC/mois</span>
     </p>
-    <?php endif; ?>
-    
-    <?php if (isset($results['puissance_recommandee'])): ?>
-    <p><strong>Puissance recommandée :</strong> 
-       <span class="highlight"><?php echo $results['puissance_recommandee']; ?> kVA</span>
-    </p>
-    <?php endif; ?>
 </div>
 
-<?php if (isset($results['tarifs']) && is_array($results['tarifs'])): ?>
 <div class="result-box">
-    <h3>💰 Comparaison des tarifs</h3>
-    <table>
-        <thead>
-            <tr><th>Tarif</th><th>Coût annuel</th><th>Coût mensuel</th></tr>
-        </thead>
-        <tbody>
-        <?php foreach ($results['tarifs'] as $type => $tarif): ?>
-            <?php if (is_array($tarif) && isset($tarif['total_annuel'])): ?>
-            <tr>
-                <td><?php echo ucfirst($type); ?></td>
-                <td><?php echo number_format($tarif['total_annuel']); ?>€</td>
-                <td><?php echo number_format($tarif['total_annuel']/12); ?>€</td>
-            </tr>
-            <?php endif; ?>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
+    <h3 style="color: #E39411;">📄 Votre document personnalisé</h3>
+    <p><strong>Vous trouverez en pièce jointe le PDF complet</strong> contenant :</p>
+    <ul style="color: #666;">
+        <li>Le détail de votre simulation personnalisée</li>
+        <li>Les caractéristiques de votre logement</li>
+        <li>Votre consommation estimée</li>
+        <li>Les différentes options tarifaires</li>
+    </ul>
+    <p style="background-color: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 15px;">
+        💡 <strong>Conservez ce document</strong> pour votre suivi et nos échanges futurs
+    </p>
 </div>
-<?php endif; ?>
 
-<div class="result-box">
-    <h3>🏠 Vos informations de logement</h3>
-    <table>
-        <tr><th>Type de logement</th><td><?php echo esc_html($simulation['type_logement'] ?? 'Non spécifié'); ?></td></tr>
-        <tr><th>Surface</th><td><?php echo esc_html($simulation['surface'] ?? 'Non spécifié'); ?> m²</td></tr>
-        <tr><th>Nombre de personnes</th><td><?php echo esc_html($simulation['nb_personnes'] ?? 'Non spécifié'); ?></td></tr>
-        <tr><th>Isolation</th><td><?php echo esc_html($simulation['isolation'] ?? 'Non spécifié'); ?></td></tr>
-        <tr><th>Type de chauffage</th><td><?php echo esc_html($simulation['type_chauffage'] ?? 'Non spécifié'); ?></td></tr>
-    </table>
+<div class="result-box" style="background-color: #e8f5e8; border-left: 4px solid #82C720;">
+    <h3 style="color: #222F46;">📞 Prochaine étape</h3>
+    <p style="font-size: 16px;">
+        <strong>Un conseiller GES Solutions vous contactera sous 72h</strong>
+    </p>
+    <p>Il pourra :</p>
+    <ul>
+        <li>Répondre à toutes vos questions</li>
+        <li>Affiner votre simulation si nécessaire</li>
+        <li>Vous accompagner dans la souscription</li>
+        <li>Planifier la mise en service</li>
+    </ul>
 </div>
+
+<div style="text-align: center; margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+    <p style="margin: 0; color: #666;">Une question urgente ?</p>
+    <p style="margin: 5px 0; font-size: 20px; color: #222F46; font-weight: bold;">
+        📞 01 23 45 67 89
+    </p>
+    <p style="margin: 0; color: #666; font-size: 12px;">
+        Du lundi au vendredi - 9h à 18h
+    </p>
+</div>
+
+<p style="margin-top: 20px; font-size: 12px; color: #999; text-align: center;">
+    Merci de votre confiance. L'équipe GES Solutions
+</p>
+
 <?php
 $content = ob_get_clean();
 
 // Générer l'email complet avec le template de base
-echo render_email_base($title, $content, $client);
+echo render_email_base($title, $content, $client, false);
+?>

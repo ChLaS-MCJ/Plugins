@@ -31,7 +31,6 @@ class HticCalculateurElecResidentiel {
      */
     public function calculate() {
         try {
-            $this->logDebug("Début du calcul avec les données: " . json_encode($this->userData));
             
             // Validation des données
             $validatedData = $this->validateAndExtractData();
@@ -45,8 +44,6 @@ class HticCalculateurElecResidentiel {
             
             // Calcul complet
             $results = $this->performCompleteCalculation($validatedData, $puissanceForcee, $tarifForce);
-            
-            $this->logDebug("Calcul terminé avec succès");
             
             return array(
                 'success' => true,
@@ -87,7 +84,6 @@ class HticCalculateurElecResidentiel {
         
         foreach ($requiredFields as $field) {
             if (empty($extractedData[$field]) && $extractedData[$field] !== '0') {
-                $this->logDebug("Champ manquant: {$field}");
                 return false;
             }
         }
@@ -95,22 +91,18 @@ class HticCalculateurElecResidentiel {
         // Validation spécifique: isolation obligatoire si chauffage électrique
         $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
         if (in_array($extractedData['type_chauffage'], $chauffagesElectriques) && empty($extractedData['isolation'])) {
-            $this->logDebug("Isolation manquante pour chauffage électrique");
             return false;
         }
         
         // Validation des valeurs
         if ($extractedData['surface'] < 20 || $extractedData['surface'] > 500) {
-            $this->logDebug("Surface invalide: " . $extractedData['surface']);
             return false;
         }
         
         if ($extractedData['nb_personnes'] < 1 || $extractedData['nb_personnes'] > 6) {
-            $this->logDebug("Nombre de personnes invalide: " . $extractedData['nb_personnes']);
             return false;
         }
         
-        $this->logDebug("Validation réussie");
         return $extractedData;
     }
     

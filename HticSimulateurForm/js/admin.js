@@ -530,8 +530,8 @@ jQuery(document).ready(function ($) {
     function setupTooltips() {
         // Ajouter des tooltips aux champs importants
         $('input[name*="chauffage"]').attr('data-tip', 'Consommation de chauffage en kWh par m² et par an');
-        $('input[name*="abo"]').attr('data-tip', 'Abonnement mensuel en euros TTC');
-        $('input[name*="kwh"]').attr('data-tip', 'Prix du kWh en euros TTC');
+        $('input[name*="abo"]').attr('data-tip', 'Abonnement mensuel en euros TTC pour résidentiel et HTVA pour pro');
+        $('input[name*="kwh"]').attr('data-tip', 'Prix du kWh en euros TTC pour résidentiel et HTVA pour pro');
         $('input[name*="coeff"]').attr('data-tip', 'Coefficient multiplicateur pour ajuster la consommation');
 
         // Tooltips hover

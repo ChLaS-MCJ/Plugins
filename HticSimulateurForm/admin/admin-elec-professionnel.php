@@ -25,7 +25,7 @@ if (empty($elec_professionnel)) {
 <form method="post" action="options.php" class="htic-simulateur-form">
     <?php settings_fields('htic_simulateur_elec_professionnel'); ?>
     
-    <h2>🏢 Tarifs Électricité Professionnel (TTC)</h2>
+    <h2>🏢 Tarifs Électricité Professionnel (HTVA)</h2>
     <p class="description">Configuration des tarifs et consommations électriques pour les entreprises - Dernière mise à jour : <?php echo date('d/m/Y'); ?></p>
     
     <div class="htic-simulateur-section">

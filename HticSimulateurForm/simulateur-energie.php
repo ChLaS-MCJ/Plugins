@@ -67,7 +67,8 @@ class HticSimulateurEnergieAdmin {
             'htic_recalculate_with_power' => 'ajax_recalculate_with_power',
             'process_electricity_form' => 'ajax_electricity_form',
             'htic_process_contact' => 'ajax_process_contact',
-            'process_gaz_form' => 'ajax_gaz_form'
+            'process_gaz_form' => 'ajax_gaz_form',
+            'get_simulation_details' => 'ajax_get_simulation_details'
         );
         
         foreach ($ajax_actions as $action => $method) {
@@ -708,6 +709,347 @@ class HticSimulateurEnergieAdmin {
             wp_send_json_error('Erreur: ' . $e->getMessage());
         }
     }
+
+    public function ajax_get_simulation_details() {
+        if (!wp_verify_nonce($_POST['_wpnonce'], 'get_simulation_details')) {
+            wp_send_json_error('Nonce invalide');
+            return;
+        }
+        
+        global $wpdb;
+        $type = sanitize_text_field($_POST['type']);
+        $id = intval($_POST['id']);
+        
+        // Déterminer la table selon le type
+        $tables = [
+            'elec_res' => $wpdb->prefix . 'simulations_electricite',
+            'elec_pro' => $wpdb->prefix . 'simulations_electricite_pro',
+            'gaz_res' => $wpdb->prefix . 'simulations_gaz',
+            'gaz_pro' => $wpdb->prefix . 'simulations_gaz_pro'
+        ];
+        
+        if (!isset($tables[$type])) {
+            wp_send_json_error('Type invalide');
+            return;
+        }
+        
+        $simulation = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$tables[$type]} WHERE id = %d",
+            $id
+        ));
+        
+        if (!$simulation) {
+            wp_send_json_error('Simulation non trouvée');
+            return;
+        }
+        
+        // Décoder les données JSON
+        $data = json_decode($simulation->data_json, true);
+        
+        // Construire le HTML selon le type
+        $html = '<div class="detail-sections">';
+        
+        // Section informations client/entreprise
+        $html .= '<div class="detail-section">';
+        if (in_array($type, ['elec_res', 'gaz_res'])) {
+            $html .= '<h3 class="detail-section-title">👤 Informations Client</h3>';
+            $html .= '<div class="detail-grid">';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Nom complet</span>
+                <span class="detail-value">' . esc_html($simulation->first_name . ' ' . $simulation->last_name) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Email</span>
+                <span class="detail-value"><a href="mailto:' . esc_attr($simulation->email) . '">' . esc_html($simulation->email) . '</a></span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Téléphone</span>
+                <span class="detail-value"><a href="tel:' . esc_attr($simulation->phone) . '">' . esc_html($simulation->phone) . '</a></span>
+            </div>';
+            if (!empty($data['client_data']['date_naissance'])) {
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">Date de naissance</span>
+                    <span class="detail-value">' . date('d/m/Y', strtotime($data['client_data']['date_naissance'])) . '</span>
+                </div>';
+            }
+            if (!empty($data['client_data']['lieu_naissance'])) {
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">Lieu de naissance</span>
+                    <span class="detail-value">' . esc_html($data['client_data']['lieu_naissance']) . '</span>
+                </div>';
+            }
+        } else {
+            $html .= '<h3 class="detail-section-title">🏢 Informations Entreprise</h3>';
+            $html .= '<div class="detail-grid">';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Raison sociale</span>
+                <span class="detail-value">' . esc_html($simulation->company_name) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Forme juridique</span>
+                <span class="detail-value">' . esc_html($simulation->legal_form) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">SIRET</span>
+                <span class="detail-value">' . esc_html($simulation->siret) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Code NAF</span>
+                <span class="detail-value">' . esc_html($simulation->naf_code ?? 'Non renseigné') . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Contact</span>
+                <span class="detail-value">' . esc_html($simulation->contact_first_name . ' ' . $simulation->contact_last_name) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Email</span>
+                <span class="detail-value"><a href="mailto:' . esc_attr($simulation->contact_email) . '">' . esc_html($simulation->contact_email) . '</a></span>
+            </div>';
+        }
+        $html .= '</div></div>';
+        
+        // Section adresse
+        $html .= '<div class="detail-section">';
+        $html .= '<h3 class="detail-section-title">📍 Adresse</h3>';
+        $html .= '<div class="detail-grid">';
+        
+        if ($type === 'gaz_res' && isset($data['client_data'])) {
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Adresse</span>
+                <span class="detail-value">' . esc_html($data['client_data']['adresse']) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Code postal / Ville</span>
+                <span class="detail-value">' . esc_html($data['client_data']['code_postal'] . ' ' . $data['client_data']['ville']) . '</span>
+            </div>';
+            if (!empty($data['client_data']['complement'])) {
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">Complément</span>
+                    <span class="detail-value">' . esc_html($data['client_data']['complement']) . '</span>
+                </div>';
+            }
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Commune desservie</span>
+                <span class="detail-value">' . esc_html($simulation->commune) . '</span>
+            </div>';
+        } elseif (in_array($type, ['elec_pro', 'gaz_pro'])) {
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Adresse</span>
+                <span class="detail-value">' . esc_html($simulation->company_address) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Code postal / Ville</span>
+                <span class="detail-value">' . esc_html($simulation->company_postal_code . ' ' . $simulation->company_city) . '</span>
+            </div>';
+        } elseif ($type === 'elec_res') {
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Code postal</span>
+                <span class="detail-value">' . esc_html($simulation->postal_code) . '</span>
+            </div>';
+        }
+        
+        $html .= '</div></div>';
+        
+        // Section détails techniques
+        $html .= '<div class="detail-section">';
+        $html .= '<h3 class="detail-section-title">⚙️ Détails Techniques</h3>';
+        $html .= '<div class="detail-grid">';
+        
+        if ($type === 'elec_res') {
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Type de logement</span>
+                <span class="detail-value">' . esc_html($simulation->housing_type) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Surface</span>
+                <span class="detail-value">' . esc_html($simulation->surface) . ' m²</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Nombre de résidents</span>
+                <span class="detail-value">' . esc_html($simulation->residents) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Puissance souscrite</span>
+                <span class="detail-value">' . esc_html($simulation->power_chosen) . ' kVA</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Tarif choisi</span>
+                <span class="detail-value">' . esc_html(strtoupper($simulation->tarif_chosen)) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Consommation annuelle</span>
+                <span class="detail-value">' . number_format($simulation->annual_consumption, 0, ',', ' ') . ' kWh</span>
+            </div>';
+        } elseif ($type === 'gaz_res') {
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Type de logement</span>
+                <span class="detail-value">' . esc_html(ucfirst($data['form_data']['type_logement'] ?? 'Non renseigné')) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Surface</span>
+                <span class="detail-value">' . esc_html($data['form_data']['superficie'] ?? 0) . ' m²</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Nombre de personnes</span>
+                <span class="detail-value">' . esc_html($data['form_data']['nb_personnes'] ?? 0) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Type de gaz</span>
+                <span class="detail-value">' . esc_html($simulation->type_gaz) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Chauffage au gaz</span>
+                <span class="detail-value">' . ($data['form_data']['chauffage_gaz'] === 'oui' ? '✅ Oui' : '❌ Non') . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Isolation</span>
+                <span class="detail-value">' . esc_html(ucfirst($data['form_data']['isolation'] ?? 'Non renseigné')) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Eau chaude</span>
+                <span class="detail-value">' . esc_html(ucfirst($data['form_data']['eau_chaude'] ?? 'Non renseigné')) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Cuisson</span>
+                <span class="detail-value">' . esc_html(ucfirst($data['form_data']['cuisson'] ?? 'Non renseigné')) . '</span>
+            </div>';
+            $html .= '<div class="detail-item">
+                <span class="detail-label">Consommation annuelle</span>
+                <span class="detail-value">' . number_format($simulation->consommation_annuelle, 0, ',', ' ') . ' kWh</span>
+            </div>';
+        }
+        
+        $html .= '</div></div>';
+        
+        // Section compteur/PDL
+        if (isset($data['client_data']['numero_compteur']) || isset($data['client_data']['pdl_adresse'])) {
+            $html .= '<div class="detail-section">';
+            $html .= '<h3 class="detail-section-title">📊 Informations Compteur</h3>';
+            $html .= '<div class="detail-grid">';
+            
+            if (!empty($data['client_data']['numero_compteur'])) {
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">Numéro de compteur</span>
+                    <span class="detail-value">' . esc_html($data['client_data']['numero_compteur']) . '</span>
+                </div>';
+            }
+            if (!empty($data['client_data']['pdl_adresse'])) {
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">PDL / Adresse</span>
+                    <span class="detail-value">' . esc_html($data['client_data']['pdl_adresse']) . '</span>
+                </div>';
+            }
+            if (!empty($data['client_data']['ancien_numero_compteur'])) {
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">Ancien n° compteur</span>
+                    <span class="detail-value">' . esc_html($data['client_data']['ancien_numero_compteur']) . '</span>
+                </div>';
+            }
+            
+            $html .= '</div></div>';
+        }
+        
+        // Section documents uploadés
+        if (!empty($data['uploaded_files'])) {
+            $html .= '<div class="detail-section">';
+            $html .= '<h3 class="detail-section-title">📎 Documents fournis</h3>';
+            $html .= '<div class="detail-grid">';
+            
+            foreach ($data['uploaded_files'] as $key => $file) {
+                $labels = [
+                    'rib_file' => 'RIB',
+                    'carte_identite_recto' => 'Carte identité (recto)',
+                    'carte_identite_verso' => 'Carte identité (verso)',
+                    'kbis_file' => 'Extrait KBIS',
+                    'rib_entreprise' => 'RIB Entreprise',
+                    'mandat_signature' => 'Mandat de signature'
+                ];
+                
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">' . ($labels[$key] ?? $key) . '</span>
+                    <span class="detail-value">✅ ' . esc_html($file['name']) . ' (' . esc_html($file['size']) . ')</span>
+                </div>';
+            }
+            
+            $html .= '</div></div>';
+        }
+        
+        // Section consentements
+        if (isset($data['client_data']['accept_conditions']) || isset($data['client_data']['accept_prelevement'])) {
+            $html .= '<div class="detail-section">';
+            $html .= '<h3 class="detail-section-title">✅ Consentements</h3>';
+            $html .= '<div class="detail-grid">';
+            
+            if (isset($data['client_data']['accept_conditions'])) {
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">Conditions générales</span>
+                    <span class="detail-value">' . ($data['client_data']['accept_conditions'] ? '✅ Acceptées' : '❌ Non acceptées') . '</span>
+                </div>';
+            }
+            if (isset($data['client_data']['accept_prelevement'])) {
+                $html .= '<div class="detail-item">
+                    <span class="detail-label">Prélèvement automatique</span>
+                    <span class="detail-value">' . ($data['client_data']['accept_prelevement'] ? '✅ Accepté' : '❌ Non accepté') . '</span>
+                </div>';
+            }
+            
+            $html .= '</div></div>';
+        }
+        
+        // Section estimation financière avec highlight
+        $html .= '<div class="highlight-box">';
+        $html .= '<h3 style="margin-top: 0; color: #1e40af;">💰 Estimation Tarifaire</h3>';
+        
+        if (in_array($type, ['elec_res'])) {
+            $html .= '<div class="highlight-value">' . number_format($simulation->monthly_estimate, 2, ',', ' ') . ' €/mois</div>';
+            $html .= '<div class="highlight-label">Soit ' . number_format($simulation->monthly_estimate * 12, 2, ',', ' ') . ' €/an</div>';
+        } elseif ($type === 'gaz_res') {
+            $html .= '<div class="highlight-value">' . number_format($simulation->cout_annuel, 2, ',', ' ') . ' €/an</div>';
+            $html .= '<div class="highlight-label">Soit ' . number_format($simulation->cout_annuel / 12, 2, ',', ' ') . ' €/mois</div>';
+            
+            if (isset($data['results_data']['cout_abonnement'])) {
+                $html .= '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dbeafe;">';
+                $html .= '<div style="display: flex; justify-content: space-between; margin: 5px 0;">';
+                $html .= '<span>Abonnement annuel:</span>';
+                $html .= '<strong>' . number_format($data['results_data']['cout_abonnement'], 2, ',', ' ') . ' €</strong>';
+                $html .= '</div>';
+                $html .= '<div style="display: flex; justify-content: space-between; margin: 5px 0;">';
+                $html .= '<span>Consommation:</span>';
+                $html .= '<strong>' . number_format($data['results_data']['cout_consommation'], 2, ',', ' ') . ' €</strong>';
+                $html .= '</div>';
+                $html .= '</div>';
+            }
+        } elseif (in_array($type, ['elec_pro'])) {
+            $html .= '<div class="highlight-value">' . number_format($simulation->annual_estimate, 2, ',', ' ') . ' €/an</div>';
+            $html .= '<div class="highlight-label">Soit ' . number_format($simulation->annual_estimate / 12, 2, ',', ' ') . ' €/mois</div>';
+        } elseif ($type === 'gaz_pro') {
+            if ($simulation->is_high_consumption) {
+                $html .= '<div class="highlight-value">Sur devis</div>';
+                $html .= '<div class="highlight-label">Consommation > 35 000 kWh/an - Tarification personnalisée requise</div>';
+            } else {
+                $html .= '<div class="highlight-value">' . number_format($simulation->estimated_annual_cost, 2, ',', ' ') . ' €/an</div>';
+                $html .= '<div class="highlight-label">Soit ' . number_format($simulation->estimated_annual_cost / 12, 2, ',', ' ') . ' €/mois</div>';
+            }
+        }
+        
+        $html .= '</div>';
+        
+        // Métadonnées
+        $html .= '<div class="detail-section" style="margin-top: 20px; background: #f9fafb; padding: 15px; border-radius: 8px;">';
+        $html .= '<div style="display: flex; justify-content: space-between; align-items: center;">';
+        $html .= '<div>';
+        $html .= '<strong>Date de simulation:</strong> ' . date('d/m/Y à H:i', strtotime($simulation->created_at));
+        $html .= '</div>';
+        $html .= '<div>';
+        $html .= '<strong>Référence:</strong> #' . str_pad($simulation->id, 6, '0', STR_PAD_LEFT);
+        $html .= '</div>';
+        $html .= '</div>';
+        $html .= '</div>';
+        
+        $html .= '</div>';
+        
+        wp_send_json_success(['html' => $html]);
+    }
     
     // ================================
     // GESTION DES FICHIERS
@@ -1179,106 +1521,13 @@ class HticSimulateurEnergieAdmin {
     }
 
     public function simulations_list_page() {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'simulations_electricite';
+        $this->create_simulations_table();
+        $this->create_business_simulations_table();
+        $this->create_gaz_simulations_table();
+        $this->create_gas_professional_simulations_table();
         
-        $this->upgrade_simulations_table();
-        
-        if (isset($_POST['action']) && wp_verify_nonce($_POST['nonce'], 'simulation_action')) {
-            $this->handle_simulation_action($_POST);
-        }
-        
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name;
-        
-        if (!$table_exists) {
-            $this->create_simulations_table();
-        }
-        
-        $simulations = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC LIMIT 50");
-        ?>
-        
-        <div class="wrap">
-            <h1>Simulations Électricité Reçues</h1>
-            
-            <?php if (empty($simulations)) : ?>
-                <div class="notice notice-info">
-                    <p>Aucune simulation reçue pour le moment.</p>
-                </div>
-            <?php else : ?>
-            
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th width="12%">Date</th>
-                        <th width="15%">Type</th>
-                        <th width="18%">Nom</th>
-                        <th width="20%">Email</th>
-                        <th width="12%">Téléphone</th>
-                        <th width="8%">CP</th>
-                        <th width="12%">Estimation</th>
-                        <th width="10%">Statut</th>
-                        <th width="15%">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($simulations as $sim) : ?>
-                    <tr>
-                        <td><?php echo date('d/m/Y H:i', strtotime($sim->created_at)); ?></td>
-                        <td>
-                            <span class="simulation-type type-<?php echo $this->get_simulation_type($sim); ?>">
-                                <?php echo $this->get_simulation_type_label($sim); ?>
-                            </span>
-                        </td>
-                        <td><?php echo esc_html($sim->first_name . ' ' . $sim->last_name); ?></td>
-                        <td>
-                            <a href="mailto:<?php echo esc_attr($sim->email); ?>">
-                                <?php echo esc_html($sim->email); ?>
-                            </a>
-                        </td>
-                        <td>
-                            <a href="tel:<?php echo esc_attr($sim->phone); ?>">
-                                <?php echo esc_html($sim->phone); ?>
-                            </a>
-                        </td>
-                        <td><?php echo esc_html($sim->postal_code); ?></td>
-                        <td>
-                            <strong><?php echo number_format($sim->monthly_estimate, 2, ',', ' '); ?> €/mois</strong>
-                        </td>
-                        <td>
-                            <form method="post" style="margin: 0;">
-                                <?php wp_nonce_field('simulation_action', 'nonce'); ?>
-                                <input type="hidden" name="action" value="update_status">
-                                <input type="hidden" name="sim_id" value="<?php echo $sim->id; ?>">
-                                <select name="status" onchange="this.form.submit()" class="status-select status-<?php echo $sim->status; ?>">
-                                    <option value="non_traite" <?php selected($sim->status, 'non_traite'); ?>>❌ Non traité</option>
-                                    <option value="en_cours" <?php selected($sim->status, 'en_cours'); ?>>⏳ En cours</option>
-                                    <option value="traite" <?php selected($sim->status, 'traite'); ?>>✅ Traité</option>
-                                </select>
-                            </form>
-                        </td>
-                        <td>
-                            <button class="button button-small view-details" data-id="<?php echo $sim->id; ?>">
-                                👁️ Détails
-                            </button>
-                            
-                            <form method="post" style="display: inline-block; margin-left: 5px;" 
-                                onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette simulation ?');">
-                                <?php wp_nonce_field('simulation_action', 'nonce'); ?>
-                                <input type="hidden" name="action" value="delete">
-                                <input type="hidden" name="sim_id" value="<?php echo $sim->id; ?>">
-                                <button type="submit" class="button button-small button-link-delete">
-                                    🗑️ Supprimer
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            
-            <?php endif; ?>
-        </div>
-        <?php
+        // Inclure le dashboard
+        include HTIC_SIMULATEUR_PATH . 'admin/simulations-dashboard.php';
     }
 
     // Méthodes utilitaires pour les simulations

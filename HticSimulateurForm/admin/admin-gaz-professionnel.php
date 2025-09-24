@@ -46,7 +46,7 @@ $communes_gaz = isset($gaz_pro['pro_communes_gaz']) ? $gaz_pro['pro_communes_gaz
 <form method="post" action="options.php" class="htic-simulateur-form">
     <?php settings_fields('htic_simulateur_gaz_professionnel'); ?>
     
-    <h2>🏢 Tarifs Gaz Professionnel (TTC) - Données Excel</h2>
+    <h2>🏢 Tarifs Gaz Professionnel (HTVA) - Données Excel</h2>
     <p class="description">Configuration conforme au fichier Excel "Conso Gaz Professionnel" - Dernière mise à jour : <?php echo date('d/m/Y'); ?></p>
     
     <h4>🗺️ Gestion des Communes (19 communes - identiques au résidentiel)</h4>
@@ -104,7 +104,7 @@ $communes_gaz = isset($gaz_pro['pro_communes_gaz']) ? $gaz_pro['pro_communes_gaz
                 <th>Tranche</th>
                 <th>Seuil (kWh/an)</th>
                 <th>Abonnement (€/mois)</th>
-                <th>Prix kWh (€ TTC)</th>
+                <th>Prix kWh (€ HTVA)</th>
                 <th>Description</th>
             </tr>
         </thead>
@@ -167,7 +167,7 @@ $communes_gaz = isset($gaz_pro['pro_communes_gaz']) ? $gaz_pro['pro_communes_gaz
                 <th>Tranche</th>
                 <th>Seuil (kWh/an)</th>
                 <th>Abonnement (€/mois)</th>
-                <th>Prix kWh (€ TTC)</th>
+                <th>Prix kWh (€ HTVA)</th>
                 <th>Description</th>
             </tr>
         </thead>

@@ -1,10 +1,33 @@
-// gaz-residentiel.js - JavaScript restructuré pour 7 étapes avec récapitulatif à l'étape 7
+/**
+ * SIMULATEUR GAZ RÉSIDENTIEL
+ * Plugin WordPress pour GES Solutions
+ * 
+ * Gère le processus complet de simulation gaz en 7 étapes :
+ * 1. Logement et commune
+ * 2. Chauffage et isolation
+ * 3. Eau chaude sanitaire
+ * 4. Cuisson et offre
+ * 5. Résultats de l'estimation
+ * 6. Informations client et documents
+ * 7. Récapitulatif final et envoi
+ * 
+ * Fonctionnalités :
+ * - Navigation fluide entre étapes
+ * - Calculs de consommation gaz
+ * - Upload de documents
+ * - Génération de PDF
+ * - Envoi d'emails automatisés
+ * 
+ * @version 1.0.0
+ * @author HTIC / GES Solutions
+ */
 
 jQuery(document).ready(function ($) {
 
-    // ========================================
+    // ================================
     // VARIABLES GLOBALES
-    // ========================================
+    // ================================
+
     let currentStep = 1;
     const totalSteps = 7;
     let formData = {};
@@ -12,9 +35,10 @@ jQuery(document).ready(function ($) {
     let calculationResults = null;
     let uploadedFiles = {};
 
-    // ========================================
+    // ================================
     // INITIALISATION
-    // ========================================
+    // ================================
+
     init();
 
     function init() {
@@ -33,7 +57,6 @@ jQuery(document).ready(function ($) {
         if (configElement) {
             try {
                 configData = JSON.parse(configElement.textContent);
-                console.log('Configuration chargée');
             } catch (e) {
                 console.error('Erreur configuration:', e);
                 configData = {};
@@ -41,9 +64,9 @@ jQuery(document).ready(function ($) {
         }
     }
 
-    // ========================================
-    // NAVIGATION ENTRE LES ÉTAPES
-    // ========================================
+    // ================================
+    // NAVIGATION ENTRE ÉTAPES
+    // ================================
 
     function setupStepNavigation() {
         // Bouton Suivant
@@ -51,7 +74,6 @@ jQuery(document).ready(function ($) {
             if (validateCurrentStep()) {
                 saveCurrentStepData();
 
-                // À l'étape 6, préparer les données du récapitulatif avant de passer à 7
                 if (currentStep === 6) {
                     prepareRecapData();
                 }
@@ -74,7 +96,7 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        // Bouton Finaliser la souscription (étape 7)
+        // Bouton Finaliser (étape 7)
         $(document).on('click', '#btn-finalize-subscription', function () {
             finalizeSubscription();
         });
@@ -130,7 +152,6 @@ jQuery(document).ready(function ($) {
         $('.step').removeClass('active');
         $(`.step[data-step="${stepNumber}"]`).addClass('active');
 
-        // Gestion spécifique par étape
         handleStepChange(stepNumber);
     }
 
@@ -140,38 +161,26 @@ jQuery(document).ready(function ($) {
     }
 
     function updateNavigation() {
-        // Masquer tous les boutons par défaut
         $('#btn-next, #btn-calculate, #btn-send-simulation, #btn-restart').hide();
-
-        // Bouton Précédent (visible sauf étape 1)
         $('#btn-previous').toggle(currentStep > 1);
 
-        // Navigation selon l'étape
         switch (currentStep) {
             case 1:
             case 2:
             case 3:
                 $('#btn-next').text('Suivant →').show();
                 break;
-
             case 4:
-                // Étape 4 : bouton Calculer
                 $('#btn-calculate').show();
                 break;
-
             case 5:
-                // Étape 5 (résultats) : bouton "Je Souscris"
                 $('#btn-next').text('Je Souscris →').show();
                 break;
-
             case 6:
-                // Étape 6 (contact) : bouton "Suivant" vers récapitulatif
                 $('#btn-next').text('Voir le récapitulatif →').show();
                 break;
-
             case 7:
-                // Étape 7 (récapitulatif) : pas de bouton suivant
-                // Le bouton "Finaliser ma souscription" est dans le contenu
+                // Le bouton de finalisation est dans le contenu
                 break;
         }
     }
@@ -181,24 +190,20 @@ jQuery(document).ready(function ($) {
             case 5:
                 // Résultats déjà chargés par calculateResults()
                 break;
-
             case 6:
-                // Initialiser les uploads
                 setTimeout(() => {
                     initFileUploads();
                 }, 100);
                 break;
-
             case 7:
-                // Afficher le récapitulatif complet
                 displayFullRecap();
                 break;
         }
     }
 
-    // ========================================
+    // ================================
     // LOGIQUE SPÉCIFIQUE GAZ
-    // ========================================
+    // ================================
 
     function setupGazLogic() {
         // Gestion chauffage au gaz
@@ -294,25 +299,22 @@ jQuery(document).ready(function ($) {
         const communesNaturel = communes.filter(c => c.type === 'naturel');
         const communesPropane = communes.filter(c => c.type === 'propane');
 
-        // Remplir le groupe naturel
         $('#communes-naturel').empty();
         communesNaturel.forEach(commune => {
             $('#communes-naturel').append(`<option value="${commune.nom}" data-type="naturel">${commune.nom}</option>`);
         });
 
-        // Remplir le groupe propane
         $('#communes-propane').empty();
         communesPropane.forEach(commune => {
             $('#communes-propane').append(`<option value="${commune.nom}" data-type="propane">${commune.nom}</option>`);
         });
     }
 
-    // ========================================
+    // ================================
     // GESTION DES UPLOADS
-    // ========================================
+    // ================================
 
     function setupFileUploadHandlers() {
-        // Gestion des changements de fichiers
         $(document).on('change', 'input[type="file"]', function () {
             const fileInput = $(this);
             const fileType = fileInput.attr('name');
@@ -323,7 +325,6 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        // Clic sur les boutons d'upload
         $(document).on('click', '.upload-card button', function (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -333,7 +334,6 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        // Clic sur la carte d'upload
         $(document).on('click', '.upload-card', function (e) {
             if (!$(e.target).is('button, input')) {
                 e.preventDefault();
@@ -377,7 +377,6 @@ jQuery(document).ready(function ($) {
         const uploadCard = fileInput.closest('.upload-card');
         updateUploadDisplay(uploadCard, { name: file.name, status: 'loading' }, 'loading');
 
-        // Simuler l'upload
         setTimeout(() => {
             uploadedFiles[fileType] = {
                 file: file,
@@ -469,18 +468,9 @@ jQuery(document).ready(function ($) {
         }
     }
 
-    function getFileLabel(fileType) {
-        const labels = {
-            'rib_file': 'RIB',
-            'carte_identite_recto': 'Pièce d\'identité (recto)',
-            'carte_identite_verso': 'Pièce d\'identité (verso)'
-        };
-        return labels[fileType] || fileType;
-    }
-
-    // ========================================
+    // ================================
     // VALIDATION DES ÉTAPES
-    // ========================================
+    // ================================
 
     function setupFormValidation() {
         $('input[required], select[required]').on('blur', function () {
@@ -499,27 +489,13 @@ jQuery(document).ready(function ($) {
         currentStepElement.find('.field-error, .field-success').removeClass('field-error field-success');
 
         switch (currentStep) {
-            case 1:
-                isValid = validateStep1(currentStepElement);
-                break;
-            case 2:
-                isValid = validateStep2(currentStepElement);
-                break;
-            case 3:
-                isValid = validateStep3(currentStepElement);
-                break;
-            case 4:
-                isValid = validateStep4(currentStepElement);
-                break;
-            case 5:
-                isValid = true; // Résultats - pas de validation
-                break;
-            case 6:
-                isValid = validateStep6(currentStepElement);
-                break;
-            case 7:
-                isValid = true; // Récapitulatif - pas de validation
-                break;
+            case 1: isValid = validateStep1(currentStepElement); break;
+            case 2: isValid = validateStep2(currentStepElement); break;
+            case 3: isValid = validateStep3(currentStepElement); break;
+            case 4: isValid = validateStep4(currentStepElement); break;
+            case 5: isValid = true; break;
+            case 6: isValid = validateStep6(currentStepElement); break;
+            case 7: isValid = true; break;
         }
 
         if (!isValid) {
@@ -611,14 +587,10 @@ jQuery(document).ready(function ($) {
         return offre.length > 0;
     }
 
-    // Version simplifiée pour test du récapitulatif
     function validateStep6(stepElement) {
         let isValid = true;
         let errors = [];
 
-        console.log('Validation step 6 simplifiée...');
-
-        // Champs obligatoires minimaux
         const requiredFields = [
             { id: 'client_nom', label: 'Nom' },
             { id: 'client_prenom', label: 'Prénom' },
@@ -638,7 +610,7 @@ jQuery(document).ready(function ($) {
             }
         });
 
-        // Validation email basique
+        // Validation email
         const email = stepElement.find('#client_email').val()?.trim();
         if (email && !email.includes('@')) {
             isValid = false;
@@ -646,7 +618,7 @@ jQuery(document).ready(function ($) {
             stepElement.find('#client_email').addClass('field-error');
         }
 
-        // Condition obligatoire minimale
+        // Conditions
         const acceptConditions = stepElement.find('#accept_conditions').is(':checked');
         if (!acceptConditions) {
             isValid = false;
@@ -655,22 +627,9 @@ jQuery(document).ready(function ($) {
 
         if (!isValid && errors.length > 0) {
             showValidationMessage(errors.join('<br>'));
-            console.log('Erreurs de validation:', errors);
-        } else {
-            console.log('Validation réussie!');
         }
 
         return isValid;
-    }
-
-    function isValidEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
-    }
-
-    function isValidPhone(phone) {
-        const re = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
-        return re.test(phone.replace(/\s/g, ''));
     }
 
     function validateField($field) {
@@ -720,9 +679,9 @@ jQuery(document).ready(function ($) {
         return true;
     }
 
-    // ========================================
-    // SAUVEGARDE DES DONNÉES
-    // ========================================
+    // ================================
+    // COLLECTE ET SAUVEGARDE DES DONNÉES
+    // ================================
 
     function saveCurrentStepData() {
         const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
@@ -781,7 +740,6 @@ jQuery(document).ready(function ($) {
 
     function collectClientData() {
         return {
-            // Infos personnelles
             nom: $('#client_nom').val()?.trim() || '',
             prenom: $('#client_prenom').val()?.trim() || '',
             email: $('#client_email').val()?.trim() || '',
@@ -789,7 +747,6 @@ jQuery(document).ready(function ($) {
             date_naissance: $('#client_date_naissance').val() || '',
             lieu_naissance: $('#client_lieu_naissance').val()?.trim() || '',
 
-            // Adresse et PDL
             pdl_adresse: $('#pdl_adresse').val()?.trim() || '',
             numero_compteur: $('#numero_compteur').val()?.trim() || '',
             adresse: $('#client_adresse').val()?.trim() || '',
@@ -797,47 +754,39 @@ jQuery(document).ready(function ($) {
             ville: $('#client_ville').val()?.trim() || '',
             complement: $('#client_complement').val()?.trim() || '',
 
-            // Ancien locataire
             ancien_nom: $('#ancien_nom').val()?.trim() || '',
             ancien_prenom: $('#ancien_prenom').val()?.trim() || '',
             ancien_numero_compteur: $('#ancien_numero_compteur').val()?.trim() || '',
 
-            // Conditions
             accept_conditions: $('#accept_conditions').is(':checked'),
             accept_prelevement: $('#accept_prelevement').is(':checked')
         };
     }
 
     function prepareRecapData() {
-        // Collecter toutes les données pour le récapitulatif
         const allFormData = collectAllFormData();
         const clientData = collectClientData();
 
-        // Stocker les données pour l'étape 7
         window.recapData = {
             form_data: allFormData,
             client_data: clientData,
             results_data: calculationResults,
             uploaded_files: uploadedFiles
         };
-
-        console.log('Données de récapitulatif préparées');
     }
 
-    // ========================================
-    // CALCUL DES RÉSULTATS (ÉTAPE 4 → 5)
-    // ========================================
+    // ================================
+    // CALCULS ET RÉSULTATS (ÉTAPE 4 → 5)
+    // ================================
 
     function calculateResults() {
         const allData = collectAllFormData();
 
-        // Validation
         if (!allData.superficie || !allData.nb_personnes) {
             showValidationMessage('Des informations obligatoires sont manquantes.');
             return;
         }
 
-        // Aller à l'étape 5
         goToStep(5);
 
         $('#results-container').html(`
@@ -858,7 +807,6 @@ jQuery(document).ready(function ($) {
             config_data: configData
         };
 
-        // Ajouter le nonce si disponible
         if (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) {
             dataToSend.nonce = hticSimulateur.nonce;
         }
@@ -922,56 +870,9 @@ jQuery(document).ready(function ($) {
                     </div>
                     
                     <div class="repartition-content">
-                        ${chauffage > 0 ? `
-                        <div class="repartition-item chauffage">
-                            <div class="item-header">
-                                <div class="item-info">
-                                    <div class="item-icon">🔥</div>
-                                    <div class="item-details">
-                                        <div class="item-name">Chauffage</div>
-                                        <div class="item-value">${chauffage.toLocaleString()} kWh/an</div>
-                                    </div>
-                                </div>
-                                <div class="item-percentage">${Math.round(chauffage / consommationAnnuelle * 100)}%</div>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${Math.round(chauffage / consommationAnnuelle * 100)}%"></div>
-                            </div>
-                        </div>` : ''}
-                        
-                        ${eauChaude > 0 ? `
-                        <div class="repartition-item eau-chaude">
-                            <div class="item-header">
-                                <div class="item-info">
-                                    <div class="item-icon">🚿</div>
-                                    <div class="item-details">
-                                        <div class="item-name">Eau chaude</div>
-                                        <div class="item-value">${eauChaude.toLocaleString()} kWh/an</div>
-                                    </div>
-                                </div>
-                                <div class="item-percentage">${Math.round(eauChaude / consommationAnnuelle * 100)}%</div>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${Math.round(eauChaude / consommationAnnuelle * 100)}%"></div>
-                            </div>
-                        </div>` : ''}
-                        
-                        ${cuisson > 0 ? `
-                        <div class="repartition-item cuisson">
-                            <div class="item-header">
-                                <div class="item-info">
-                                    <div class="item-icon">🍳</div>
-                                    <div class="item-details">
-                                        <div class="item-name">Cuisson</div>
-                                        <div class="item-value">${cuisson.toLocaleString()} kWh/an</div>
-                                    </div>
-                                </div>
-                                <div class="item-percentage">${Math.round(cuisson / consommationAnnuelle * 100)}%</div>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${Math.round(cuisson / consommationAnnuelle * 100)}%"></div>
-                            </div>
-                        </div>` : ''}
+                        ${generateRepartitionItem('chauffage', '🔥', 'Chauffage', chauffage, consommationAnnuelle)}
+                        ${generateRepartitionItem('eau-chaude', '🚿', 'Eau chaude', eauChaude, consommationAnnuelle)}
+                        ${generateRepartitionItem('cuisson', '🍳', 'Cuisson', cuisson, consommationAnnuelle)}
                     </div>
                 </div>
             </div>
@@ -981,12 +882,35 @@ jQuery(document).ready(function ($) {
         $('.results-summary').hide().fadeIn(600);
     }
 
-    // ========================================
-    // RÉCAPITULATIF (ÉTAPE 7) - VERSION CORRIGÉE
-    // ========================================
+    function generateRepartitionItem(className, icon, name, value, total) {
+        if (value <= 0) return '';
+
+        const percentage = Math.round(value / total * 100);
+
+        return `
+            <div class="repartition-item ${className}">
+                <div class="item-header">
+                    <div class="item-info">
+                        <div class="item-icon">${icon}</div>
+                        <div class="item-details">
+                            <div class="item-name">${name}</div>
+                            <div class="item-value">${value.toLocaleString()} kWh/an</div>
+                        </div>
+                    </div>
+                    <div class="item-percentage">${percentage}%</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ================================
+    // RÉCAPITULATIF COMPLET (ÉTAPE 7)
+    // ================================
 
     function findRecapContainer() {
-        // Essayer différents containers possibles
         const possibleContainers = [
             '#recap-container',
             '#recap-container-final',
@@ -998,33 +922,24 @@ jQuery(document).ready(function ($) {
         for (let selector of possibleContainers) {
             const container = $(selector);
             if (container.length > 0) {
-                console.log(`Container trouvé: ${selector}`);
                 return container;
             }
         }
 
-        // Si aucun container trouvé, créer un dans l'étape 7
         const step7 = $('.form-step[data-step="7"]');
         if (step7.length > 0) {
             step7.html('<div id="recap-container"></div>');
-            console.log('Container créé dans l\'étape 7');
             return $('#recap-container');
         }
 
-        // Dernier recours : créer un container temporaire
         $('body').append('<div id="recap-container-temp" style="padding: 20px; margin: 20px; border: 2px solid #007cba;"></div>');
-        console.log('Container temporaire créé');
         return $('#recap-container-temp');
     }
 
     function displayFullRecap() {
-        console.log('Génération du récapitulatif complet gaz résidentiel');
-
-        // Trouver le bon container
         const targetContainer = findRecapContainer();
 
         if (!window.recapData) {
-            console.error('Aucune donnée de récapitulatif disponible');
             targetContainer.html(`
                 <div class="error-state">
                     <div class="error-icon">❌</div>
@@ -1040,21 +955,28 @@ jQuery(document).ready(function ($) {
         const results = data.results_data || {};
         const formData = data.form_data || {};
         const clientData = data.client_data || {};
-        const uploadedFiles = data.uploaded_files || {};
 
-        // Formatage des valeurs principales
         const consommation = parseInt(results.consommation_annuelle) || 0;
         const coutAnnuel = parseFloat(results.cout_annuel_ttc) || 0;
         const coutMensuel = Math.round(coutAnnuel / 10);
 
-        // Répartition de la consommation
         const repartition = results.repartition || {};
         const chauffage = parseInt(repartition.chauffage) || 0;
         const eauChaude = parseInt(repartition.eau_chaude) || 0;
         const cuisson = parseInt(repartition.cuisson) || 0;
 
-        // Génération du HTML complet avec styles inline pour éviter les problèmes CSS
-        const recapHtml = `
+        const recapHtml = generateRecapHTML(formData, clientData, consommation, coutAnnuel, coutMensuel, chauffage, eauChaude, cuisson);
+
+        targetContainer.html(recapHtml);
+        targetContainer.show();
+
+        $('html, body').animate({
+            scrollTop: targetContainer.offset().top - 50
+        }, 500);
+    }
+
+    function generateRecapHTML(formData, clientData, consommation, coutAnnuel, coutMensuel, chauffage, eauChaude, cuisson) {
+        return `
             <div class="recap-complet" style="max-width: 1000px; margin: 0 auto; font-family: Arial, sans-serif;">
                 
                 <!-- SECTION FORMULE SÉLECTIONNÉE -->
@@ -1118,27 +1040,11 @@ jQuery(document).ready(function ($) {
                         Informations du logement
                     </h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Type de logement</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${formData.type_logement === 'maison' ? 'Maison' : 'Appartement'}</span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Surface habitable</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${formData.superficie} m²</span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Nombre d'occupants</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${formData.nb_personnes} personne${formData.nb_personnes > 1 ? 's' : ''}</span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Commune</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${getCommuneDisplay(formData)}</span>
-                        </div>
-                        ${formData.chauffage_gaz === 'oui' ? `
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Isolation</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${getIsolationLabel(formData.isolation)}</span>
-                        </div>` : ''}
+                        ${generateDetailItem('Type de logement', formData.type_logement === 'maison' ? 'Maison' : 'Appartement')}
+                        ${generateDetailItem('Surface habitable', `${formData.superficie} m²`)}
+                        ${generateDetailItem('Nombre d\'occupants', `${formData.nb_personnes} personne${formData.nb_personnes > 1 ? 's' : ''}`)}
+                        ${generateDetailItem('Commune', getCommuneDisplay(formData))}
+                        ${formData.chauffage_gaz === 'oui' ? generateDetailItem('Isolation', getIsolationLabel(formData.isolation)) : ''}
                     </div>
                     
                     <!-- Usages du gaz -->
@@ -1146,9 +1052,9 @@ jQuery(document).ready(function ($) {
                         <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
                             <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Usages du gaz</span>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
-                                ${formData.chauffage_gaz === 'oui' ? '<span style="background: #ffebee; color: #c62828; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 500; border: 1px solid #ffcdd2; display: inline-flex; align-items: center; gap: 0.5rem;">🔥 Chauffage</span>' : ''}
-                                ${formData.eau_chaude === 'gaz' ? '<span style="background: #fff3e0; color: #e65100; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 500; border: 1px solid #ffcc80; display: inline-flex; align-items: center; gap: 0.5rem;">🚿 Eau chaude</span>' : ''}
-                                ${formData.cuisson === 'gaz' ? '<span style="background: #fff3e0; color: #e65100; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 500; border: 1px solid #ffcc80; display: inline-flex; align-items: center; gap: 0.5rem;">🍳 Cuisson</span>' : ''}
+                                ${generateUsageTag(formData.chauffage_gaz === 'oui', '🔥', 'Chauffage', '#ffebee', '#c62828', '#ffcdd2')}
+                                ${generateUsageTag(formData.eau_chaude === 'gaz', '🚿', 'Eau chaude', '#fff3e0', '#e65100', '#ffcc80')}
+                                ${generateUsageTag(formData.cuisson === 'gaz', '🍳', 'Cuisson', '#fff3e0', '#e65100', '#ffcc80')}
                                 ${!formData.chauffage_gaz && !formData.eau_chaude && !formData.cuisson ? '<span style="background: #f3f4f6; color: #6b7280; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db;">Aucun usage spécifié</span>' : ''}
                             </div>
                         </div>
@@ -1162,25 +1068,10 @@ jQuery(document).ready(function ($) {
                         Répartition de la consommation
                     </h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-                        ${chauffage > 0 ? `
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Chauffage</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #ff6b35;">${chauffage.toLocaleString()} kWh/an (${Math.round(chauffage / consommation * 100)}%)</span>
-                        </div>` : ''}
-                        ${eauChaude > 0 ? `
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Eau chaude sanitaire</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${eauChaude.toLocaleString()} kWh/an (${Math.round(eauChaude / consommation * 100)}%)</span>
-                        </div>` : ''}
-                        ${cuisson > 0 ? `
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Cuisson</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${cuisson.toLocaleString()} kWh/an (${Math.round(cuisson / consommation * 100)}%)</span>
-                        </div>` : ''}
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Total estimé</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #66bb6a;">${consommation.toLocaleString()} kWh/an</span>
-                        </div>
+                        ${chauffage > 0 ? generateDetailItem('Chauffage', `${chauffage.toLocaleString()} kWh/an (${Math.round(chauffage / consommation * 100)}%)`, '#ff6b35') : ''}
+                        ${eauChaude > 0 ? generateDetailItem('Eau chaude sanitaire', `${eauChaude.toLocaleString()} kWh/an (${Math.round(eauChaude / consommation * 100)}%)`) : ''}
+                        ${cuisson > 0 ? generateDetailItem('Cuisson', `${cuisson.toLocaleString()} kWh/an (${Math.round(cuisson / consommation * 100)}%)`) : ''}
+                        ${generateDetailItem('Total estimé', `${consommation.toLocaleString()} kWh/an`, '#66bb6a')}
                     </div>
                 </div>
                 
@@ -1191,22 +1082,10 @@ jQuery(document).ready(function ($) {
                         Titulaire du contrat
                     </h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Nom complet</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${clientData.prenom || ''} ${clientData.nom || ''}</span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Email</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${clientData.email || '--'}</span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Téléphone</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${formatPhone(clientData.telephone) || '--'}</span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
-                            <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Date de naissance</span>
-                            <span style="font-size: 1rem; font-weight: 600; color: #111827;">${formatDate(clientData.date_naissance) || '--'}</span>
-                        </div>
+                        ${generateDetailItem('Nom complet', `${clientData.prenom || ''} ${clientData.nom || ''}`)}
+                        ${generateDetailItem('Email', clientData.email || '--')}
+                        ${generateDetailItem('Téléphone', formatPhone(clientData.telephone) || '--')}
+                        ${generateDetailItem('Date de naissance', formatDate(clientData.date_naissance) || '--')}
                     </div>
                 </div>
                 
@@ -1229,23 +1108,31 @@ jQuery(document).ready(function ($) {
                 
             </div>
         `;
-
-        // Injecter le HTML dans le container
-        console.log('Injection du HTML...');
-        targetContainer.html(recapHtml);
-
-        // Forcer l'affichage
-        targetContainer.show();
-
-        // Scroll vers le récapitulatif
-        $('html, body').animate({
-            scrollTop: targetContainer.offset().top - 50
-        }, 500);
-
-        console.log('Récapitulatif complet généré avec succès');
     }
 
-    // Fonctions utilitaires pour le récapitulatif
+    // ================================
+    // FONCTIONS UTILITAIRES POUR LE RÉCAPITULATIF
+    // ================================
+
+    function generateDetailItem(label, value, color = '#111827') {
+        return `
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
+                <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">${label}</span>
+                <span style="font-size: 1rem; font-weight: 600; color: ${color};">${value}</span>
+            </div>
+        `;
+    }
+
+    function generateUsageTag(condition, icon, text, bgColor, textColor, borderColor) {
+        if (!condition) return '';
+
+        return `
+            <span style="background: ${bgColor}; color: ${textColor}; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 500; border: 1px solid ${borderColor}; display: inline-flex; align-items: center; gap: 0.5rem;">
+                ${icon} ${text}
+            </span>
+        `;
+    }
+
     function getOffreLabel(offre) {
         const labels = {
             'base': 'Tarif Réglementé Gaz',
@@ -1261,7 +1148,6 @@ jQuery(document).ready(function ($) {
             return formData.type_gaz_autre === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
         }
 
-        // Déduire du type de commune
         const communeSelectionnee = $('#commune option:selected');
         const typeGaz = communeSelectionnee.data('type');
         return typeGaz === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
@@ -1296,9 +1182,7 @@ jQuery(document).ready(function ($) {
 
     function formatPhone(phone) {
         if (!phone) return null;
-        // Nettoyer le numéro
         const cleaned = phone.replace(/\D/g, '');
-        // Formater en XX XX XX XX XX
         if (cleaned.length === 10) {
             return cleaned.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
         }
@@ -1316,9 +1200,9 @@ jQuery(document).ready(function ($) {
         }
     }
 
-    // ========================================
-    // ENVOI EMAIL (depuis étape 7)
-    // ========================================
+    // ================================
+    // ENVOI EMAIL FINAL (ÉTAPE 7)
+    // ================================
 
     function finalizeSubscription() {
         if (!window.recapData) {
@@ -1326,10 +1210,8 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        // Afficher le loader au lieu de modifier le bouton
         afficherLoaderGazResidentiel();
 
-        // Préparation des données pour l'envoi
         const emailData = {
             form_type: 'gaz-residentiel',
             form_data: window.recapData.form_data,
@@ -1341,41 +1223,23 @@ jQuery(document).ready(function ($) {
         performEmailSend(emailData);
     }
 
-
     function performEmailSend(emailData) {
         const formData = new FormData();
 
-        // Ajouter l'action spécifique pour le gaz
         formData.append('action', 'process_gaz_form');
         formData.append('nonce', hticSimulateur.nonce);
         formData.append('form_type', 'gaz-residentiel');
         formData.append('form_data', JSON.stringify(emailData));
 
-        // CORRECTION - Ajouter les fichiers avec debug
         const files = emailData.uploaded_files || {};
-        console.log('📎 Fichiers à envoyer:', files);
 
         Object.keys(files).forEach(fileType => {
             const fileData = files[fileType];
-            console.log(`📎 Traitement fichier ${fileType}:`, fileData);
 
             if (fileData && fileData.file) {
-                console.log(`✅ Ajout fichier ${fileType}:`, fileData.file.name);
                 formData.append(`file_${fileType}`, fileData.file, fileData.file.name);
-            } else {
-                console.warn(`⚠️ Fichier ${fileType} manquant ou incorrect:`, fileData);
             }
         });
-
-        // Debug FormData - Afficher ce qui est envoyé
-        console.log('📤 FormData contenu:');
-        for (let [key, value] of formData.entries()) {
-            if (value instanceof File) {
-                console.log(`  ${key}: Fichier - ${value.name} (${value.size} bytes)`);
-            } else {
-                console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) : value}`);
-            }
-        }
 
         let ajaxUrl = '/wp-admin/admin-ajax.php';
         if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
@@ -1406,68 +1270,37 @@ jQuery(document).ready(function ($) {
         });
     }
 
-    function displaySuccessMessage() {
-        const targetContainer = findRecapContainer();
-
-        const successHtml = `
-            <div style="text-align: center; padding: 3rem; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
-                <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
-                <h2 style="color: #66bb6a; margin-bottom: 1rem;">Simulation envoyée avec succès !</h2>
-                <p>Votre simulation a été envoyée à <strong>${window.recapData.client_data.email}</strong></p>
-                
-                <div style="background: #f0fdf4; border-radius: 12px; padding: 2rem; margin: 2rem 0;">
-                    <h3 style="color: #16a34a; margin-bottom: 1rem;">📞 Prochaines étapes</h3>
-                    <ul style="list-style: none; padding: 0; text-align: left;">
-                        <li style="margin-bottom: 0.5rem;">• Un conseiller vous contactera sous 24h</li>
-                        <li style="margin-bottom: 0.5rem;">• Vérification de votre éligibilité</li>
-                        <li>• Finalisation de votre contrat gaz</li>
-                    </ul>
-                </div>
-                
-                <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-                    <button style="padding: 0.75rem 1.5rem; background: #66bb6a; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="location.reload()">
-                        🔄 Nouvelle simulation
-                    </button>
-                    <button style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="window.print()">
-                        🖨️ Imprimer
-                    </button>
-                </div>
-            </div>
-        `;
-
-        targetContainer.html(successHtml);
-
-        // Scroll vers le haut
-        $('html, body').animate({ scrollTop: 0 }, 500);
-    }
+    // ================================
+    // INTERFACE UTILISATEUR
+    // ================================
 
     function afficherLoaderGazResidentiel() {
         if ($('#ajax-loader-gaz').length) return;
 
         const loader = `
-        <div id="ajax-loader-gaz" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-                    background: rgba(0,0,0,0.8); display: flex; 
-                    justify-content: center; align-items: center; z-index: 99999;">
-            <div style="background: white; padding: 50px; border-radius: 15px; text-align: center; 
-                        box-shadow: 0 15px 50px rgba(0,0,0,0.4); max-width: 400px;">
-                <div class="spinner-gaz" style="border: 6px solid #f3f3f3; border-top: 6px solid #ff6b35; 
-                            border-radius: 50%; width: 80px; height: 80px; 
-                            animation: spin 1s linear infinite; margin: 0 auto 25px;"></div>
-                <h3 style="margin: 0 0 15px 0; color: #ff6b35; font-size: 20px;">Traitement en cours...</h3>
-                <p style="margin: 0; font-size: 16px; color: #666; line-height: 1.5;">
-                    <strong>Finalisation de votre souscription gaz</strong><br>
-                    Génération du récapitulatif et envoi des emails<br>
-                    <small style="color: #999;">Cela peut prendre quelques instants</small>
-                </p>
+            <div id="ajax-loader-gaz" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                        background: rgba(0,0,0,0.8); display: flex; 
+                        justify-content: center; align-items: center; z-index: 99999;">
+                <div style="background: white; padding: 50px; border-radius: 15px; text-align: center; 
+                            box-shadow: 0 15px 50px rgba(0,0,0,0.4); max-width: 400px;">
+                    <div class="spinner-gaz" style="border: 6px solid #f3f3f3; border-top: 6px solid #ff6b35; 
+                                border-radius: 50%; width: 80px; height: 80px; 
+                                animation: spin 1s linear infinite; margin: 0 auto 25px;"></div>
+                    <h3 style="margin: 0 0 15px 0; color: #ff6b35; font-size: 20px;">Traitement en cours...</h3>
+                    <p style="margin: 0; font-size: 16px; color: #666; line-height: 1.5;">
+                        <strong>Finalisation de votre souscription gaz</strong><br>
+                        Génération du récapitulatif et envoi des emails<br>
+                        <small style="color: #999;">Cela peut prendre quelques instants</small>
+                    </p>
+                </div>
             </div>
-        </div>
-        <style>
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        </style>
-    `;
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+        `;
         $('body').append(loader);
     }
 
@@ -1481,29 +1314,28 @@ jQuery(document).ready(function ($) {
         $('.ajax-message').remove();
 
         const successHtml = `
-        <div class="ajax-message success-message" style="position: fixed; top: 20px; right: 20px; 
-                    background: linear-gradient(135deg, #82C720 0%, #82C720 100%); color: white; 
-                    padding: 20px 30px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2); 
-                    z-index: 100000; max-width: 400px; animation: slideIn 0.5s ease;">
-            <div style="display: flex; align-items: center;">
-                <span style="font-size: 24px; margin-right: 15px;">✅</span>
-                <div>
-                    <h4 style="margin: 0 0 5px 0; font-size: 16px; color: white;">Souscription envoyée !</h4>
-                    <p style="margin: 0; font-size: 14px; opacity: 0.9;">Redirection en cours...</p>
+            <div class="ajax-message success-message" style="position: fixed; top: 20px; right: 20px; 
+                        background: linear-gradient(135deg, #82C720 0%, #82C720 100%); color: white; 
+                        padding: 20px 30px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2); 
+                        z-index: 100000; max-width: 400px; animation: slideIn 0.5s ease;">
+                <div style="display: flex; align-items: center;">
+                    <span style="font-size: 24px; margin-right: 15px;">✅</span>
+                    <div>
+                        <h4 style="margin: 0 0 5px 0; font-size: 16px; color: white;">Souscription envoyée !</h4>
+                        <p style="margin: 0; font-size: 14px; opacity: 0.9;">Redirection en cours...</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        <style>
-            @keyframes slideIn {
-                from { transform: translateX(400px); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    `;
+            <style>
+                @keyframes slideIn {
+                    from { transform: translateX(400px); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            </style>
+        `;
 
         $('body').append(successHtml);
 
-        //Redirection vers la page merci après 2 secondes
         setTimeout(() => {
             window.location.href = '/merci';
         }, 2000);
@@ -1513,55 +1345,48 @@ jQuery(document).ready(function ($) {
         $('.ajax-message').remove();
 
         const errorHtml = `
-        <div class="ajax-message error-message-gaz" style="position: fixed; top: 20px; right: 20px; 
-                    background: #DC2626; color: white; padding: 25px; 
-                    border-radius: 12px; box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3); 
-                    z-index: 100000; max-width: 450px; animation: errorSlideIn 0.5s ease;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; flex: 1;">
-                    <span style="font-size: 28px; margin-right: 15px;">❌</span>
-                    <div>
-                        <h4 style="margin: 0 0 8px 0; font-size: 18px;">Erreur d'envoi</h4>
-                        <p style="margin: 0; font-size: 14px; opacity: 0.95;">${message}</p>
-                        <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">
-                            Veuillez réessayer ou contacter notre support
-                        </p>
+            <div class="ajax-message error-message-gaz" style="position: fixed; top: 20px; right: 20px; 
+                        background: #DC2626; color: white; padding: 25px; 
+                        border-radius: 12px; box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3); 
+                        z-index: 100000; max-width: 450px; animation: errorSlideIn 0.5s ease;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; flex: 1;">
+                        <span style="font-size: 28px; margin-right: 15px;">❌</span>
+                        <div>
+                            <h4 style="margin: 0 0 8px 0; font-size: 18px;">Erreur d'envoi</h4>
+                            <p style="margin: 0; font-size: 14px; opacity: 0.95;">${message}</p>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">
+                                Veuillez réessayer ou contacter notre support
+                            </p>
+                        </div>
                     </div>
+                    <button class="close-btn-gaz" style="background: white; color: #DC2626; border: none; 
+                        padding: 8px 12px; border-radius: 6px; cursor: pointer; 
+                        margin-left: 15px; font-weight: bold;">✕</button>
                 </div>
-                <button class="close-btn-gaz" style="background: white; color: #DC2626; border: none; 
-                    padding: 8px 12px; border-radius: 6px; cursor: pointer; 
-                    margin-left: 15px; font-weight: bold;">✕</button>
             </div>
-        </div>
-        <style>
-            @keyframes errorSlideIn {
-                from { transform: translateX(400px); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    `;
+            <style>
+                @keyframes errorSlideIn {
+                    from { transform: translateX(400px); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            </style>
+        `;
 
         $('body').append(errorHtml);
 
-        // Fermer au clic
         $('.close-btn-gaz').on('click', function () {
             $('.error-message-gaz').fadeOut(300, function () {
                 $(this).remove();
             });
         });
 
-        // Auto-fermeture après 8 secondes
         setTimeout(() => {
             $('.error-message-gaz').fadeOut(500, function () {
                 $(this).remove();
             });
         }, 8000);
     }
-
-
-    // ========================================
-    // FONCTIONS UTILITAIRES
-    // ========================================
 
     function displayError(message) {
         const targetContainer = findRecapContainer() || $('#results-container');
@@ -1637,9 +1462,9 @@ jQuery(document).ready(function ($) {
         $('.field-error, .field-success').removeClass('field-error field-success');
     }
 
-    // ========================================
-    // API PUBLIQUE ET DEBUG
-    // ========================================
+    // ================================
+    // API PUBLIQUE
+    // ================================
 
     window.HticGazResidentielData = {
         getCurrentData: () => formData,
@@ -1650,17 +1475,6 @@ jQuery(document).ready(function ($) {
         getCalculationResults: () => calculationResults,
         getUploadedFiles: () => uploadedFiles,
         getRecapData: () => window.recapData
-    };
-
-    // Fonction de debug
-    window.debugGazResidentiel = function () {
-        console.log('DEBUG GAZ RÉSIDENTIEL:');
-        console.log('- Étape actuelle:', currentStep);
-        console.log('- Résultats:', calculationResults);
-        console.log('- Fichiers:', uploadedFiles);
-        console.log('- Données formulaire:', collectAllFormData());
-        console.log('- Données client:', collectClientData());
-        console.log('- Données récap:', window.recapData);
     };
 
 });

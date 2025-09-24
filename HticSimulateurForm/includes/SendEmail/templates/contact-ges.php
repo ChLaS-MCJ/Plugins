@@ -3,6 +3,16 @@
  * Template email pour GES - formulaire de contact
  * Fichier: includes/SendEmail/templates/contact-ges.php
  */
+$contact = [
+    'objet' => $data['objet'] ?? 'Contact général',
+    'message' => $data['message'] ?? '',
+    'code_postal' => $data['postalCode'] ?? '',
+    'ville' => $data['ville'] ?? '',
+    'adresse' => $data['adresse'] ?? '',
+];
+
+$documents = $data['uploaded_files'] ?? [];
+
 ?>
 <html>
 <head>

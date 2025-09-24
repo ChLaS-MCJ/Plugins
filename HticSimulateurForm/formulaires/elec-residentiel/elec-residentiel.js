@@ -1,15 +1,26 @@
-// ===============================
-// SIMULATEUR ÉLECTRICITÉ RÉSIDENTIEL - VERSION SIMPLIFIÉE
-// ===============================
+/**
+ * SIMULATEUR ÉLECTRICITÉ RÉSIDENTIEL
+ * Plugin WordPress pour GES Solutions
+ * 
+ * Gère le processus complet de simulation :
+ * - Navigation entre les 10 étapes
+ * - Validation des données utilisateur
+ * - Calculs de consommation et tarifs
+ * - Génération de PDF et envoi d'emails
+ * - Interface utilisateur interactive
+ * 
+ * @version 1.0.0
+ * @author HTIC / GES Solutions
+ */
 
 (function ($) {
     'use strict';
 
     $(document).ready(function () {
 
-        // ===============================
+        // ================================
         // VARIABLES GLOBALES
-        // ===============================
+        // ================================
 
         let currentStep = 1;
         const totalSteps = 10;
@@ -17,9 +28,9 @@
         let configData = {};
         let calculationResults = null;
 
-        // ===============================
+        // ================================
         // INITIALISATION
-        // ===============================
+        // ================================
 
         init();
 
@@ -41,12 +52,12 @@
             }
         }
 
-        // ===============================
+        // ================================
         // GESTION DES ÉVÉNEMENTS
-        // ===============================
+        // ================================
 
         function setupEventListeners() {
-            // Navigation
+            // Navigation principale
             $('#btn-next').on('click', handleNext);
             $('#btn-previous').on('click', handlePrevious);
             $('#btn-calculate').on('click', handleCalculate);
@@ -61,7 +72,7 @@
                 }
             });
 
-            // Validation
+            // Validation temps réel
             $('input[required], select[required]').on('blur', function () {
                 validateField($(this));
             });
@@ -70,10 +81,10 @@
                 validateNumberField($(this));
             });
 
-            // Chauffage
+            // Chauffage électrique
             $('input[name="chauffage_electrique"]').on('change', handleChauffageChange);
 
-            // Actions résultats
+            // Actions des résultats
             $(document).on('click', '#btn-subscribe', function () {
                 goToStep(8);
             });
@@ -82,24 +93,21 @@
             $(document).on('change', 'input[name="tarif_choisi"]', handleTarifChange);
             $(document).on('change click', 'input[name="puissance_choisie"]', handlePuissanceChange);
 
+            // Prévenir la soumission du formulaire
             $('#simulateur-elec-residentiel').on('submit', function (e) {
                 e.preventDefault();
                 return false;
             });
 
-            // S'assurer que les boutons de type button ne soumettent pas le formulaire
-            $('button[type="button"]').on('click', function (e) {
-                e.stopPropagation();
-            });
-
+            // Fermeture des messages d'erreur
             $(document).on('click', '.error-message .close-btn', function () {
                 $(this).closest('.error-message').remove();
             });
         }
 
-        // ===============================
-        // HANDLERS
-        // ===============================
+        // ================================
+        // HANDLERS D'ÉVÉNEMENTS
+        // ================================
 
         function handleNext() {
             if (validateCurrentStep()) {
@@ -152,7 +160,6 @@
             const puissance = parseInt($(this).val());
             const tarif = $('input[name="tarif_choisi"]:checked').val();
 
-            // Gestion de l'affichage des tarifs selon la puissance
             updateTarifVisibility(puissance);
 
             if (tarif && puissance) {
@@ -160,23 +167,18 @@
             }
         }
 
-
-        // ===============================
-        // NAVIGATION
-        // ===============================
+        // ================================
+        // NAVIGATION ENTRE ÉTAPES
+        // ================================
 
         function goToNextStep() {
             if (currentStep < totalSteps) {
                 currentStep++;
                 updateUI();
 
-                if (currentStep === 9) {
-                    initStep9();
-                } else if (currentStep === 8) {
-                    setupSelectionStep();
-                } else if (currentStep === 10) {
-                    setupRecapStep();
-                }
+                if (currentStep === 8) setupSelectionStep();
+                else if (currentStep === 9) initStep9();
+                else if (currentStep === 10) setupRecapStep();
             }
         }
 
@@ -192,13 +194,9 @@
                 currentStep = stepNumber;
                 updateUI();
 
-                if (stepNumber === 8) {
-                    setupSelectionStep();
-                } else if (stepNumber === 9) {
-                    initStep9();
-                } else if (stepNumber === 10) {
-                    setupRecapStep();
-                }
+                if (stepNumber === 8) setupSelectionStep();
+                else if (stepNumber === 9) initStep9();
+                else if (stepNumber === 10) setupRecapStep();
             }
         }
 
@@ -223,7 +221,6 @@
 
         function updateNavigation() {
             $('#btn-previous').toggle(currentStep > 1);
-
             $('#btn-next, #btn-calculate, #btn-restart, #btn-finalize').hide();
             $('.results-actions').hide();
 
@@ -247,9 +244,9 @@
             }
         }
 
-        // ===============================
-        // ÉTAPE 8 - VERSION SIMPLIFIÉE
-        // ===============================
+        // ================================
+        // CONFIGURATION ÉTAPE 8 (SÉLECTION)
+        // ================================
 
         function setupSelectionStep() {
             if (currentStep === 8 && window.calculationResults) {
@@ -261,16 +258,10 @@
         function generateSimplifiedPuissanceOptions() {
             const results = window.calculationResults;
             const puissanceRecommandee = parseInt(results.puissance_recommandee) || 12;
-
-            // Toutes les puissances disponibles
             const puissances = [3, 6, 9, 12, 15, 18, 24, 30, 36];
-
-            // Remplacer complètement le contenu du container de puissance
             const $container = $('.puissance-selection');
 
-            let html = `
-                <div class="puissance-grid-simple">
-            `;
+            let html = '<div class="puissance-grid-simple">';
 
             puissances.forEach(puissance => {
                 const isRecommended = puissance === puissanceRecommandee;
@@ -291,26 +282,20 @@
                 `;
             });
 
-            html += `</div>`;
-
+            html += '</div>';
             $container.html(html);
-
         }
 
         function preselectRecommendedOptions() {
             const results = window.calculationResults;
             const puissanceRecommandee = parseInt(results.puissance_recommandee) || 12;
 
-            // Gérer l'affichage des tarifs selon la puissance recommandée
             updateTarifVisibility(puissanceRecommandee);
 
-            // Déterminer le tarif recommandé (en excluant Base si puissance > 6)
             const tarifs = getTarifsDisponibles(puissanceRecommandee);
-
             let tarifRecommande = 'base';
             let tarifMin = Infinity;
 
-            // Comparer uniquement les tarifs disponibles
             tarifs.forEach(tarifKey => {
                 const tarif = results.tarifs[tarifKey];
                 const total = parseInt(tarif.total_annuel) || 0;
@@ -320,10 +305,8 @@
                 }
             });
 
-            // Mise à jour des prix
             updateAllTarifPrices(results);
 
-            // Sélection automatique
             setTimeout(() => {
                 $('input[name="tarif_choisi"]').prop('checked', false);
                 $('input[name="puissance_choisie"]').prop('checked', false);
@@ -335,21 +318,17 @@
             }, 100);
         }
 
-        // Nouvelle fonction pour gérer la visibilité des tarifs
         function updateTarifVisibility(puissance) {
             const $tarifBase = $('.tarif-card-selection').has('input[value="base"]');
             const $inputBase = $('input[name="tarif_choisi"][value="base"]');
 
             if (puissance > 6) {
-                // Masquer le tarif Base pour les puissances > 6 kVA
                 $tarifBase.hide();
 
-                // Si Base était sélectionné, décocher et sélectionner HC par défaut
                 if ($inputBase.is(':checked')) {
                     $inputBase.prop('checked', false);
                     $('input[name="tarif_choisi"][value="hc"]').prop('checked', true);
 
-                    // Recalculer avec HC
                     const tarif = 'hc';
                     if (window.calculationResults) {
                         updateCalculsSelection(tarif, puissance);
@@ -357,34 +336,31 @@
                     }
                 }
             } else {
-                // Afficher le tarif Base pour les puissances <= 6 kVA
                 $tarifBase.show();
             }
         }
 
-        // Fonction pour obtenir les tarifs disponibles selon la puissance
         function getTarifsDisponibles(puissance) {
             if (puissance > 6) {
-                return ['hc', 'tempo']; // Seulement HC et Tempo pour > 6 kVA
+                return ['hc', 'tempo'];
             } else {
-                return ['base', 'hc', 'tempo']; // Tous les tarifs pour <= 6 kVA
+                return ['base', 'hc', 'tempo'];
             }
         }
 
+        // ================================
+        // CONFIGURATION ÉTAPE 9 (INFORMATIONS CLIENT)
+        // ================================
 
         function initStep9() {
-
             // Toggle pour l'adresse
             const toggleBtn = document.getElementById('btn-no-info');
             const addressSection = document.getElementById('address-section');
 
             if (toggleBtn && addressSection) {
-                // Nettoyer les anciens listeners
-                $(toggleBtn).off('click');
-
-                $(toggleBtn).on('click', function (e) {
+                $(toggleBtn).off('click').on('click', function (e) {
                     e.preventDefault();
-                    e.stopPropagation(); // Empêcher la propagation
+                    e.stopPropagation();
 
                     $(this).toggleClass('active');
                     $(addressSection).toggleClass('show');
@@ -402,54 +378,62 @@
                 });
             }
 
-            // Upload de fichiers
+            // Gestion upload de fichiers
             $('.form-step[data-step="9"] .upload-card').each(function () {
-                const card = $(this);
-                const trigger = card.find('.upload-trigger');
-                const fileInput = card.find('input[type="file"]');
-                const resultDiv = card.find('.upload-result');
-
-                if (trigger.length && fileInput.length) {
-                    trigger.off('click').on('click', function (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        fileInput.click();
-                    });
-
-                    card.off('click').on('click', function (e) {
-                        if (!$(e.target).is(trigger) && !$(e.target).is(fileInput)) {
-                            e.preventDefault();
-                            fileInput.click();
-                        }
-                    });
-
-                    fileInput.off('change').on('change', function () {
-                        if (this.files && this.files[0]) {
-                            const file = this.files[0];
-                            const maxSize = 5 * 1024 * 1024;
-
-                            if (file.size > maxSize) {
-                                card.removeClass('has-file');
-                                resultDiv.text('❌ Fichier trop volumineux').addClass('error');
-                                this.value = '';
-                                return;
-                            }
-
-                            card.addClass('has-file');
-                            let fileName = file.name;
-                            if (fileName.length > 20) {
-                                fileName = fileName.substring(0, 17) + '...';
-                            }
-                            resultDiv.text('✅ ' + fileName).addClass('success').removeClass('error');
-                        } else {
-                            card.removeClass('has-file');
-                            resultDiv.text('');
-                        }
-                    });
-                }
+                setupFileUpload($(this));
             });
 
-            // Validation email
+            // Validation des champs
+            setupFieldValidation();
+        }
+
+        function setupFileUpload($card) {
+            const trigger = $card.find('.upload-trigger');
+            const fileInput = $card.find('input[type="file"]');
+            const resultDiv = $card.find('.upload-result');
+
+            if (trigger.length && fileInput.length) {
+                trigger.off('click').on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fileInput.click();
+                });
+
+                $card.off('click').on('click', function (e) {
+                    if (!$(e.target).is(trigger) && !$(e.target).is(fileInput)) {
+                        e.preventDefault();
+                        fileInput.click();
+                    }
+                });
+
+                fileInput.off('change').on('change', function () {
+                    if (this.files && this.files[0]) {
+                        const file = this.files[0];
+                        const maxSize = 5 * 1024 * 1024;
+
+                        if (file.size > maxSize) {
+                            $card.removeClass('has-file');
+                            resultDiv.text('❌ Fichier trop volumineux').addClass('error');
+                            this.value = '';
+                            return;
+                        }
+
+                        $card.addClass('has-file');
+                        let fileName = file.name;
+                        if (fileName.length > 20) {
+                            fileName = fileName.substring(0, 17) + '...';
+                        }
+                        resultDiv.text('✅ ' + fileName).addClass('success').removeClass('error');
+                    } else {
+                        $card.removeClass('has-file');
+                        resultDiv.text('');
+                    }
+                });
+            }
+        }
+
+        function setupFieldValidation() {
+            // Email
             $('#client_email').off('blur').on('blur', function () {
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (this.value && !emailRegex.test(this.value)) {
@@ -459,7 +443,7 @@
                 }
             });
 
-            // Formatage téléphone
+            // Téléphone
             $('#client_telephone').off('input').on('input', function () {
                 let value = this.value.replace(/\D/g, '');
                 if (value.length > 0) {
@@ -474,7 +458,6 @@
             $('#client_code_postal').off('input').on('input', function () {
                 this.value = this.value.replace(/\D/g, '').slice(0, 5);
             });
-
         }
 
         function setupRecapStep() {
@@ -483,9 +466,9 @@
             }
         }
 
-        // ===============================
-        // VALIDATION
-        // ===============================
+        // ================================
+        // VALIDATION DES DONNÉES
+        // ================================
 
         function validateCurrentStep() {
             const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
@@ -572,10 +555,8 @@
         }
 
         function validateStep9(stepElement) {
-
             let isValid = true;
 
-            // Liste des champs à valider
             const requiredFields = [
                 'client_nom', 'client_prenom', 'client_email',
                 'client_telephone', 'client_date_naissance'
@@ -585,11 +566,9 @@
                 'rib_file', 'carte_identite_recto', 'carte_identite_verso'
             ];
 
-            const requiredCheckboxes = [
-                'accept_conditions'
-            ];
+            const requiredCheckboxes = ['accept_conditions'];
 
-            // Vérifier les champs texte
+            // Validation des champs texte
             requiredFields.forEach(fieldId => {
                 const field = document.getElementById(fieldId);
                 if (field && !field.value.trim()) {
@@ -600,7 +579,7 @@
                 }
             });
 
-            // Vérifier les fichiers
+            // Validation des fichiers
             requiredFiles.forEach(fileId => {
                 const file = document.getElementById(fileId);
                 if (file && !file.files.length) {
@@ -611,7 +590,7 @@
                 }
             });
 
-            // Vérifier les checkboxes
+            // Validation des checkboxes
             requiredCheckboxes.forEach(checkboxId => {
                 const checkbox = document.getElementById(checkboxId);
                 if (checkbox && !checkbox.checked) {
@@ -622,7 +601,7 @@
                 }
             });
 
-            // Vérifier l'adresse SI elle est visible
+            // Validation conditionnelle de l'adresse
             const addressSection = document.getElementById('address-section');
             if (addressSection && $(addressSection).hasClass('show')) {
                 const addressFields = ['client_adresse', 'client_code_postal', 'client_ville'];
@@ -636,7 +615,6 @@
                     }
                 });
             } else {
-                // Si l'adresse n'est PAS visible, vérifier PDL et compteur
                 const pdlFields = ['pdl_adresse', 'numero_compteur'];
                 pdlFields.forEach(fieldId => {
                     const field = document.getElementById(fieldId);
@@ -699,19 +677,9 @@
             return true;
         }
 
-        function isValidEmail(email) {
-            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return re.test(email);
-        }
-
-        function isValidPhone(phone) {
-            const re = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
-            return re.test(phone.replace(/\s/g, ''));
-        }
-
-        // ===============================
+        // ================================
         // COLLECTE DE DONNÉES
-        // ===============================
+        // ================================
 
         function saveCurrentStepData() {
             const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
@@ -842,12 +810,11 @@
             };
         }
 
-        // ===============================
-        // CALCULS
-        // ===============================
+        // ================================
+        // CALCULS ET ESTIMATION
+        // ================================
 
         function calculateResults() {
-
             const allData = collectAllFormData();
             const clientData = collectClientData();
 
@@ -919,6 +886,54 @@
             });
         }
 
+        function recalculateWithNewPower(tarif, nouvellePuissance) {
+            $('#calculs-selection').html('<div class="loading-mini">Recalcul en cours...</div>');
+
+            const allData = collectAllFormData();
+            allData.puissance_forcee = nouvellePuissance;
+
+            const dataToSend = {
+                action: 'htic_calculate_estimation',
+                type: 'elec-residentiel',
+                user_data: allData,
+                config_data: configData,
+                nonce: (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) ? hticSimulateur.nonce : ''
+            };
+
+            let ajaxUrl = '/wp-admin/admin-ajax.php';
+            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
+                ajaxUrl = hticSimulateur.ajaxUrl;
+            }
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                dataType: 'json',
+                data: dataToSend,
+                success: function (response) {
+                    if (response.success) {
+                        window.calculationResults = response.data;
+
+                        if (!window.originalRecommendedPower) {
+                            window.originalRecommendedPower = response.data.puissance_recommandee;
+                        }
+
+                        updateAllTarifPrices(response.data);
+                        updateCalculsSelection(tarif, nouvellePuissance);
+                    } else {
+                        $('#calculs-selection').html('<div class="error-mini">Erreur de calcul</div>');
+                    }
+                },
+                error: function () {
+                    $('#calculs-selection').html('<div class="error-mini">Erreur de connexion</div>');
+                }
+            });
+        }
+
+        // ================================
+        // AFFICHAGE DES RÉSULTATS
+        // ================================
+
         function displayResults(results) {
             if (!results || !results.consommation_annuelle || !results.tarifs) {
                 displayError('Données de résultats incomplètes');
@@ -948,7 +963,33 @@
             if (totalAnnuelHC === tarifMin) tarifRecommande = 'hc';
             if (totalAnnuelTempo === tarifMin) tarifRecommande = 'tempo';
 
-            const resultsHtml = `
+            const resultsHtml = generateResultsHTML(
+                consommationAnnuelle,
+                puissanceRecommandee,
+                totalAnnuelBase,
+                totalAnnuelHC,
+                totalAnnuelTempo,
+                totalMensuelBase,
+                totalMensuelHC,
+                totalMensuelTempo,
+                tarifRecommande,
+                economie,
+                tarifBase,
+                tarifHC,
+                tarifTempo,
+                results
+            );
+
+            $('#results-container').html(resultsHtml);
+            $('.results-summary').hide().fadeIn(600);
+
+            setTimeout(() => {
+                createConsumptionPieChart();
+            }, 500);
+        }
+
+        function generateResultsHTML(consommationAnnuelle, puissanceRecommandee, totalAnnuelBase, totalAnnuelHC, totalAnnuelTempo, totalMensuelBase, totalMensuelHC, totalMensuelTempo, tarifRecommande, economie, tarifBase, tarifHC, tarifTempo, results) {
+            return `
                 <div class="results-summary">
                     <div class="result-card main-result">
                         <div class="result-icon">⚡</div>
@@ -1016,357 +1057,7 @@
                     </div>
                 </div>
             `;
-
-            $('#results-container').html(resultsHtml);
-            $('.results-summary').hide().fadeIn(600);
-
-            setTimeout(() => {
-                createConsumptionPieChart();
-            }, 500);
         }
-
-        function generateRecapitulatifFinal() {
-
-            const allData = collectAllFormData();
-            const clientData = collectClientData();
-            const results = window.calculationResults;
-
-            if (!allData || !results) {
-                console.error('❌ Données manquantes pour le récapitulatif');
-                $('#recap-container-final').html(`
-            <div class="error-state">
-                <div class="error-icon">❌</div>
-                <h3>Erreur</h3>
-                <p>Impossible de générer le récapitulatif. Données manquantes.</p>
-                <div style="margin-top: 1rem; padding: 1rem; background: #f3f4f6; border-radius: 8px; font-family: monospace; font-size: 0.875rem;">
-                    <strong>Debug Info:</strong><br>
-                    allData: ${allData ? 'OK' : 'MANQUANT'}<br>
-                    results: ${results ? 'OK' : 'MANQUANT'}<br>
-                    currentStep: ${currentStep}
-                </div>
-            </div>
-        `);
-                return;
-            }
-
-            // Calculs pour l'affichage
-            const tarifChoisi = allData.tarif_choisi || 'base';
-            const puissanceChoisie = allData.puissance_choisie || results.puissance_recommandee;
-
-            // AJOUTER CETTE LIGNE MANQUANTE
-            const puissanceOriginaleRecommandee = window.originalRecommendedPower || results.puissance_recommandee;
-
-            const totalAnnuel = getTotalAnnuelChoisi(results, tarifChoisi);
-            const totalMensuel = Math.round(totalAnnuel / 10);
-            const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
-
-
-            // Générer le HTML complet
-            const recapHTML = `
-        <div class="recap-complet">
-            
-            <!-- SECTION FORMULE SÉLECTIONNÉE -->
-            <div class="formule-selectionnee">
-                <div class="formule-header">
-                    <span class="formule-icon">⚡</span>
-                    <h3>Votre formule d'électricité</h3>
-                </div>
-                
-                <div class="formule-details">
-                    <div class="formule-main">
-                        <div class="formule-item tarif">
-                            <div class="formule-label">Tarif sélectionné</div>
-                            <div class="formule-value">${getTarifLabel(tarifChoisi)}</div>
-                            <div class="formule-badge">${getBadgeTarif(tarifChoisi)}</div>
-                        </div>
-                        
-                        <div class="formule-divider"></div>
-                        
-                        <div class="formule-item puissance">
-                            <div class="formule-label">Puissance souscrite</div>
-                            <div class="formule-value">${puissanceChoisie} kVA</div>
-                            <div class="formule-badge ${puissanceChoisie == puissanceOriginaleRecommandee ? 'recommended' : ''}">
-                                ${puissanceChoisie == puissanceOriginaleRecommandee ? '⭐ Recommandée' : 'Personnalisée'}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="formule-costs">
-                        <div class="cost-card annual">
-                            <div class="cost-icon">📅</div>
-                            <div class="cost-details">
-                                <div class="cost-label">Coût annuel TTC</div>
-                                <div class="cost-amount">${totalAnnuel.toLocaleString()}€</div>
-                            </div>
-                        </div>
-                        
-                        <div class="cost-card monthly">
-                            <div class="cost-icon">📆</div>
-                            <div class="cost-details">
-                                <div class="cost-label">Moyenne mensuelle</div>
-                                <div class="cost-amount">${totalMensuel.toLocaleString()}€<span>/mois</span></div>
-                                <div class="cost-note">Sur 10 mois</div>
-                            </div>
-                        </div>
-                        
-                        <div class="cost-card consumption">
-                            <div class="cost-icon">⚡</div>
-                            <div class="cost-details">
-                                <div class="cost-label">Consommation estimée</div>
-                                <div class="cost-amount">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- SECTION LOGEMENT -->
-            <div class="recap-section-detail">
-                <h3 class="section-header-detail">
-                    <span class="section-icon-detail">🏠</span>
-                    Caractéristiques du logement
-                </h3>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <span class="detail-label">Type de logement</span>
-                        <span class="detail-value">${allData.type_logement === 'maison' ? '🏠 Maison' : '🏢 Appartement'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Surface habitable</span>
-                        <span class="detail-value">${allData.surface} m²</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Nombre d'occupants</span>
-                        <span class="detail-value">${allData.nb_personnes} personne(s)</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Isolation</span>
-                        <span class="detail-value">${getIsolationLabel(allData.isolation)}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Type de résidence</span>
-                        <span class="detail-value highlight">${allData.type_logement_usage === 'principal' ? '🏠 Résidence principale' : '🏖️ Résidence secondaire'}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- SECTION ÉQUIPEMENTS -->
-            <div class="recap-section-detail">
-                <h3 class="section-header-detail">
-                    <span class="section-icon-detail">🔥</span>
-                    Chauffage et équipements
-                </h3>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <span class="detail-label">Chauffage principal</span>
-                        <span class="detail-value">${getHeatingLabel(allData.type_chauffage)}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Eau chaude sanitaire</span>
-                        <span class="detail-value">${allData.eau_chaude === 'oui' ? '💧 Électrique' : '🔥 Autre énergie'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Type de cuisson</span>
-                        <span class="detail-value">${getCuissonLabel(allData.type_cuisson)}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Éclairage principal</span>
-                        <span class="detail-value">${allData.type_eclairage === 'led' ? '💡 LED' : '🔆 Halogène/Incandescence'}</span>
-                    </div>
-                </div>
-                
-                <!-- Électroménagers -->
-                <div style="grid-column: 1 / -1; margin-top: 1.5rem;">
-                    <h4 style="margin-bottom: 0.75rem; color: #374151;">Électroménagers sélectionnés :</h4>
-                    <div class="equipment-tags">
-                        ${allData.electromenagers && allData.electromenagers.length > 0
-                    ? allData.electromenagers.map(eq => `
-                                <span class="equipment-tag">
-                                    ${getElectromenagerIcon(eq)} ${getElectromenagerLabel(eq)}
-                                </span>
-                            `).join('')
-                    : '<span class="equipment-tag none">Aucun électroménager sélectionné</span>'
-                }
-                    </div>
-                </div>
-                
-                <!-- Piscine -->
-                <div style="grid-column: 1 / -1; margin-top: 1rem;">
-                    <div class="detail-item">
-                        <span class="detail-label">Piscine</span>
-                        <span class="detail-value">${getPiscineLabel(allData.piscine)}</span>
-                    </div>
-                </div>
-                
-                <!-- Équipements spéciaux -->
-                ${allData.equipements_speciaux && allData.equipements_speciaux.length > 0 ? `
-                <div style="grid-column: 1 / -1; margin-top: 1rem;">
-                    <h4 style="margin-bottom: 0.75rem; color: #374151;">Autres équipements spéciaux :</h4>
-                    <div class="equipment-tags">
-                        ${allData.equipements_speciaux.map(eq => `
-                            <span class="equipment-tag special">
-                                ${getEquipementSpecialIcon(eq)} ${getEquipementSpecialLabel(eq)}
-                            </span>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : `
-                <div style="grid-column: 1 / -1; margin-top: 1rem;">
-                    <h4 style="margin-bottom: 0.75rem; color: #374151;">Autres équipements spéciaux :</h4>
-                    <div class="equipment-tags">
-                        <span class="equipment-tag none">Aucun équipement spécial</span>
-                    </div>
-                </div>
-                `}
-            </div>
-            
-            <!-- SECTION INFORMATIONS PERSONNELLES -->
-            <div class="recap-section-detail">
-                <h3 class="section-header-detail">
-                    <span class="section-icon-detail">👤</span>
-                    Vos informations personnelles
-                </h3>
-                <div class="detail-grid">
-                    ${clientData.nom ? `
-                    <div class="detail-item">
-                        <span class="detail-label">Nom complet</span>
-                        <span class="detail-value">${clientData.nom} ${clientData.prenom}</span>
-                    </div>` : ''}
-                    
-                    ${clientData.email ? `
-                    <div class="detail-item">
-                        <span class="detail-label">Email</span>
-                        <span class="detail-value">${clientData.email}</span>
-                    </div>` : ''}
-                    
-                    ${clientData.telephone ? `
-                    <div class="detail-item">
-                        <span class="detail-label">Téléphone</span>
-                        <span class="detail-value">${clientData.telephone}</span>
-                    </div>` : ''}
-                    
-                    ${getAdditionalClientInfo()}
-                </div>
-                
-                ${clientData.adresse ? `
-                <div style="grid-column: 1 / -1; margin-top: 1rem;">
-                    <div class="detail-item">
-                        <span class="detail-label">Adresse complète</span>
-                        <span class="detail-value">${clientData.adresse}<br>${clientData.code_postal} ${clientData.ville}</span>
-                    </div>
-                </div>` : ''}
-            </div>
-            
-            <!-- SECTION DOCUMENTS ET VALIDATION -->
-            <div class="recap-section-detail">
-                <h3 class="section-header-detail">
-                    <span class="section-icon-detail">📎</span>
-                    Documents et validations
-                </h3>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <span class="detail-label">Documents fournis</span>
-                        <span class="detail-value">
-                            ${getUploadedFiles()}
-                        </span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Conditions acceptées</span>
-                        <span class="detail-value success">✅ Conditions générales et prélèvement</span>
-                    </div>
-                </div>
-            </div>
-            
-        </div>
-    `;
-
-            // Injecter le HTML
-            $('#recap-container-final').html(recapHTML);
-
-            // Configurer le bouton de finalisation
-            $('#btn-finaliser-souscription').off('click').on('click', function () {
-                finaliserSouscription();
-            });
-        }
-
-        // Nouvelles fonctions helper pour l'étape 10
-        function getAdditionalClientInfo() {
-            let html = '';
-
-            const dateNaissance = $('#client_date_naissance').val();
-            if (dateNaissance) {
-                html += `
-            <div class="detail-item">
-                <span class="detail-label">Date de naissance</span>
-                <span class="detail-value">${dateNaissance}</span>
-            </div>
-        `;
-            }
-
-            const lieuNaissance = $('#client_lieu_naissance').val();
-            if (lieuNaissance) {
-                html += `
-            <div class="detail-item">
-                <span class="detail-label">Lieu de naissance</span>
-                <span class="detail-value">${lieuNaissance}</span>
-            </div>
-        `;
-            }
-
-            const pdlAdresse = $('#pdl_adresse').val();
-            if (pdlAdresse) {
-                html += `
-            <div class="detail-item">
-                <span class="detail-label">Point de livraison</span>
-                <span class="detail-value">${pdlAdresse}</span>
-            </div>
-        `;
-            }
-
-            const numeroCompteur = $('#numero_compteur').val();
-            if (numeroCompteur) {
-                html += `
-            <div class="detail-item">
-                <span class="detail-label">N° Point Référence Mesure</span>
-                <span class="detail-value">${numeroCompteur}</span>
-            </div>
-        `;
-            }
-
-            return html;
-        }
-
-        function getUploadedFiles() {
-            const documents = [];
-
-            if ($('#rib_file')[0] && $('#rib_file')[0].files.length > 0) {
-                documents.push('✅ RIB');
-            }
-
-            if ($('#carte_identite_recto')[0] && $('#carte_identite_recto')[0].files.length > 0) {
-                documents.push('✅ Pièce identité recto');
-            }
-
-            if ($('#carte_identite_verso')[0] && $('#carte_identite_verso')[0].files.length > 0) {
-                documents.push('✅ Pièce identité verso');
-            }
-
-            return documents.length > 0 ? documents.join('<br>') : 'Aucun document uploadé';
-        }
-
-        function finaliserSouscription() {
-
-            const $btn = $('#btn-finaliser-souscription');
-            const originalHtml = $btn.html();
-            $btn.prop('disabled', true).html('<span class="spinner"></span> Traitement en cours...');
-
-            // Simuler l'envoi (remplace par ta vraie logique)
-            setTimeout(() => {
-                showSuccessMessage();
-                $btn.prop('disabled', false).html(originalHtml);
-            }, 2000);
-        }
-
 
         function displayError(message) {
             $('#results-container').html(`
@@ -1386,9 +1077,9 @@
             });
         }
 
-        // ===============================
-        // GESTION ÉTAPE 8
-        // ===============================
+        // ================================
+        // GESTION ÉTAPE 8 (MISE À JOUR CALCULS)
+        // ================================
 
         function updateCalculsSelection(tarif, puissance) {
             const results = window.calculationResults;
@@ -1470,95 +1161,302 @@
             }
         }
 
-        function recalculateWithNewPower(tarif, nouvellePuissance) {
-            $('#calculs-selection').html('<div class="loading-mini">Recalcul en cours...</div>');
+        // ================================
+        // RÉCAPITULATIF FINAL (ÉTAPE 10)
+        // ================================
 
+        function generateRecapitulatifFinal() {
             const allData = collectAllFormData();
-            allData.puissance_forcee = nouvellePuissance;
+            const clientData = collectClientData();
+            const results = window.calculationResults;
 
-            const dataToSend = {
-                action: 'htic_calculate_estimation',
-                type: 'elec-residentiel',
-                user_data: allData,
-                config_data: configData,
-                nonce: (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce) ? hticSimulateur.nonce : ''
-            };
-
-            let ajaxUrl = '/wp-admin/admin-ajax.php';
-            if (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl) {
-                ajaxUrl = hticSimulateur.ajaxUrl;
+            if (!allData || !results) {
+                console.error('Données manquantes pour le récapitulatif');
+                $('#recap-container-final').html(`
+                    <div class="error-state">
+                        <div class="error-icon">❌</div>
+                        <h3>Erreur</h3>
+                        <p>Impossible de générer le récapitulatif. Données manquantes.</p>
+                    </div>
+                `);
+                return;
             }
 
-            $.ajax({
-                url: ajaxUrl,
-                type: 'POST',
-                dataType: 'json',
-                data: dataToSend,
-                success: function (response) {
-                    if (response.success) {
-                        window.calculationResults = response.data;
+            const tarifChoisi = allData.tarif_choisi || 'base';
+            const puissanceChoisie = allData.puissance_choisie || results.puissance_recommandee;
+            const puissanceOriginaleRecommandee = window.originalRecommendedPower || results.puissance_recommandee;
 
-                        if (!window.originalRecommendedPower) {
-                            window.originalRecommendedPower = response.data.puissance_recommandee;
-                        }
+            const totalAnnuel = getTotalAnnuelChoisi(results, tarifChoisi);
+            const totalMensuel = Math.round(totalAnnuel / 10);
+            const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
 
-                        updateAllTarifPrices(response.data);
-                        updateCalculsSelection(tarif, nouvellePuissance);
-                    } else {
-                        $('#calculs-selection').html('<div class="error-mini">Erreur de calcul</div>');
-                    }
-                },
-                error: function () {
-                    $('#calculs-selection').html('<div class="error-mini">Erreur de connexion</div>');
-                }
+            const recapHTML = generateRecapHTML(allData, clientData, tarifChoisi, puissanceChoisie, puissanceOriginaleRecommandee, totalAnnuel, totalMensuel, consommationAnnuelle);
+
+            $('#recap-container-final').html(recapHTML);
+
+            $('#btn-finaliser-souscription').off('click').on('click', function () {
+                finaliserSouscription();
             });
         }
 
-        // ===============================
-        // EMAIL
-        // ===============================
+        function generateRecapHTML(allData, clientData, tarifChoisi, puissanceChoisie, puissanceOriginaleRecommandee, totalAnnuel, totalMensuel, consommationAnnuelle) {
+            return `
+                <div class="recap-complet">
+                    
+                    <!-- SECTION FORMULE SÉLECTIONNÉE -->
+                    <div class="formule-selectionnee">
+                        <div class="formule-header">
+                            <span class="formule-icon">⚡</span>
+                            <h3>Votre formule d'électricité</h3>
+                        </div>
+                        
+                        <div class="formule-details">
+                            <div class="formule-main">
+                                <div class="formule-item tarif">
+                                    <div class="formule-label">Tarif sélectionné</div>
+                                    <div class="formule-value">${getTarifLabel(tarifChoisi)}</div>
+                                    <div class="formule-badge">${getBadgeTarif(tarifChoisi)}</div>
+                                </div>
+                                
+                                <div class="formule-divider"></div>
+                                
+                                <div class="formule-item puissance">
+                                    <div class="formule-label">Puissance souscrite</div>
+                                    <div class="formule-value">${puissanceChoisie} kVA</div>
+                                    <div class="formule-badge ${puissanceChoisie == puissanceOriginaleRecommandee ? 'recommended' : ''}">
+                                        ${puissanceChoisie == puissanceOriginaleRecommandee ? '⭐ Recommandée' : 'Personnalisée'}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="formule-costs">
+                                <div class="cost-card annual">
+                                    <div class="cost-icon">📅</div>
+                                    <div class="cost-details">
+                                        <div class="cost-label">Coût annuel TTC</div>
+                                        <div class="cost-amount">${totalAnnuel.toLocaleString()}€</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="cost-card monthly">
+                                    <div class="cost-icon">📆</div>
+                                    <div class="cost-details">
+                                        <div class="cost-label">Moyenne mensuelle</div>
+                                        <div class="cost-amount">${totalMensuel.toLocaleString()}€<span>/mois</span></div>
+                                        <div class="cost-note">Sur 10 mois</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="cost-card consumption">
+                                    <div class="cost-icon">⚡</div>
+                                    <div class="cost-details">
+                                        <div class="cost-label">Consommation estimée</div>
+                                        <div class="cost-amount">${consommationAnnuelle.toLocaleString()} <span>kWh/an</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- SECTION LOGEMENT -->
+                    <div class="recap-section-detail">
+                        <h3 class="section-header-detail">
+                            <span class="section-icon-detail">🏠</span>
+                            Caractéristiques du logement
+                        </h3>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Type de logement</span>
+                                <span class="detail-value">${allData.type_logement === 'maison' ? '🏠 Maison' : '🏢 Appartement'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Surface habitable</span>
+                                <span class="detail-value">${allData.surface} m²</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Nombre d'occupants</span>
+                                <span class="detail-value">${allData.nb_personnes} personne(s)</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Isolation</span>
+                                <span class="detail-value">${getIsolationLabel(allData.isolation)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Type de résidence</span>
+                                <span class="detail-value highlight">${allData.type_logement_usage === 'principal' ? '🏠 Résidence principale' : '🏖️ Résidence secondaire'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- SECTION ÉQUIPEMENTS -->
+                    <div class="recap-section-detail">
+                        <h3 class="section-header-detail">
+                            <span class="section-icon-detail">🔥</span>
+                            Chauffage et équipements
+                        </h3>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Chauffage principal</span>
+                                <span class="detail-value">${getHeatingLabel(allData.type_chauffage)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Eau chaude sanitaire</span>
+                                <span class="detail-value">${allData.eau_chaude === 'oui' ? '💧 Électrique' : '🔥 Autre énergie'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Type de cuisson</span>
+                                <span class="detail-value">${getCuissonLabel(allData.type_cuisson)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Éclairage principal</span>
+                                <span class="detail-value">${allData.type_eclairage === 'led' ? '💡 LED' : '🔆 Halogène/Incandescence'}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Électroménagers -->
+                        <div style="grid-column: 1 / -1; margin-top: 1.5rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: #374151;">Électroménagers sélectionnés :</h4>
+                            <div class="equipment-tags">
+                                ${allData.electromenagers && allData.electromenagers.length > 0
+                    ? allData.electromenagers.map(eq => `
+                                        <span class="equipment-tag">
+                                            ${getElectromenagerIcon(eq)} ${getElectromenagerLabel(eq)}
+                                        </span>
+                                    `).join('')
+                    : '<span class="equipment-tag none">Aucun électroménager sélectionné</span>'
+                }
+                            </div>
+                        </div>
+                        
+                        <!-- Piscine -->
+                        <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                            <div class="detail-item">
+                                <span class="detail-label">Piscine</span>
+                                <span class="detail-value">${getPiscineLabel(allData.piscine)}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Équipements spéciaux -->
+                        ${allData.equipements_speciaux && allData.equipements_speciaux.length > 0 ? `
+                        <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: #374151;">Autres équipements spéciaux :</h4>
+                            <div class="equipment-tags">
+                                ${allData.equipements_speciaux.map(eq => `
+                                    <span class="equipment-tag special">
+                                        ${getEquipementSpecialIcon(eq)} ${getEquipementSpecialLabel(eq)}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : `
+                        <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: #374151;">Autres équipements spéciaux :</h4>
+                            <div class="equipment-tags">
+                                <span class="equipment-tag none">Aucun équipement spécial</span>
+                            </div>
+                        </div>
+                        `}
+                    </div>
+                    
+                    <!-- SECTION INFORMATIONS PERSONNELLES -->
+                    <div class="recap-section-detail">
+                        <h3 class="section-header-detail">
+                            <span class="section-icon-detail">👤</span>
+                            Vos informations personnelles
+                        </h3>
+                        <div class="detail-grid">
+                            ${clientData.nom ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Nom complet</span>
+                                <span class="detail-value">${clientData.nom} ${clientData.prenom}</span>
+                            </div>` : ''}
+                            
+                            ${clientData.email ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Email</span>
+                                <span class="detail-value">${clientData.email}</span>
+                            </div>` : ''}
+                            
+                            ${clientData.telephone ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Téléphone</span>
+                                <span class="detail-value">${clientData.telephone}</span>
+                            </div>` : ''}
+                            
+                            ${getAdditionalClientInfo()}
+                        </div>
+                        
+                        ${clientData.adresse ? `
+                        <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                            <div class="detail-item">
+                                <span class="detail-label">Adresse complète</span>
+                                <span class="detail-value">${clientData.adresse}<br>${clientData.code_postal} ${clientData.ville}</span>
+                            </div>
+                        </div>` : ''}
+                    </div>
+                    
+                    <!-- SECTION DOCUMENTS ET VALIDATION -->
+                    <div class="recap-section-detail">
+                        <h3 class="section-header-detail">
+                            <span class="section-icon-detail">📎</span>
+                            Documents et validations
+                        </h3>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Documents fournis</span>
+                                <span class="detail-value">
+                                    ${getUploadedFiles()}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Conditions acceptées</span>
+                                <span class="detail-value success">✅ Conditions générales et prélèvement</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            `;
+        }
+
+        // ================================
+        // ENVOI DES DONNÉES FINALES
+        // ================================
 
         function envoyerDonneesAuServeur() {
-
-            // Récupérer toutes les données déjà collectées et calculées
             const allFormData = collectAllFormData();
             const clientData = collectClientData();
             const results = window.calculationResults;
 
-            // Vérifier qu'on a bien toutes les données
             if (!allFormData || !clientData || !results) {
-                console.error('❌ Données manquantes pour l\'envoi');
+                console.error('Données manquantes pour l\'envoi');
                 showNotification('Données incomplètes', 'error');
                 return;
             }
 
-            // CRÉER UN FORMDATA POUR TOUT
             const formData = new FormData();
-
-            // Ajouter l'action et le nonce
             formData.append('action', 'process_electricity_form');
             formData.append('nonce', hticSimulateur.nonce);
 
-            // Préparer l'objet complet avec TOUTES les données existantes
             const dataToSend = {
-                // Informations personnelles (depuis étape 9)
+                // Informations personnelles
                 firstName: clientData.nom || $('#client_nom').val(),
                 lastName: clientData.prenom || $('#client_prenom').val(),
                 email: clientData.email || $('#client_email').val(),
                 phone: clientData.telephone || $('#client_telephone').val(),
                 postalCode: $('#client_code_postal').val() || clientData.code_postal,
 
-                // Adresse complète si disponible
+                // Adresse complète
                 adresse: clientData.adresse || $('#client_adresse').val(),
                 ville: clientData.ville || $('#client_ville').val(),
 
-                // Infos supplémentaires
+                // Informations supplémentaires
                 dateNaissance: $('#client_date_naissance').val(),
                 lieuNaissance: $('#client_lieu_naissance').val(),
                 pdlAdresse: $('#pdl_adresse').val(),
                 numeroCompteur: $('#numero_compteur').val(),
 
-                // Données du logement (depuis les étapes 1-6)
+                // Données du logement
                 housingType: allFormData.type_logement,
                 surface: allFormData.surface,
                 residents: allFormData.nb_personnes,
@@ -1578,12 +1476,12 @@
                     equipementsSpeciaux: allFormData.equipements_speciaux || []
                 },
 
-                // Sélections finales (étape 8)
+                // Sélections finales
                 pricingType: allFormData.tarif_choisi,
                 contractPower: allFormData.puissance_choisie,
                 typeLogementUsage: allFormData.type_logement_usage,
 
-                // Résultats des calculs (déjà calculés par votre système)
+                // Résultats des calculs
                 annualConsumption: results.consommation_annuelle,
                 monthlyEstimate: getTotalMensuelFromResults(results, allFormData.tarif_choisi),
 
@@ -1608,11 +1506,9 @@
                     puissanceRecommandee: results.puissance_recommandee
                 },
 
-                // Timestamp
                 timestamp: new Date().toISOString()
             };
 
-            // Ajouter les données JSON au FormData
             formData.append('form_data', JSON.stringify(dataToSend));
 
             // Ajouter les fichiers uploadés
@@ -1632,16 +1528,14 @@
                 formData.append('carte_identite_verso', carteVersoFile.files[0]);
             }
 
-            // Afficher le loader
             afficherLoader();
 
-            // UTILISER FORMDATA DANS L'AJAX
             $.ajax({
                 url: hticSimulateur.ajaxUrl,
                 type: 'POST',
                 data: formData,
-                processData: false, // OBLIGATOIRE pour FormData
-                contentType: false, // OBLIGATOIRE pour FormData
+                processData: false,
+                contentType: false,
                 dataType: 'json',
                 success: function (response) {
                     cacherLoader();
@@ -1653,16 +1547,16 @@
                     }
                 },
                 error: function (xhr, status, error) {
-                    console.error('❌ Erreur AJAX:', error);
+                    console.error('Erreur AJAX:', error);
                     cacherLoader();
                     afficherMessageErreur('Erreur de connexion au serveur');
                 }
             });
         }
 
-        // ===============================
+        // ================================
         // GÉNÉRATION DE CONTENU
-        // ===============================
+        // ================================
 
         function generateConsumptionBreakdown(results) {
             const consommationAnnuelle = parseInt(results.consommation_annuelle) || 0;
@@ -1749,30 +1643,30 @@
 
         function showSuccessMessage() {
             const successHtml = `
-        <div class="success-overlay" id="success-modal">
-            <div class="success-content">
-                <div class="success-icon">🎉</div>
-                <h2>Félicitations !</h2>
-                <p class="success-main">Votre souscription a été enregistrée avec succès</p>
-                <div class="success-details">
-                    <p>Numéro de dossier : <strong>#${Math.floor(Math.random() * 900000) + 100000}</strong></p>
-                    <p>Un email de confirmation vous a été envoyé</p>
-                    <p>Notre équipe vous contactera sous 24h</p>
+                <div class="success-overlay" id="success-modal">
+                    <div class="success-content">
+                        <div class="success-icon">🎉</div>
+                        <h2>Félicitations !</h2>
+                        <p class="success-main">Votre souscription a été enregistrée avec succès</p>
+                        <div class="success-details">
+                            <p>Numéro de dossier : <strong>#${Math.floor(Math.random() * 900000) + 100000}</strong></p>
+                            <p>Un email de confirmation vous a été envoyé</p>
+                            <p>Notre équipe vous contactera sous 24h</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="location.reload()">
+                            Faire une nouvelle simulation
+                        </button>
+                    </div>
                 </div>
-                <button class="btn btn-primary" onclick="location.reload()">
-                    Faire une nouvelle simulation
-                </button>
-            </div>
-        </div>
-    `;
+            `;
 
             $('body').append(successHtml);
             $('#success-modal').fadeIn();
         }
 
-        // ===============================
-        // GRAPHIQUE
-        // ===============================
+        // ================================
+        // GRAPHIQUES (CHART.JS)
+        // ================================
 
         function createConsumptionPieChart() {
             if (typeof Chart === 'undefined') {
@@ -1862,9 +1756,9 @@
             }
         }
 
-        // ===============================
-        // UTILITAIRES
-        // ===============================
+        // ================================
+        // INTERFACE UTILISATEUR
+        // ================================
 
         function showValidationMessage(message) {
             $('.validation-message').remove();
@@ -1915,6 +1809,106 @@
             updateUI();
         }
 
+        function afficherLoader() {
+            if ($('#ajax-loader').length) return;
+
+            const loader = `
+                <div id="ajax-loader" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                            background: rgba(0,0,0,0.7); display: flex; 
+                            justify-content: center; align-items: center; z-index: 99999;">
+                    <div style="background: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                        <div class="spinner" style="border: 5px solid #f3f3f3; border-top: 5px solid #667eea; 
+                                    border-radius: 50%; width: 60px; height: 60px; 
+                                    animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                        <h3 style="margin: 0 0 10px 0; color: #333;">Envoi en cours...</h3>
+                        <p style="margin: 0; font-size: 14px; color: #666;">
+                            Génération du PDF et envoi des emails<br>
+                            <small>Veuillez patienter quelques instants</small>
+                        </p>
+                    </div>
+                </div>
+                <style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+            `;
+            $('body').append(loader);
+        }
+
+        function cacherLoader() {
+            $('#ajax-loader').fadeOut(300, function () {
+                $(this).remove();
+            });
+        }
+
+        function afficherMessageSucces(message) {
+            $('.ajax-message').remove();
+
+            const successHtml = `
+                <div class="ajax-message success-message" style="position: fixed; top: 20px; right: 20px; 
+                            background: linear-gradient(135deg, #82C720 0%, #82C720 100%); color: white; 
+                            padding: 20px 30px; border-radius: 10px; box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2); 
+                            z-index: 100000; max-width: 400px; animation: slideIn 0.5s ease;">
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-size: 24px; margin-right: 15px;">✅</span>
+                        <div>
+                            <h4 style="margin: 0 0 5px 0; font-size: 16px; colors:white;">Succès !</h4>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes slideIn {
+                        from { transform: translateX(400px); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                </style>
+            `;
+
+            $('body').append(successHtml);
+
+            setTimeout(() => {
+                window.location.href = '/merci';
+            }, 1500);
+
+            setTimeout(() => {
+                $('.success-message').fadeOut(500, function () {
+                    $(this).remove();
+                });
+            }, 5000);
+        }
+
+        function afficherMessageErreur(message) {
+            $('.ajax-message').remove();
+
+            const errorHtml = `
+                <div class="ajax-message error-message" style="position: fixed; top: 20px; right: 20px; 
+                            background: #dc3545; color: white; padding: 20px 30px; 
+                            border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); 
+                            z-index: 100000; max-width: 400px; animation: slideIn 0.5s ease;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; flex: 1;">
+                            <span style="font-size: 24px; margin-right: 15px;">❌</span>
+                            <div>
+                                <h4 style="margin: 0 0 5px 0; font-size: 16px;">Erreur</h4>
+                                <p style="margin: 0; font-size: 14px; opacity: 0.95;">${message}</p>
+                            </div>
+                        </div>
+                        <button class="close-btn" style="background: white; color: #dc3545; border: none; 
+                            padding: 5px 10px; border-radius: 5px; cursor: pointer; 
+                            margin-left: 15px; font-weight: bold;">✕</button>
+                    </div>
+                </div>
+            `;
+
+            $('body').append(errorHtml);
+        }
+
+        // ================================
+        // FONCTIONS UTILITAIRES
+        // ================================
+
         function getTarifLabel(tarif) {
             const labels = {
                 'base': 'Base TRV',
@@ -1924,9 +1918,24 @@
             return labels[tarif] || tarif;
         }
 
+        function getBadgeTarif(tarif) {
+            const badges = {
+                'base': 'Simple',
+                'hc': 'Économique',
+                'tempo': 'Expert'
+            };
+            return badges[tarif] || '';
+        }
+
         function getTotalAnnuelChoisi(results, tarif) {
             if (!results || !results.tarifs || !results.tarifs[tarif]) return 0;
             return parseInt(results.tarifs[tarif].total_annuel) || 0;
+        }
+
+        function getTotalMensuelFromResults(results, tarifChoisi) {
+            if (!results || !results.tarifs || !results.tarifs[tarifChoisi]) return 0;
+            const totalAnnuel = parseInt(results.tarifs[tarifChoisi].total_annuel) || 0;
+            return Math.round(totalAnnuel / 10);
         }
 
         function getConsumptionLabel(key) {
@@ -1953,14 +1962,6 @@
                 'autres': '📊'
             };
             return icons[key] || '📊';
-        }
-
-        function getLogementLabel(type) {
-            const labels = {
-                'maison': '🏠 Maison',
-                'appartement': '🏢 Appartement'
-            };
-            return labels[type] || type;
         }
 
         function getIsolationLabel(code) {
@@ -1993,14 +1994,6 @@
             return labels[code] || code;
         }
 
-        function getEclairageLabel(code) {
-            const labels = {
-                'led': 'LED (basse consommation)',
-                'incandescence_halogene': 'Incandescence ou halogène'
-            };
-            return labels[code] || code;
-        }
-
         function getElectromenagerIcon(code) {
             const icons = {
                 'lave_linge': '👕',
@@ -2025,15 +2018,6 @@
                 'cave_a_vin': 'Cave à vin'
             };
             return labels[code] || code;
-        }
-
-        function getBadgeTarif(tarif) {
-            const badges = {
-                'base': 'Simple',
-                'hc': 'Économique',
-                'tempo': 'Expert'
-            };
-            return badges[tarif] || '';
         }
 
         function getEquipementSpecialIcon(code) {
@@ -2065,117 +2049,73 @@
             return labels[value] || value;
         }
 
-        function getTotalMensuelFromResults(results, tarifChoisi) {
-            if (!results || !results.tarifs || !results.tarifs[tarifChoisi]) return 0;
-            const totalAnnuel = parseInt(results.tarifs[tarifChoisi].total_annuel) || 0;
-            return Math.round(totalAnnuel / 10); // Sur 10 mois comme dans votre code
-        }
+        function getAdditionalClientInfo() {
+            let html = '';
 
-        // Fonctions UI pour le loader et les messages
-        function afficherLoader() {
-            // Si un loader existe déjà, ne pas en créer un nouveau
-            if ($('#ajax-loader').length) return;
-
-            const loader = `
-        <div id="ajax-loader" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-                    background: rgba(0,0,0,0.7); display: flex; 
-                    justify-content: center; align-items: center; z-index: 99999;">
-            <div style="background: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-                <div class="spinner" style="border: 5px solid #f3f3f3; border-top: 5px solid #667eea; 
-                            border-radius: 50%; width: 60px; height: 60px; 
-                            animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-                <h3 style="margin: 0 0 10px 0; color: #333;">Envoi en cours...</h3>
-                <p style="margin: 0; font-size: 14px; color: #666;">
-                    Génération du PDF et envoi des emails<br>
-                    <small>Veuillez patienter quelques instants</small>
-                </p>
-            </div>
-        </div>
-        <style>
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        </style>
-    `;
-            $('body').append(loader);
-        }
-
-        function cacherLoader() {
-            $('#ajax-loader').fadeOut(300, function () {
-                $(this).remove();
-            });
-        }
-
-        function afficherMessageSucces(message) {
-            // Supprimer les anciens messages
-            $('.ajax-message').remove();
-
-            const successHtml = `
-        <div class="ajax-message success-message" style="position: fixed; top: 20px; right: 20px; 
-                    background: linear-gradient(135deg, #82C720 0%, #82C720 100%); color: white; 
-                    padding: 20px 30px; border-radius: 10px; box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2); 
-                    z-index: 100000; max-width: 400px; animation: slideIn 0.5s ease;">
-            <div style="display: flex; align-items: center;">
-                <span style="font-size: 24px; margin-right: 15px;">✅</span>
-                <div>
-                    <h4 style="margin: 0 0 5px 0; font-size: 16px; colors:white;">Succès !</h4>
-                </div>
-            </div>
-        </div>
-        <style>
-            @keyframes slideIn {
-                from { transform: translateX(400px); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    `;
-
-            $('body').append(successHtml);
-
-            setTimeout(() => {
-                // Rediriger vers votre page de remerciement
-                window.location.href = '/merci';
-            }, 1500);
-
-            // Auto-fermeture après 5 secondes
-            setTimeout(() => {
-                $('.success-message').fadeOut(500, function () {
-                    $(this).remove();
-                });
-            }, 5000);
-        }
-
-        function afficherMessageErreur(message) {
-            // Supprimer les anciens messages
-            $('.ajax-message').remove();
-
-            const errorHtml = `
-        <div class="ajax-message error-message" style="position: fixed; top: 20px; right: 20px; 
-                    background: #dc3545; color: white; padding: 20px 30px; 
-                    border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); 
-                    z-index: 100000; max-width: 400px; animation: slideIn 0.5s ease;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; flex: 1;">
-                    <span style="font-size: 24px; margin-right: 15px;">❌</span>
-                    <div>
-                        <h4 style="margin: 0 0 5px 0; font-size: 16px;">Erreur</h4>
-                        <p style="margin: 0; font-size: 14px; opacity: 0.95;">${message}</p>
+            const dateNaissance = $('#client_date_naissance').val();
+            if (dateNaissance) {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-label">Date de naissance</span>
+                        <span class="detail-value">${dateNaissance}</span>
                     </div>
-                </div>
-                <button class="close-btn" style="background: white; color: #dc3545; border: none; 
-                    padding: 5px 10px; border-radius: 5px; cursor: pointer; 
-                    margin-left: 15px; font-weight: bold;">✕</button>
-            </div>
-        </div>
-    `;
+                `;
+            }
 
-            $('body').append(errorHtml);
+            const lieuNaissance = $('#client_lieu_naissance').val();
+            if (lieuNaissance) {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-label">Lieu de naissance</span>
+                        <span class="detail-value">${lieuNaissance}</span>
+                    </div>
+                `;
+            }
+
+            const pdlAdresse = $('#pdl_adresse').val();
+            if (pdlAdresse) {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-label">Point de livraison</span>
+                        <span class="detail-value">${pdlAdresse}</span>
+                    </div>
+                `;
+            }
+
+            const numeroCompteur = $('#numero_compteur').val();
+            if (numeroCompteur) {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-label">N° Point Référence Mesure</span>
+                        <span class="detail-value">${numeroCompteur}</span>
+                    </div>
+                `;
+            }
+
+            return html;
         }
 
-        // ===============================
+        function getUploadedFiles() {
+            const documents = [];
+
+            if ($('#rib_file')[0] && $('#rib_file')[0].files.length > 0) {
+                documents.push('✅ RIB');
+            }
+
+            if ($('#carte_identite_recto')[0] && $('#carte_identite_recto')[0].files.length > 0) {
+                documents.push('✅ Pièce identité recto');
+            }
+
+            if ($('#carte_identite_verso')[0] && $('#carte_identite_verso')[0].files.length > 0) {
+                documents.push('✅ Pièce identité verso');
+            }
+
+            return documents.length > 0 ? documents.join('<br>') : 'Aucun document uploadé';
+        }
+
+        // ================================
         // API PUBLIQUE
-        // ===============================
+        // ================================
 
         window.HticSimulateurData = {
             getCurrentData: () => formData,

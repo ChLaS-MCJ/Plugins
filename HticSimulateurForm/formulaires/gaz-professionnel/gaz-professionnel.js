@@ -1,14 +1,17 @@
 /**
- * Simulateur Gaz Professionnel - Version restructurée modulaire
- * Harmonisé avec elec-professionnel.js (5 étapes)
+ * Simulateur Gaz Professionnel
+ * 
+ * Application de simulation de devis gaz pour entreprises
+ * Gère le processus complet de souscription en 5 étapes avec validation des données,
+ * calcul des tarifs et génération de devis personnalisés.
  */
 
 jQuery(document).ready(function ($) {
     'use strict';
 
-    // ================================
-    // 1. ÉTAT GLOBAL ET CONFIGURATION
-    // ================================
+    // ===========================================
+    // CONFIGURATION ET ÉTAT GLOBAL
+    // ===========================================
 
     const GazProfessionnelState = {
         currentStep: 1,
@@ -21,7 +24,6 @@ jQuery(document).ready(function ($) {
 
     const GazProfessionnelConfig = {
         init() {
-            console.log('🔥 Initialisation Simulateur Gaz Professionnel');
             this.loadConfigData();
             this.createGlobalVariables();
         },
@@ -31,9 +33,7 @@ jQuery(document).ready(function ($) {
             if (configElement) {
                 try {
                     GazProfessionnelState.configData = JSON.parse(configElement.textContent);
-                    console.log('✅ Configuration gaz pro chargée:', GazProfessionnelState.configData);
                 } catch (e) {
-                    console.error('❌ Erreur configuration:', e);
                     GazProfessionnelState.configData = {};
                 }
             }
@@ -47,14 +47,13 @@ jQuery(document).ready(function ($) {
                     nonce: configData.nonce || configData.calculate_nonce,
                     type: 'gaz-professionnel'
                 };
-                console.log('✅ Variables globales hticSimulateur créées');
             }
         }
     };
 
-    // ================================
-    // 2. GESTION DES COMMUNES
-    // ================================
+    // ===========================================
+    // GESTION DES COMMUNES
+    // ===========================================
 
     const CommunesManager = {
         defaultCommunes: [
@@ -157,9 +156,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 3. NAVIGATION ENTRE ÉTAPES
-    // ================================
+    // ===========================================
+    // NAVIGATION ENTRE ÉTAPES
+    // ===========================================
 
     const NavigationManager = {
         init() {
@@ -345,9 +344,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 4. VALIDATION
-    // ================================
+    // ===========================================
+    // VALIDATION DES DONNÉES
+    // ===========================================
 
     const ValidationManager = {
         init() {
@@ -534,9 +533,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 5. GESTION DES DONNÉES
-    // ================================
+    // ===========================================
+    // GESTION DES DONNÉES
+    // ===========================================
 
     const DataManager = {
         saveCurrentStepData() {
@@ -609,9 +608,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 6. GESTION DES FICHIERS
-    // ================================
+    // ===========================================
+    // GESTION DES FICHIERS
+    // ===========================================
 
     const FileManager = {
         init() {
@@ -696,14 +695,12 @@ jQuery(document).ready(function ($) {
     // Fonction globale pour compatibilité
     window.removeUploadedFileGaz = (fileType, button) => FileManager.removeFile(fileType, button);
 
-    // ================================
-    // 7. CALCULS ET RÉSULTATS
-    // ================================
+    // ===========================================
+    // CALCULS ET RÉSULTATS
+    // ===========================================
 
     const CalculationManager = {
         calculateResults() {
-            console.log('🧮 Démarrage calcul des résultats gaz');
-
             const allData = DataManager.collectAllFormData();
             const consommation = parseInt(allData.consommation_previsionnelle) || 0;
 
@@ -988,15 +985,14 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 8. GESTION DES ÉTAPES SPÉCIFIQUES
-    // ================================
+    // ===========================================
+    // GESTION DES ÉTAPES SPÉCIFIQUES
+    // ===========================================
 
     const StepManager = {
         setupSelectionStep() {
             const { calculResults } = GazProfessionnelState;
             if (!calculResults.offres || calculResults.offres.length === 0) {
-                console.warn('⚠️ Pas de résultats de calcul disponibles');
                 return;
             }
 
@@ -1044,9 +1040,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 9. GESTION DU RÉCAPITULATIF
-    // ================================
+    // ===========================================
+    // GESTION DU RÉCAPITULATIF
+    // ===========================================
 
     const RecapManager = {
         generate() {
@@ -1328,9 +1324,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 10. SOUMISSION FINALE
-    // ================================
+    // ===========================================
+    // SOUMISSION FINALE
+    // ===========================================
 
     const SubmissionManager = {
         finalize() {
@@ -1364,104 +1360,72 @@ jQuery(document).ready(function ($) {
             const { formData, calculResults, uploadedFiles } = GazProfessionnelState;
             const allFormData = DataManager.collectAllFormData();
 
-            console.log('=== DEBUG SUBMISSION GAZ PRO ===');
-            console.log('All form data:', allFormData);
-            console.log('Uploaded files:', uploadedFiles);
-            console.log('Calcul results:', calculResults);
-
             const formDataToSend = new FormData();
 
-            // CORRECTION CRITIQUE : Utiliser la même action que le gaz résidentiel
             formDataToSend.append('action', 'process_gaz_form');
             formDataToSend.append('nonce', hticSimulateur.nonce);
 
-            // CORRECTION CRITIQUE : Structure de données attendue par l'EmailHandler
             const dataToSend = {
-                // OBLIGATOIRE : Type de simulation pour que l'EmailHandler route correctement
-                simulationType: 'gaz-professionnel', // ← This is critical!
+                simulationType: 'gaz-professionnel',
 
-                // Données entreprise avec noms EXACTS
                 raison_sociale: allFormData.raison_sociale || '',
                 forme_juridique: allFormData.forme_juridique || '',
                 siret: allFormData.siret || '',
                 code_naf: allFormData.code_naf || '',
 
-                // Adresse entreprise
                 entreprise_adresse: allFormData.entreprise_adresse || '',
                 entreprise_code_postal: allFormData.entreprise_code_postal || '',
                 entreprise_ville: allFormData.entreprise_ville || '',
 
-                // Contact responsable - THESE ARE THE CRITICAL FIELDS
                 responsable_prenom: allFormData.responsable_prenom || '',
                 responsable_nom: allFormData.responsable_nom || '',
-                responsable_email: allFormData.responsable_email || '', // ← CRITICAL
+                responsable_email: allFormData.responsable_email || '',
                 responsable_telephone: allFormData.responsable_telephone || '',
                 responsable_fonction: allFormData.responsable_fonction || '',
 
-                // Configuration gaz
                 commune: allFormData.commune || '',
                 consommation_previsionnelle: parseInt(allFormData.consommation_previsionnelle) || 0,
                 type_contrat: allFormData.type_contrat || 'principal',
                 tarif_choisi: allFormData.tarif_choisi || '',
 
-                // Si commune "autre"
                 type_gaz_autre: allFormData.type_gaz_autre || null,
                 nom_commune_autre: allFormData.nom_commune_autre || null,
 
-                // Résultats calculs si disponibles
                 cout_annuel: calculResults.isHighConsumption ? 0 : (calculResults.total_annuel || 0),
 
-                // Acceptations avec conversion explicite en booléen
                 accept_conditions_pro: Boolean(allFormData.accept_conditions_pro),
                 accept_prelevement_pro: Boolean(allFormData.accept_prelevement_pro),
                 certifie_pouvoir: Boolean(allFormData.certifie_pouvoir),
 
-                // Métadonnées
                 timestamp: new Date().toISOString(),
                 reference: 'GAZ-PRO-' + Date.now()
             };
 
-            console.log('Data to send:', dataToSend);
             formDataToSend.append('form_data', JSON.stringify(dataToSend));
 
-            // CORRECTION CRITIQUE : Vérifier que les fichiers existent avant de les ajouter
             let filesAdded = 0;
 
             if (uploadedFiles.kbis_file && uploadedFiles.kbis_file instanceof File) {
                 formDataToSend.append('kbis_file', uploadedFiles.kbis_file);
                 filesAdded++;
-                console.log('✅ Fichier kbis_file ajouté:', uploadedFiles.kbis_file.name, uploadedFiles.kbis_file.size, 'bytes');
-            } else {
-                console.error('❌ Fichier kbis_file manquant ou invalide');
             }
 
             if (uploadedFiles.rib_entreprise && uploadedFiles.rib_entreprise instanceof File) {
                 formDataToSend.append('rib_entreprise', uploadedFiles.rib_entreprise);
                 filesAdded++;
-                console.log('✅ Fichier rib_entreprise ajouté:', uploadedFiles.rib_entreprise.name, uploadedFiles.rib_entreprise.size, 'bytes');
-            } else {
-                console.error('❌ Fichier rib_entreprise manquant ou invalide');
             }
 
             if (uploadedFiles.mandat_signature && uploadedFiles.mandat_signature instanceof File) {
                 formDataToSend.append('mandat_signature', uploadedFiles.mandat_signature);
                 filesAdded++;
-                console.log('✅ Fichier mandat_signature ajouté:', uploadedFiles.mandat_signature.name, uploadedFiles.mandat_signature.size, 'bytes');
-            } else {
-                console.log('ℹ️ Fichier mandat_signature optionnel non fourni');
             }
 
-            console.log(`📎 Total fichiers ajoutés: ${filesAdded}`);
-
-            // Vérification finale avant envoi
             if (!hticSimulateur?.ajaxUrl) {
-                console.error('❌ hticSimulateur.ajaxUrl non défini');
                 UIManager.showErrorMessage('Configuration manquante');
                 return;
             }
 
             if (!hticSimulateur?.nonce) {
-                console.error('❌ hticSimulateur.nonce non défini');
                 UIManager.showErrorMessage('Token de sécurité manquant');
                 return;
             }
@@ -1476,15 +1440,10 @@ jQuery(document).ready(function ($) {
                 contentType: false,
                 dataType: 'json',
                 timeout: 60000,
-                beforeSend: function () {
-                    console.log('🚀 Envoi requête AJAX vers:', hticSimulateur.ajaxUrl);
-                },
                 success: (response) => {
                     UIManager.hideLoader();
-                    console.log('✅ Réponse serveur reçue:', response);
 
                     if (response && response.success) {
-                        console.log('🎉 Succès:', response.data);
                         UIManager.showSuccessMessage(
                             response.data?.referenceNumber ||
                             dataToSend.reference ||
@@ -1495,7 +1454,6 @@ jQuery(document).ready(function ($) {
                             window.location.href = '/merci';
                         }, 2000);
                     } else {
-                        console.error('❌ Échec côté serveur:', response);
                         UIManager.showErrorMessage(
                             response?.data ||
                             response?.message ||
@@ -1505,37 +1463,24 @@ jQuery(document).ready(function ($) {
                 },
                 error: (xhr, status, error) => {
                     UIManager.hideLoader();
-                    console.error('❌ Erreur AJAX complète:', {
-                        xhr: xhr,
-                        status: status,
-                        error: error,
-                        responseText: xhr.responseText,
-                        statusCode: xhr.status
-                    });
 
                     let errorMessage = 'Erreur de connexion au serveur';
-                    let debugInfo = '';
 
                     if (xhr.status === 0) {
                         errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
                     } else if (xhr.status === 400) {
                         errorMessage = 'Données invalides (erreur 400)';
-                        debugInfo = xhr.responseText ? `Détails: ${xhr.responseText}` : '';
                     } else if (xhr.status === 403) {
                         errorMessage = 'Accès refusé (erreur 403) - Problème de sécurité';
                     } else if (xhr.status === 404) {
                         errorMessage = 'Endpoint non trouvé (erreur 404)';
                     } else if (xhr.status === 500) {
                         errorMessage = 'Erreur interne du serveur (erreur 500)';
-                        debugInfo = xhr.responseText ? `Détails: ${xhr.responseText}` : '';
                     } else if (status === 'timeout') {
                         errorMessage = 'Le traitement prend trop de temps (timeout)';
                     } else {
                         errorMessage = `Erreur ${xhr.status}: ${error}`;
                     }
-
-                    console.log('📝 Message d\'erreur final:', errorMessage);
-                    if (debugInfo) console.log('🔍 Informations de debug:', debugInfo);
 
                     UIManager.showErrorMessage(errorMessage);
                 }
@@ -1543,9 +1488,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 11. GESTION DE L'INTERFACE
-    // ================================
+    // ===========================================
+    // GESTION DE L'INTERFACE
+    // ===========================================
 
     const UIManager = {
         showValidationMessage(message) {
@@ -1644,9 +1589,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 12. LOGIQUE MÉTIER SPÉCIFIQUE
-    // ================================
+    // ===========================================
+    // LOGIQUE MÉTIER SPÉCIFIQUE
+    // ===========================================
 
     const BusinessLogic = {
         init() {
@@ -1654,16 +1599,9 @@ jQuery(document).ready(function ($) {
         },
 
         bindBusinessEvents() {
-            // Gestion commune
             $('#commune').on('change', () => CommunesManager.handleSelection());
-
-            // Validation consommation en temps réel
             $('#consommation_previsionnelle').on('input', this.handleConsumptionInput);
-
-            // Checkbox informations techniques
             $('#pas_info').on('change', this.handleTechnicalInfoCheckbox);
-
-            // Format SIRET automatique
             $('#siret').on('input', this.handleSiretInput);
         },
 
@@ -1711,9 +1649,9 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 13. UTILITAIRES
-    // ================================
+    // ===========================================
+    // UTILITAIRES
+    // ===========================================
 
     const Utils = {
         formatSiret(siret) {
@@ -1731,27 +1669,22 @@ jQuery(document).ready(function ($) {
         }
     };
 
-    // ================================
-    // 14. INITIALISATION PRINCIPALE
-    // ================================
+    // ===========================================
+    // INITIALISATION PRINCIPALE
+    // ===========================================
 
     function init() {
-        console.log('🔥 Initialisation Simulateur Gaz Professionnel Restructuré');
-
-        // Initialisation des modules dans l'ordre
         GazProfessionnelConfig.init();
         CommunesManager.init();
         NavigationManager.init();
         ValidationManager.init();
         FileManager.init();
         BusinessLogic.init();
-
-        console.log('✅ Simulateur Gaz Professionnel initialisé');
     }
 
-    // ================================
-    // 15. API PUBLIQUE
-    // ================================
+    // ===========================================
+    // API PUBLIQUE
+    // ===========================================
 
     window.HticGazProfessionnelData = {
         getCurrentData: () => GazProfessionnelState.formData,
@@ -1765,8 +1698,9 @@ jQuery(document).ready(function ($) {
         getUploadedFiles: () => GazProfessionnelState.uploadedFiles
     };
 
+    // Fonction globale pour compatibilité avec les templates
+    window.removeUploadedFileGaz = (fileType, button) => FileManager.removeFile(fileType, button);
+
     // Lancement de l'application
     init();
-
-    console.log('🎯 API publique HticGazProfessionnelData disponible');
 });

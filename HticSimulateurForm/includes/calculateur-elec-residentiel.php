@@ -5,7 +5,6 @@
  * Version: 3.0 - Code restructuré et optimisé
  */
 
-// Sécurité
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -22,27 +21,17 @@ class HticCalculateurElecResidentiel {
         $this->debugMode = $debugMode;
     }
     
-    // ==========================================
-    // 1. POINT D'ENTRÉE PRINCIPAL
-    // ==========================================
-    
-    /**
-     * Point d'entrée principal pour le calcul
-     */
+
     public function calculate() {
         try {
             
-            // Validation des données
             $validatedData = $this->validateAndExtractData();
             if (!$validatedData) {
                 return $this->returnError("Données invalides ou incomplètes");
             }
-            
-            // Gérer les paramètres spéciaux (puissance/tarif forcés)
+     
             $puissanceForcee = isset($this->userData['puissance_forcee']) ? intval($this->userData['puissance_forcee']) : null;
             $tarifForce = isset($this->userData['tarif_force']) ? $this->userData['tarif_force'] : null;
-            
-            // Calcul complet
             $results = $this->performCompleteCalculation($validatedData, $puissanceForcee, $tarifForce);
             
             return array(
@@ -59,14 +48,9 @@ class HticCalculateurElecResidentiel {
         }
     }
     
-    // ==========================================
-    // 2. VALIDATION ET EXTRACTION DES DONNÉES
-    // ==========================================
-    
     private function validateAndExtractData() {
         $extractedData = array();
-        
-        // Extraction des données
+ 
         $extractedData['type_logement'] = $this->extractValue('type_logement', 'string');
         $extractedData['surface'] = $this->extractValue('surface', 'int');
         $extractedData['nb_personnes'] = $this->extractValue('nb_personnes', 'int');
@@ -78,8 +62,7 @@ class HticCalculateurElecResidentiel {
         $extractedData['type_eclairage'] = $this->extractValue('type_eclairage', 'string');
         $extractedData['piscine'] = $this->extractValue('piscine', 'string');
         $extractedData['equipements_speciaux'] = $this->extractValue('equipements_speciaux', 'array');
-        
-        // Validation des champs obligatoires
+     
         $requiredFields = array('type_logement', 'surface', 'nb_personnes', 'type_chauffage', 'type_cuisson', 'eau_chaude', 'type_eclairage', 'piscine');
         
         foreach ($requiredFields as $field) {
@@ -88,13 +71,11 @@ class HticCalculateurElecResidentiel {
             }
         }
         
-        // Validation spécifique: isolation obligatoire si chauffage électrique
         $chauffagesElectriques = array('convecteurs', 'inertie', 'clim_reversible', 'pac');
         if (in_array($extractedData['type_chauffage'], $chauffagesElectriques) && empty($extractedData['isolation'])) {
             return false;
         }
         
-        // Validation des valeurs
         if ($extractedData['surface'] < 20 || $extractedData['surface'] > 500) {
             return false;
         }
@@ -122,16 +103,11 @@ class HticCalculateurElecResidentiel {
         }
     }
     
-    // ==========================================
-    // 3. CALCUL PRINCIPAL COMPLET
-    // ==========================================
-    
     private function performCompleteCalculation($data, $puissanceForcee = null, $tarifForce = null) {
         $surface = (int)$data['surface'];
         $nbPersonnes = (int)$data['nb_personnes'];
         $typeLogement = $data['type_logement'];
         
-        // Calculs de consommation par poste
         $chauffageDetails = $this->calculateChauffage($data);
         $eauChaudeDetails = $this->calculateEauChaude($data);
         $electromenagersDetails = $this->calculateElectromenagers($data);
@@ -139,20 +115,16 @@ class HticCalculateurElecResidentiel {
         $multimediaDetails = $this->calculateMultimedia($data);
         $equipementsDetails = $this->calculateEquipementsSpeciaux($data);
         
-        // Consommation totale
         $consommationBrute = $chauffageDetails['total'] + $eauChaudeDetails['total'] + 
                             $electromenagersDetails['total'] + $eclairageDetails['total'] + 
                             $multimediaDetails['total'] + $equipementsDetails['total'];
         
-        // Coefficient logement
         $coeffLogement = ($typeLogement === 'appartement') ? 0.95 : 1.0;
         $consommationAnnuelle = $consommationBrute * $coeffLogement;
         
-        // Calcul de la puissance
         $puissanceCalculee = $this->calculatePuissanceTotale($data, $surface);
         $puissanceRecommandee = $puissanceForcee ?: $this->getPuissanceStandard($puissanceCalculee);
         
-        // Calcul des tarifs
         $tarifs = $this->calculateAllTarifs($consommationAnnuelle, $puissanceRecommandee, $tarifForce);
         $tarifRecommande = $this->determineMeilleurTarif($tarifs);
         
@@ -188,10 +160,6 @@ class HticCalculateurElecResidentiel {
         );
     }
     
-    // ==========================================
-    // 4. CALCULS DE CONSOMMATION PAR POSTE
-    // ==========================================
-    
     private function calculateChauffage($data) {
         $typeChauffage = $data['type_chauffage'] ?? '';
         $typeLogement = $data['type_logement'] ?? 'maison';
@@ -210,7 +178,6 @@ class HticCalculateurElecResidentiel {
             );
         }
         
-        // Mapping isolation
         $isolationMapping = array(
             'avant_1980' => 'mauvaise',
             '1980_2000' => 'moyenne', 
@@ -219,11 +186,9 @@ class HticCalculateurElecResidentiel {
         );
         $isolationNormalisee = $isolationMapping[$isolation] ?? 'moyenne';
         
-        // Construire la clé de configuration avec fallback
         $config_key = $typeLogement . '_' . $typeChauffage . '_' . $isolationNormalisee;
         $conso_par_m2 = $this->getConfigValue($config_key, 0);
         
-        // Fallback pour clim_reversible
         if ($conso_par_m2 == 0 && $typeChauffage === 'clim_reversible') {
             $config_key_alt = $typeLogement . '_clim_' . $isolationNormalisee;
             $conso_par_m2 = $this->getConfigValue($config_key_alt, 0);
@@ -292,7 +257,6 @@ class HticCalculateurElecResidentiel {
         $consommation_totale = 0;
         $details_calcul = array();
         
-        // Électroménagers de base
         $electromenagers_disponibles = array(
             'lave_linge', 'four', 'seche_linge', 'lave_vaisselle', 
             'cave_a_vin', 'refrigerateur', 'congelateur'
@@ -318,14 +282,12 @@ class HticCalculateurElecResidentiel {
             }
         }
         
-        // Cuisson
         if ($type_cuisson === 'induction' || $type_cuisson === 'plaque_induction') {
             $consommation_totale += $this->addCuissonEquipement('plaque_induction', $nbPersonnes, $details_calcul);
         } elseif ($type_cuisson === 'vitroceramique' || $type_cuisson === 'plaque_vitroceramique') {
             $consommation_totale += $this->addCuissonEquipement('plaque_vitroceramique', $nbPersonnes, $details_calcul);
         }
-        
-        // Forfait petits électroménagers
+  
         $forfait = $this->getConfigValue('forfait_petits_electromenagers', 150);
         if ($forfait > 0) {
             $consommation_totale += $forfait;
@@ -412,7 +374,6 @@ class HticCalculateurElecResidentiel {
         $total = 0;
         $details = array();
         
-        // Piscine
         if ($piscine === 'simple') {
             $kwhPiscine = $this->getConfigValue('piscine', 1400);
             $repartition['piscine'] = $kwhPiscine;
@@ -427,8 +388,7 @@ class HticCalculateurElecResidentiel {
             $repartition['piscine'] = 0;
             $details['piscine'] = "Pas de piscine: 0 kWh/an";
         }
-        
-        // Équipements spéciaux
+     
         $equipementsPossibles = array(
             'spa_jacuzzi' => array('config' => 'spa_jacuzzi', 'default' => 2000, 'nom' => 'Spa/Jacuzzi'),
             'voiture_electrique' => array('config' => 'voiture_electrique', 'default' => 1500, 'nom' => 'Voiture électrique'),
@@ -436,12 +396,10 @@ class HticCalculateurElecResidentiel {
             'climatiseur_mobile' => array('config' => 'climatiseur_mobile', 'default' => 150, 'nom' => 'Climatiseur mobile')
         );
         
-        // Initialiser tous les équipements à 0
         foreach (array('spa_jacuzzi', 'voiture_electrique', 'aquarium', 'climatiseur_mobile') as $eq) {
             $repartition[$eq] = 0;
         }
         
-        // Calculer les équipements sélectionnés
         foreach ($equipementsSpeciaux as $equipement) {
             if (isset($equipementsPossibles[$equipement])) {
                 $config = $equipementsPossibles[$equipement];
@@ -465,17 +423,11 @@ class HticCalculateurElecResidentiel {
         );
     }
     
-    // ==========================================
-    // 5. CALCULS DE PUISSANCE
-    // ==========================================
-    
     private function calculatePuissanceTotale($data, $surface) {
         $puissanceChauffage = $this->calculatePuissanceChauffage($data, $surface);
         $puissanceEauChaude = $this->calculatePuissanceEauChaude($data);
         $puissanceElectromenagers = $this->calculatePuissanceElectromenagers($data);
-        
         $puissanceMultimedia = $this->calculatePuissanceMultimedia($data);
-        
         $puissanceEquipements = $this->calculatePuissanceEquipements($data);
         $puissanceEclairage = $this->calculatePuissanceEclairage($data);
         
@@ -491,9 +443,8 @@ class HticCalculateurElecResidentiel {
             return 0;
         }
         
-        // CORRECTION : utiliser les bonnes valeurs du backend
-        $puissance_m2 = $this->getConfigValue('chauffage_m2_puissance', 50); // W/m²
-        $simultaneite = $this->getConfigValue('chauffage_m2_simultaneite', 80) / 100; // 0.8
+        $puissance_m2 = $this->getConfigValue('chauffage_m2_puissance', 50);
+        $simultaneite = $this->getConfigValue('chauffage_m2_simultaneite', 80) / 100;
         $facteur_securite = 0.95;
         
         return ($surface * $puissance_m2 * $simultaneite / 1000) / $facteur_securite;
@@ -537,7 +488,6 @@ class HticCalculateurElecResidentiel {
             }
         }
         
-        // Ajouter la plaque de cuisson
         if ($type_cuisson === 'plaque_induction' || $type_cuisson === 'induction') {
             $puissance = $this->getConfigValue('plaque_induction_puissance', 3500);
             $simultaneite = $this->getConfigValue('plaque_induction_simultaneite', 30) / 100;
@@ -563,14 +513,12 @@ class HticCalculateurElecResidentiel {
         $piscine = $data['piscine'] ?? 'non';
         $puissance_totale = 0;
         
-        // Piscine
         if ($piscine === 'simple' || $piscine === 'chauffee') {
             $puissance = $this->getConfigValue('piscine_puissance', 2500);
             $simultaneite = $this->getConfigValue('piscine_simultaneite', 80) / 100;
             $puissance_totale += ($puissance * $simultaneite) / 1000 / 0.95;
         }
-        
-        // Équipements spéciaux
+   
         $equipements_config = array(
             'spa_jacuzzi' => array('puissance' => 'spa_jacuzzi_puissance', 'simultaneite' => 'spa_jacuzzi_simultaneite'),
             'voiture_electrique' => array('puissance' => 'voiture_electrique_puissance', 'simultaneite' => 'voiture_electrique_simultaneite'),
@@ -615,7 +563,7 @@ class HticCalculateurElecResidentiel {
             }
         }
         
-        return 36; // Maximum
+        return 36;
     }
     
     private function getPuissanceDetails($data, $surface, $puissanceCalculee, $puissanceRecommandee) {
@@ -632,10 +580,6 @@ class HticCalculateurElecResidentiel {
             'retenue' => $puissanceRecommandee
         );
     }
-    
-    // ==========================================
-    // 6. CALCULS DE TARIFS
-    // ==========================================
     
     private function calculateAllTarifs($consommationAnnuelle, $puissanceRecommandee, $tarifForce = null) {
         if ($tarifForce) {
@@ -723,7 +667,6 @@ class HticCalculateurElecResidentiel {
     private function calculateTarifTempo($consommationAnnuelle, $puissanceRecommandee) {
         $abo_mensuel = $this->getConfigValue('tempo_abo_' . $puissanceRecommandee, 25);
         
-        // Prix Tempo par période
         $prix_bleu_hp = $this->getConfigValue('tempo_bleu_hp_' . $puissanceRecommandee, 0.1609);
         $prix_bleu_hc = $this->getConfigValue('tempo_bleu_hc_' . $puissanceRecommandee, 0.1296);
         $prix_blanc_hp = $this->getConfigValue('tempo_blanc_hp_' . $puissanceRecommandee, 0.1894);
@@ -731,16 +674,13 @@ class HticCalculateurElecResidentiel {
         $prix_rouge_hp = $this->getConfigValue('tempo_rouge_hp_' . $puissanceRecommandee, 0.7562);
         $prix_rouge_hc = $this->getConfigValue('tempo_rouge_hc_' . $puissanceRecommandee, 0.1568);
         
-        // Jours par couleur
         $jours_bleus = $this->getConfigValue('tempo_jours_bleus', 300);
         $jours_blancs = $this->getConfigValue('tempo_jours_blancs', 43);
         $jours_rouges = $this->getConfigValue('tempo_jours_rouges', 22);
         
-        // Répartition HP/HC
         $repartition_hp = $this->getConfigValue('repartition_hp', 60) / 100;
         $repartition_hc = $this->getConfigValue('repartition_hc', 40) / 100;
         
-        // Calculs par période
         $ratio_bleus = $jours_bleus / 365;
         $ratio_blancs = $jours_blancs / 365;
         $ratio_rouges = $jours_rouges / 365;
@@ -776,19 +716,14 @@ class HticCalculateurElecResidentiel {
             'tempo' => $tarifs['tempo']['total_annuel'] ?? 0
         );
         
-        // Éliminer les tarifs à 0 (non calculés)
         $totaux = array_filter($totaux, function($value) { return $value > 0; });
         
         if (empty($totaux)) {
-            return 'base'; // Fallback
+            return 'base';
         }
         
         return array_keys($totaux, min($totaux))[0];
     }
-    
-    // ==========================================
-    // 7. FONCTIONS UTILITAIRES
-    // ==========================================
     
     private function getEquipementLabel($equipement) {
         $labels = array(
@@ -824,9 +759,6 @@ class HticCalculateurElecResidentiel {
     }
 }
 
-/**
- * Fonction d'entrée pour les appels AJAX
- */
 function htic_calculateur_elec_residentiel($userData, $configData) {
     $calculateur = new HticCalculateurElecResidentiel($userData, $configData, true);
     return $calculateur->calculate();

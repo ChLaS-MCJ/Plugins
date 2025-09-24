@@ -34,41 +34,27 @@ class HticCalculateurGazResidentiel {
         $this->configData = $configData;
     }
     
-    /**
-     * Point d'entrée principal du calcul
-     */
+
     public function calculate() {
         if (!$this->validateUserData()) {
             return $this->returnError("Données utilisateur invalides");
         }
         
-        // 1. Déterminer le type de gaz selon la commune (VLOOKUP Excel)
         $typeGaz = $this->determineTypeGaz();
-        
-        // 2. Calculer les consommations par usage
         $consommations = $this->calculateConsommations();
-        
-        // 3. Déterminer la tranche tarifaire selon la logique Excel
         $trancheTarifaire = $this->determineTrancheTarifaire($typeGaz, $consommations['total']);
-        
-        // 4. Calculer les coûts avec la bonne tranche
         $couts = $this->calculateCostsWithTranche($consommations['total'], $trancheTarifaire);
-        
-        // 5. Préparer la répartition pour l'affichage
         $repartition = $this->buildRepartition($consommations);
-        
-        // 6. Résultats finaux
+   
         $results = array(
-            // Informations générales
+          
             'type_gaz' => $typeGaz,
             'commune' => $this->userData['commune'] ?? '',
             'tranche_tarifaire' => $trancheTarifaire['nom'],
             
-            // Consommation totale
             'consommation_annuelle' => $consommations['total'],
             'consommation_totale' => $consommations['total'],
             
-            // Coûts
             'cout_annuel_ttc' => $couts['total_ttc'],
             'cout_abonnement' => $couts['abonnement_annuel'],
             'cout_consommation' => $couts['consommation'],
@@ -76,10 +62,8 @@ class HticCalculateurGazResidentiel {
             'total_annuel' => $couts['total_ttc'],
             'total_mensuel' => round($couts['total_ttc'] / 12, 2),
             
-            // Répartition détaillée
             'repartition' => $repartition,
             
-            // Récapitulatif pour affichage
             'recap' => array(
                 'type_logement' => $this->userData['type_logement'] ?? 'maison',
                 'superficie' => $this->userData['superficie'] ?? 0,
@@ -102,7 +86,6 @@ class HticCalculateurGazResidentiel {
     private function determineTypeGaz() {
         $commune = strtoupper(trim($this->userData['commune'] ?? ''));
         
-        // Table de correspondance exacte selon Excel M20:N38
         $tableCommunes = array(
             'AIRE SUR L\'ADOUR' => 'Gaz naturel',
             'BARCELONNE DU GERS' => 'Gaz naturel',
@@ -125,18 +108,15 @@ class HticCalculateurGazResidentiel {
             'YGOS SAINT SATURNIN' => 'Gaz Propane'
         );
         
-        // Si commune = "autre", utiliser le choix de l'utilisateur
         if ($commune === 'AUTRE') {
             $typeChoisi = $this->userData['type_gaz_autre'] ?? 'naturel';
             return ($typeChoisi === 'naturel') ? 'Gaz naturel' : 'Gaz Propane';
         }
         
-        // Recherche exacte dans la table
         if (isset($tableCommunes[$commune])) {
             return $tableCommunes[$commune];
         }
-        
-        // Par défaut: Gaz naturel
+   
         return 'Gaz naturel';
     }
     
@@ -147,21 +127,20 @@ class HticCalculateurGazResidentiel {
      */
     private function determineTrancheTarifaire($typeGaz, $consommationTotale) {
         if ($typeGaz === 'Gaz naturel') {
-            // Logique Gaz Naturel (P19 = "Gaz naturel")
-            if ($consommationTotale < 4000) { // P6 = 4000
+         
+            if ($consommationTotale < 4000) {
                 return array(
                     'nom' => 'GOM0',
                     'abo_mensuel' => floatval($this->configData['gaz_naturel_gom0_abo'] ?? 8.92),
                     'prix_kwh' => floatval($this->configData['gaz_naturel_gom0_kwh'] ?? 0.1265)
                 );
-            } elseif ($consommationTotale < 35000) { // Q6 = 35000
+            } elseif ($consommationTotale < 35000) {
                 return array(
                     'nom' => 'GOM1',
                     'abo_mensuel' => floatval($this->configData['gaz_naturel_gom1_abo'] ?? 22.4175),
                     'prix_kwh' => floatval($this->configData['gaz_naturel_gom1_kwh'] ?? 0.0978)
                 );
             } else {
-                // "nous consulter" - On utilise GOM1 par défaut pour les très grosses consommations
                 return array(
                     'nom' => 'GOM1_PLUS',
                     'abo_mensuel' => floatval($this->configData['gaz_naturel_gom1_abo'] ?? 22.4175),
@@ -169,33 +148,31 @@ class HticCalculateurGazResidentiel {
                 );
             }
         } else {
-            // Logique Gaz Propane
-            if ($consommationTotale < 1000) { // P11 = 1000
+            if ($consommationTotale < 1000) {
                 return array(
                     'nom' => 'P0',
                     'abo_mensuel' => floatval($this->configData['gaz_propane_p0_abo'] ?? 4.64),
                     'prix_kwh' => floatval($this->configData['gaz_propane_p0_kwh'] ?? 0.12479)
                 );
-            } elseif ($consommationTotale < 6000) { // Q11 = 6000
+            } elseif ($consommationTotale < 6000) {
                 return array(
                     'nom' => 'P1',
                     'abo_mensuel' => floatval($this->configData['gaz_propane_p1_abo'] ?? 5.26),
                     'prix_kwh' => floatval($this->configData['gaz_propane_p1_kwh'] ?? 0.11852)
                 );
-            } elseif ($consommationTotale < 30000) { // R11 = 30000
+            } elseif ($consommationTotale < 30000) {
                 return array(
                     'nom' => 'P2',
                     'abo_mensuel' => floatval($this->configData['gaz_propane_p2_abo'] ?? 16.06),
                     'prix_kwh' => floatval($this->configData['gaz_propane_p2_kwh'] ?? 0.11305)
                 );
-            } elseif ($consommationTotale < 350000) { // S11 = 350000
+            } elseif ($consommationTotale < 350000) {
                 return array(
                     'nom' => 'P3',
                     'abo_mensuel' => floatval($this->configData['gaz_propane_p3_abo'] ?? 34.56),
                     'prix_kwh' => floatval($this->configData['gaz_propane_p3_kwh'] ?? 0.10273)
                 );
             } else {
-                // P4 pour le reste
                 return array(
                     'nom' => 'P4',
                     'abo_mensuel' => floatval($this->configData['gaz_propane_p4_abo'] ?? 311.01),
@@ -209,13 +186,8 @@ class HticCalculateurGazResidentiel {
      * Calculer les coûts avec la tranche tarifaire déterminée
      */
     private function calculateCostsWithTranche($consommationTotale, $trancheTarifaire) {
-        // Abonnement annuel (abo_mensuel * 12)
         $abonnementAnnuel = $trancheTarifaire['abo_mensuel'] * 12;
-        
-        // Coût consommation (prix_kwh * consommation)
         $coutConsommation = $consommationTotale * $trancheTarifaire['prix_kwh'];
-        
-        // Total TTC
         $totalTTC = $abonnementAnnuel + $coutConsommation;
         
         return array(
@@ -241,22 +213,18 @@ class HticCalculateurGazResidentiel {
             'total' => 0
         );
         
-        // CHAUFFAGE AU GAZ
         if (($this->userData['chauffage_gaz'] ?? 'non') === 'oui') {
             $consommations['chauffage'] = $this->calculateChauffage($superficie);
         }
         
-        // EAU CHAUDE (400 kWh/personne/an selon Excel)
         if (($this->userData['eau_chaude'] ?? 'autre') === 'gaz') {
             $consommations['eau_chaude'] = $this->calculateEauChaude($nbPersonnes);
         }
         
-        // CUISSON (50 kWh/personne/an selon Excel)
         if (($this->userData['cuisson'] ?? 'autre') === 'gaz') {
             $consommations['cuisson'] = $this->calculateCuisson($nbPersonnes);
         }
-        
-        // TOTAL
+       
         $consommations['total'] = $consommations['chauffage'] + 
                                   $consommations['eau_chaude'] + 
                                   $consommations['cuisson'];
@@ -271,13 +239,10 @@ class HticCalculateurGazResidentiel {
         $isolation = $this->userData['isolation'] ?? 'faible';
         $typeLogement = $this->userData['type_logement'] ?? 'maison';
         
-        // Consommation par m² selon isolation (valeurs Excel G28:H31)
         $consoParM2 = $this->getConsoParM2($isolation);
         
-        // Coefficient type logement
         $coefficient = ($typeLogement === 'appartement') ? 0.85 : 1.0;
         
-        // Calcul final
         $surfaceChauffee = $superficie * $coefficient;
         return round($surfaceChauffee * $consoParM2);
     }
@@ -294,7 +259,6 @@ class HticCalculateurGazResidentiel {
             'excellente' => 20    // Niveau 4: Très bien isolé
         );
         
-        // Utiliser la config si disponible, sinon les defaults
         $configKey = "gaz_chauffage_niveau_" . $this->getIsolationLevel($isolation);
         return floatval($this->configData[$configKey] ?? $defaults[$isolation] ?? 110);
     }
@@ -316,7 +280,6 @@ class HticCalculateurGazResidentiel {
      * Calcul eau chaude selon nombre de personnes
      */
     private function calculateEauChaude($nbPersonnes) {
-        // 400 kWh par personne selon Excel (K29)
         $consoParPersonne = floatval($this->configData['gaz_eau_chaude_par_personne'] ?? 400);
         return $nbPersonnes * $consoParPersonne;
     }
@@ -325,7 +288,6 @@ class HticCalculateurGazResidentiel {
      * Calcul cuisson selon nombre de personnes
      */
     private function calculateCuisson($nbPersonnes) {
-        // 50 kWh par personne selon Excel (K28)
         $consoParPersonne = floatval($this->configData['gaz_cuisson_par_personne'] ?? 50);
         return $nbPersonnes * $consoParPersonne;
     }

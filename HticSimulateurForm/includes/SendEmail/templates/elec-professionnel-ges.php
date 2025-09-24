@@ -4,8 +4,30 @@
  * Fichier: includes/SendEmail/templates/elec-professionnel-ges.php
  */
 
-$annualHTVA = $results['estimation_annuelle'] ?? 0;
+$annualHTVA = $data['annualEstimate'] ?? $results['estimation_annuelle'] ?? 0;
 $totalTTC = round($annualHTVA * 1.2);
+
+// Création des variables manquantes
+$entreprise = [
+    'raison_sociale' => $data['companyName'] ?? '',
+    'forme_juridique' => $data['legalForm'] ?? '',
+    'siret' => $data['siret'] ?? '',
+    'code_naf' => $data['nafCode'] ?? '',
+    'adresse' => $data['companyAddress'] ?? '',
+    'code_postal' => $data['companyPostalCode'] ?? '',
+    'ville' => $data['companyCity'] ?? '',
+];
+
+$simulation = [
+    'categorie' => $data['category'] ?? '',
+    'puissance' => $data['contractPower'] ?? '',
+    'consommation_annuelle' => $data['annualConsumption'] ?? 0,
+    'type_contrat' => $data['contractType'] ?? 'principal',
+    'tarif_choisi' => $data['pricingType'] ?? '',
+];
+
+$results['offre_selectionnee'] = $data['selectedOffer'] ?? null;
+$documents = $data['uploaded_files'] ?? [];
 
 ?>
 <html>

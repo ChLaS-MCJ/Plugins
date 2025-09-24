@@ -151,14 +151,17 @@ class PDFGenerator {
         $pdf->SetLineWidth(0.5);
         $pdf->Line(25, $y + 38, 190, $y + 38);
         
-        // MONTANT PRINCIPAL
+        // MONTANT PRINCIPAL - PRIX ANNUEL EN PREMIER
         $pdf->SetFont('Arial', '', 10);
         $pdf->SetTextColor(140, 140, 140);
         $pdf->SetXY(25, $y + 44);
-        $pdf->Cell(0, 5, 'ESTIMATION MENSUELLE TTC', 0, 1);
+        $pdf->Cell(0, 5, 'ESTIMATION ANNUELLE TTC', 0, 1);
+        
+        // Calculer l'annuel depuis le mensuel si nécessaire
+        $montantAnnuel = $this->data['annualEstimate'] ?? ($this->data['monthlyEstimate'] ?? 0) * 10;
+        $estimation = number_format($montantAnnuel, 0, ',', ' ');
         
         // Prix en très grand - BLEU FONCÉ
-        $estimation = number_format($this->data['monthlyEstimate'] ?? 0, 0, ',', ' ');
         $pdf->SetFont('Arial', 'B', 40);
         $pdf->SetTextColor(34, 47, 70);
         $pdf->SetXY(25, $y + 52);
@@ -170,11 +173,12 @@ class PDFGenerator {
         $pdf->SetXY(25 + strlen($estimation) * 10, $y + 58);
         $pdf->Cell(30, 10, 'EUR', 0, 0);
         
-        // "par mois" en dessous
+        // "par an" en dessous - ET mensualité
         $pdf->SetFont('Arial', '', 11);
         $pdf->SetTextColor(140, 140, 140);
         $pdf->SetXY(25, $y + 72);
-        $pdf->Cell(0, 5, 'par mois', 0, 1);
+        $montantMensuel = round($montantAnnuel / 10);
+        $pdf->Cell(0, 5, 'par an - Soit ' . number_format($montantMensuel, 0, ',', ' ') . ' EUR/mois', 0, 1);
         
         // Indicateurs à droite
         $this->buildResidentialIndicators($pdf, 130, $y + 10);
@@ -413,13 +417,18 @@ class PDFGenerator {
         $pdf->SetFont('Arial', '', 12);
         $pdf->SetTextColor(50, 50, 50);
         
+        // PRIX ANNUEL EN PREMIER dans le simple aussi
+        $montantAnnuel = $this->data['annualEstimate'] ?? (($this->data['monthlyEstimate'] ?? 0) * 10);
+        $montantMensuel = round($montantAnnuel / 10);
+        
         $content = "Client: " . ($this->data['firstName'] ?? '') . ' ' . ($this->data['lastName'] ?? '') . "\n";
         $content .= "Email: " . ($this->data['email'] ?? '') . "\n";
         $content .= "Telephone: " . ($this->data['phone'] ?? '') . "\n";
         $content .= "Code postal: " . ($this->data['postalCode'] ?? '') . "\n\n";
         $content .= "RESULTATS DE LA SIMULATION\n";
         $content .= "================================\n";
-        $content .= "Estimation mensuelle: " . number_format($this->data['monthlyEstimate'] ?? 0, 2, ',', ' ') . " EUR/mois\n";
+        $content .= "Estimation annuelle: " . number_format($montantAnnuel, 2, ',', ' ') . " EUR/an\n";
+        $content .= "Estimation mensuelle: " . number_format($montantMensuel, 2, ',', ' ') . " EUR/mois (sur 10 mois)\n";
         $content .= "Consommation annuelle: " . number_format($this->data['annualConsumption'] ?? 0, 0, ' ', ' ') . " kWh/an\n";
         $content .= "Puissance souscrite: " . ($this->data['contractPower'] ?? '12') . " kVA\n";
         $content .= "Option tarifaire: " . strtoupper($this->data['pricingType'] ?? 'BASE') . "\n\n";
@@ -1284,6 +1293,596 @@ class PDFGenerator {
         }
         
         return empty($usages) ? 'Aucun' : implode(', ', $usages);
+    }
+
+private function calculateAvailableSpace($pdf) {
+    $currentY = $pdf->GetY();
+    $pageHeight = 297; // A4 en mm
+    $footerHeight = 62; // Hauteur du footer
+    $margin = 10; // Marge de sécurité
+    
+    return $pageHeight - $currentY - $footerHeight - $margin;
+}
+
+    /**
+     * Génère un PDF de devis gaz professionnel
+     */
+public function generateGazProfessionnelPDF($data, $outputPath) {
+    $this->data = $data;
+    
+    try {
+        $fpdf_file = __DIR__ . '/../libs/fpdf/fpdf.php';
+        if (!file_exists($fpdf_file)) {
+            throw new Exception('Fichier FPDF non trouvé: ' . $fpdf_file);
+        }
+        
+        require_once $fpdf_file;
+        
+        $pdf = new FPDF();
+        $pdf->AddPage();
+        $pdf->SetAutoPageBreak(false); // Contrôle manuel des pages
+        
+        // Valider les données
+        $this->validateGazProfessionnelData();
+        
+        // Construire le PDF gaz professionnel de manière optimisée
+        $currentY = $this->buildGazProfessionnelHeader($pdf);
+        $currentY = $this->buildGazProfessionnelMainSection($pdf, $currentY);
+        
+        // Les blocs de détails peuvent maintenant tenir sur la première page
+        $currentY = $this->buildGazProfessionnelDetailsSection($pdf, $currentY);
+        
+        // Le footer se positionne automatiquement en bas de page
+        $this->buildGazProfessionnelFooter($pdf);
+        
+        $pdf->Output('F', $outputPath);
+        return true;
+        
+    } catch (Exception $e) {
+        error_log('Erreur génération PDF gaz professionnel: ' . $e->getMessage());
+        return $this->generateSimpleGazProfessionnelPDF($outputPath);
+    }
+}
+
+private function validateGazProfessionnelData() {
+    // S'assurer que les champs requis existent avec des valeurs par défaut
+    $defaults = [
+        'companyName' => 'Entreprise',
+        'firstName' => 'Responsable',
+        'lastName' => '',
+        'email' => 'contact@entreprise.fr',
+        'phone' => '',
+        'siret' => '',
+        'legalForm' => '',
+        'commune' => '',
+        'annualConsumption' => 0,
+        'gasType' => 'Gaz naturel',
+        'contractType' => 'principal',
+        'isHighConsumption' => false,
+        'annualCost' => 0,
+        'monthlyCost' => 0,
+        'selectedTariff' => 'Standard professionnel',
+        'acceptConditions' => false,
+        'acceptPrelevement' => false,
+        'certifiePouvoir' => false
+    ];
+    
+    foreach ($defaults as $key => $defaultValue) {
+        if (!isset($this->data[$key])) {
+            $this->data[$key] = $defaultValue;
+        }
+    }
+    
+    // Convertir les valeurs numériques
+    $this->data['annualConsumption'] = intval($this->data['annualConsumption']);
+    $this->data['annualCost'] = floatval($this->data['annualCost']);
+    $this->data['monthlyCost'] = floatval($this->data['monthlyCost']);
+    
+    // S'assurer que isHighConsumption est un booléen
+    $this->data['isHighConsumption'] = ($this->data['annualConsumption'] > 35000) || ($this->data['isHighConsumption'] === true);
+    
+    error_log('PDFGenerator: Données gaz professionnel validées - Consommation: ' . $this->data['annualConsumption'] . ' kWh, Grosse conso: ' . ($this->data['isHighConsumption'] ? 'OUI' : 'NON'));
+}
+
+    /**
+     * Header du PDF gaz professionnel
+     */
+private function buildGazProfessionnelHeader($pdf) {
+    // CORRECTION 1: Fond BLEU FONCÉ au lieu d'orange (même que résidentiel)
+    $pdf->SetFillColor(34, 47, 70);
+    $pdf->Rect(0, 0, 210, 55, 'F');
+    
+    // Logo
+    $logo_path = plugin_dir_path(__FILE__) . '../../logoS.png';
+    if (file_exists($logo_path)) {
+        $pdf->Image($logo_path, 20, 12, 25);
+    }
+    
+    // Titre principal
+    $pdf->SetFont('Arial', 'B', 26);
+    $pdf->SetTextColor(255, 255, 255);
+    $pdf->SetXY(52, 15);
+    $pdf->Cell(0, 10, 'GES SOLUTIONS', 0, 1);
+    
+    // Sous-titre
+    $pdf->SetFont('Arial', '', 12);
+    $pdf->SetTextColor(240, 240, 240);
+    $pdf->SetXY(52, 28);
+    $pdf->Cell(0, 5, $this->utf8_decode_text('DEVIS GAZ PROFESSIONNEL'), 0, 1);
+    
+    // Référence et date
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->SetTextColor(255, 255, 255);
+    $pdf->SetXY(140, 18);
+    $pdf->Cell(50, 5, $this->utf8_decode_text('RÉF: GAZ-PRO' . date('Ymd') . substr(md5($this->data['email']), 0, 4)), 0, 1, 'R');
+    
+    $pdf->SetFont('Arial', '', 9);
+    $pdf->SetTextColor(240, 240, 240);
+    $pdf->SetXY(140, 25);
+    $pdf->Cell(50, 5, date('d/m/Y H:i'), 0, 1, 'R');
+    
+    // Type de client
+    $pdf->SetFont('Arial', 'B', 10);
+    $pdf->SetXY(140, 35);
+    $pdf->Cell(50, 5, $this->utf8_decode_text('CLIENT PROFESSIONNEL GAZ'), 0, 1, 'R');
+    
+    return 60;
+}
+
+    /**
+     * Section principale du PDF
+     */
+private function buildGazProfessionnelMainSection($pdf, $startY) {
+    $y = $startY;
+    
+    // Carte principale
+    $pdf->SetFillColor(255, 255, 255);
+    $pdf->Rect(10, $y, 190, 100, 'F');
+    
+    // Bordure
+    $pdf->SetDrawColor(200, 200, 200);
+    $pdf->SetLineWidth(0.8);
+    $pdf->Rect(10, $y, 190, 100, 'D');
+    
+    // CORRECTION: Bande colorée BLEU FONCÉ au lieu d'orange
+    $pdf->SetFillColor(34, 47, 70);
+    $pdf->Rect(10, $y, 5, 100, 'F');
+    
+    // SECTION ENTREPRISE
+    $pdf->SetFont('Arial', '', 10);
+    $pdf->SetTextColor(120, 120, 120);
+    $pdf->SetXY(25, $y + 10);
+    $pdf->Cell(0, 5, $this->utf8_decode_text('ENTREPRISE'), 0, 1);
+    
+    $pdf->SetFont('Arial', 'B', 15);
+    $pdf->SetTextColor(30, 30, 30);
+    $pdf->SetX(25);
+    $companyName = $this->utf8_decode_text(strtoupper($this->data['companyName'] ?? 'ENTREPRISE'));
+    $pdf->Cell(0, 8, $companyName, 0, 1);
+    
+    // Informations entreprise
+    $pdf->SetFont('Arial', '', 10);
+    $pdf->SetTextColor(100, 100, 100);
+    $pdf->SetX(25);
+    $siretText = $this->utf8_decode_text(($this->data['legalForm'] ?? '') . ' - SIRET: ' . ($this->data['siret'] ?? ''));
+    $pdf->Cell(0, 5, $siretText, 0, 1);
+    
+    // Contact
+    $pdf->SetX(25);
+    $contactName = $this->utf8_decode_text(($this->data['firstName'] ?? '') . ' ' . ($this->data['lastName'] ?? ''));
+    $pdf->Cell(0, 5, $contactName, 0, 1);
+    $pdf->SetX(25);
+    $pdf->Cell(0, 5, $this->data['email'] ?? '', 0, 1);
+    if (!empty($this->data['phone'])) {
+        $pdf->SetX(25);
+        $pdf->Cell(0, 5, $this->data['phone'], 0, 1);
+    }
+    
+    // Ligne de séparation
+    $pdf->SetDrawColor(230, 230, 230);
+    $pdf->SetLineWidth(0.5);
+    $pdf->Line(25, $y + 50, 190, $y + 50);
+    
+    // SECTION ESTIMATION
+    if ($this->data['isHighConsumption']) {
+        // Grosse consommation - Pas de prix
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->SetTextColor(120, 120, 120);
+        $pdf->SetXY(25, $y + 55);
+        $pdf->Cell(0, 5, $this->utf8_decode_text('DEMANDE DE DEVIS PERSONNALISÉ'), 0, 1);
+        
+        $pdf->SetFont('Arial', 'B', 24);
+        $pdf->SetTextColor(34, 47, 70); // CORRECTION: BLEU FONCÉ au lieu d'orange
+        $pdf->SetXY(25, $y + 63);
+        $pdf->Cell(80, 12, $this->utf8_decode_text('SUR MESURE'), 0, 0);
+        
+        $pdf->SetFont('Arial', '', 11);
+        $pdf->SetTextColor(150, 150, 150);
+        $pdf->SetXY(25, $y + 80);
+        $consumption = number_format($this->data['annualConsumption'], 0, ' ', ' ');
+        $pdf->Cell(0, 5, $this->utf8_decode_text("$consumption kWh/an - Grosse consommation"), 0, 1);
+        
+        $pdf->SetXY(25, $y + 90);
+        $pdf->Cell(0, 5, $this->utf8_decode_text('Un expert vous contactera sous 48h'), 0, 1);
+        
+    } else {
+        // Consommation normale - Afficher prix
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->SetTextColor(120, 120, 120);
+        $pdf->SetXY(25, $y + 55);
+        $pdf->Cell(0, 5, $this->utf8_decode_text('ESTIMATION ANNUELLE HTVA'), 0, 1);
+        
+        // Prix en grand - CORRECTION: BLEU FONCÉ au lieu d'orange
+        $estimation = number_format($this->data['annualCost'] ?? 0, 0, ' ', ' ');
+        $pdf->SetFont('Arial', 'B', 32);
+        $pdf->SetTextColor(34, 47, 70);
+        $pdf->SetXY(25, $y + 63);
+        $pdf->Cell(80, 15, $estimation, 0, 0);
+        
+        // EUR
+        $pdf->SetFont('Arial', '', 16);
+        $pdf->SetTextColor(60, 60, 60);
+        $pdf->SetXY(25 + strlen($estimation) * 8, $y + 70);
+        $pdf->Cell(20, 8, $this->utf8_decode_text('EUR HTVA'), 0, 0);
+        
+        // Note sans TVA (correction demandée)
+        $pdf->SetFont('Arial', '', 9);
+        $pdf->SetTextColor(150, 150, 150);
+        $pdf->SetXY(25, $y + 85);
+        $pdf->Cell(0, 5, $this->utf8_decode_text('Hors TVA (+ 20% en sus)'), 0, 1);
+        
+        // Mensualité
+        $pdf->SetXY(25, $y + 93);
+        $monthly = number_format(($this->data['monthlyCost'] ?? 0), 0, ' ', ' ');
+        $pdf->Cell(0, 5, $this->utf8_decode_text("Soit environ $monthly EUR/mois HTVA (sur 10 mois)"), 0, 1);
+    }
+    
+    // Indicateurs à droite
+    $this->buildGazProfessionnelIndicators($pdf, 130, $y + 10);
+    
+    return $y + 105;
+}
+
+    /**
+     * Indicateurs à droite
+     */
+private function buildGazProfessionnelIndicators($pdf, $x, $y) {
+    $gasTypeLabel = $this->utf8_decode_text($this->data['gasType'] ?? 'Gaz naturel');
+    $consumption = number_format($this->data['annualConsumption'] ?? 0, 0, ' ', ' ');
+    $commune = $this->utf8_decode_text(substr($this->data['commune'] ?? '--', 0, 15));
+    $contractType = $this->data['contractType'] === 'principal' ? 'Principal' : 'Secondaire';
+    
+    $indicators = [
+        [
+            'label' => $this->utf8_decode_text('Consommation'), 
+            'value' => $consumption, 
+            'unit' => 'kWh/an', 
+            'color' => [130, 199, 32] // Garder le vert pour la consommation
+        ],
+        [
+            'label' => 'Type gaz', 
+            'value' => $gasTypeLabel, 
+            'unit' => '', 
+            'color' => [34, 47, 70] // CORRECTION: BLEU FONCÉ au lieu d'orange
+        ],
+        [
+            'label' => 'Commune', 
+            'value' => $commune, 
+            'unit' => '', 
+            'color' => [155, 89, 182] // Violet comme le résidentiel
+        ],
+        [
+            'label' => 'Contrat', 
+            'value' => $this->utf8_decode_text($contractType), 
+            'unit' => '', 
+            'color' => [227, 148, 17] // Orange pour le type de contrat uniquement
+        ]
+    ];
+    
+    foreach ($indicators as $i => $indicator) {
+        $yPos = $y + ($i * 20);
+        
+        // Fond
+        $pdf->SetFillColor(248, 250, 252);
+        $pdf->Rect($x, $yPos, 65, 18, 'F');
+        
+        // Barre colorée
+        $pdf->SetFillColor($indicator['color'][0], $indicator['color'][1], $indicator['color'][2]);
+        $pdf->Rect($x, $yPos, 3, 18, 'F');
+        
+        // Label
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->SetXY($x + 6, $yPos + 3);
+        $pdf->Cell(55, 4, $indicator['label'], 0, 0);
+        
+        // Valeur
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->SetTextColor(30, 30, 30);
+        $pdf->SetXY($x + 6, $yPos + 8);
+        $pdf->Cell(35, 5, $indicator['value'], 0, 0);
+        
+        // Unité
+        if (!empty($indicator['unit'])) {
+            $pdf->SetFont('Arial', '', 8);
+            $pdf->SetTextColor(120, 120, 120);
+            $pdf->Cell(20, 5, $indicator['unit'], 0, 0);
+        }
+    }
+}
+
+    /**
+     * Section détails
+     */
+private function buildGazProfessionnelDetailsSection($pdf, $startY) {
+    $y = $startY + 5;
+    
+    // CORRECTION: Laisser plus de place sur la première page (les blocs font 70mm de haut + footer 50mm = 120mm)
+    // Page A4 = 297mm, donc on peut aller jusqu'à 297 - 120 = 177mm
+    if ($y > 177) {
+        $pdf->AddPage();
+        $y = 20;
+    }
+    
+    // Titre
+    $pdf->SetFont('Arial', 'B', 13);
+    $pdf->SetTextColor(30, 30, 30);
+    $pdf->SetXY(10, $y);
+    $title = ($this->data['isHighConsumption'] ?? false)
+        ? $this->utf8_decode_text('DEMANDE DE DEVIS GAZ PROFESSIONNEL')
+        : $this->utf8_decode_text('DÉTAILS DU DEVIS GAZ PROFESSIONNEL');
+    $pdf->Cell(0, 8, $title, 0, 1);
+    
+    // Ligne BLEU FONCÉ
+    $pdf->SetDrawColor(34, 47, 70);
+    $pdf->SetLineWidth(2);
+    $pdf->Line(10, $pdf->GetY(), 85, $pdf->GetY());
+    
+    $y = $pdf->GetY() + 5;
+    
+    // Configuration technique
+    $this->buildGazProfessionnelDetailBox($pdf, 10, $y, 92, $this->utf8_decode_text('CONFIGURATION GAZ'), [
+        $this->utf8_decode_text('Type de gaz') => $this->utf8_decode_text($this->data['gasType'] ?? '--'),
+        $this->utf8_decode_text('Commune') => $this->utf8_decode_text($this->data['commune'] ?? '--'),
+        $this->utf8_decode_text('Consommation prévisionnelle') => number_format($this->data['annualConsumption'] ?? 0, 0, ' ', ' ') . ' kWh/an',
+        $this->utf8_decode_text('Type de contrat') => $this->utf8_decode_text(($this->data['contractType'] ?? '') === 'principal' ? 'Contrat principal' : 'Site secondaire'),
+        $this->utf8_decode_text('Usages prévus') => $this->utf8_decode_text($this->buildUsagesTextGazPro())
+    ], [34, 47, 70]);
+    
+    // Détails offre ou demande
+    if ($this->data['isHighConsumption'] ?? false) {
+        // Grosse consommation
+        $this->buildGazProfessionnelDetailBox($pdf, 108, $y, 92, $this->utf8_decode_text('PROCESSUS DE CONTACT'), [
+            $this->utf8_decode_text('Délai de contact') => $this->utf8_decode_text('Sous 48h ouvrées'),
+            $this->utf8_decode_text('Expert dédié') => $this->utf8_decode_text('Conseiller gaz professionnel'),
+            $this->utf8_decode_text('Analyse personnalisée') => $this->utf8_decode_text('Étude complète des besoins'),
+            $this->utf8_decode_text('Tarification') => $this->utf8_decode_text('Négociation au meilleur prix'),
+            $this->utf8_decode_text('Accompagnement') => $this->utf8_decode_text('Suivi dédié')
+        ], [130, 199, 32]);
+    } else {
+        $this->buildGazProfessionnelDetailBox($pdf, 108, $y, 92, $this->utf8_decode_text('DÉTAILS TARIFAIRES'), [
+            $this->utf8_decode_text('Tarif sélectionné') => $this->utf8_decode_text($this->data['selectedTariff'] ?? 'Standard professionnel'),
+            $this->utf8_decode_text('Coût annuel HTVA') => number_format($this->data['annualCost'] ?? 0, 0, ' ', ' ') . ' EUR',
+            $this->utf8_decode_text('Moyenne mensuelle') => number_format($this->data['monthlyCost'] ?? 0, 0, ' ', ' ') . ' EUR/mois HTVA',
+            $this->utf8_decode_text('Hors TVA') => $this->utf8_decode_text('+ 20% TVA en sus'),
+            $this->utf8_decode_text('Mise en service') => $this->utf8_decode_text('Sous 15 jours ouvrés')
+        ], [130, 199, 32]);
+    }
+    
+    return $y + 85;
+}
+
+    private function buildUsagesTextGazPro() {
+    $usages = [];
+    
+    // Vérifier les différents formats possibles de données d'usages
+    
+    // Format 1: Données directes (gaz résidentiel)
+    if (isset($this->data['chauffageGaz']) && $this->data['chauffageGaz'] === 'oui') {
+        $usages[] = 'Chauffage';
+    }
+    if (isset($this->data['eauChaude']) && $this->data['eauChaude'] === 'gaz') {
+        $usages[] = 'Eau chaude';
+    }
+    if (isset($this->data['cuisson']) && $this->data['cuisson'] === 'gaz') {
+        $usages[] = 'Cuisson';
+    }
+    
+    // Format 2: Données professionnelles (usages standards pour entreprises)
+    if (empty($usages) && isset($this->data['companyName'])) {
+        // Pour le professionnel, on déduit les usages selon le secteur/type
+        $usages = $this->determineBusinessGasUsages();
+    }
+    
+    // Format 3: Fallback avec usages génériques
+    if (empty($usages)) {
+        $usages[] = 'Usage professionnel';
+    }
+    
+    return implode(', ', $usages);
+}
+
+private function determineBusinessGasUsages() {
+    $usages = [];
+    
+    // Analyser le code NAF ou la forme juridique pour déterminer les usages probables
+    $nafCode = $this->data['nafCode'] ?? '';
+    $legalForm = strtolower($this->data['legalForm'] ?? '');
+    $companyName = strtolower($this->data['companyName'] ?? '');
+    
+    // Usages basés sur le secteur d'activité
+    if (strpos($nafCode, '56') === 0 || strpos($companyName, 'restaurant') !== false || strpos($companyName, 'boulangerie') !== false) {
+        // Restauration/Alimentation
+        $usages = ['Chauffage', 'Cuisson professionnelle', 'Eau chaude sanitaire'];
+    } elseif (strpos($nafCode, '10') === 0 || strpos($nafCode, '11') === 0 || strpos($companyName, 'industrie') !== false) {
+        // Industries alimentaires/manufacturières
+        $usages = ['Chauffage', 'Process industriel', 'Séchage'];
+    } elseif (strpos($nafCode, '86') === 0 || strpos($nafCode, '87') === 0 || strpos($companyName, 'clinique') !== false || strpos($companyName, 'hopital') !== false) {
+        // Santé
+        $usages = ['Chauffage', 'Eau chaude sanitaire', 'Stérilisation'];
+    } elseif (strpos($nafCode, '55') === 0 || strpos($companyName, 'hotel') !== false) {
+        // Hôtellerie
+        $usages = ['Chauffage', 'Eau chaude sanitaire', 'Cuisson'];
+    } elseif (strpos($nafCode, '68') === 0 || strpos($legalForm, 'sci') !== false) {
+        // Immobilier/Copropriété
+        $usages = ['Chauffage collectif', 'Eau chaude sanitaire'];
+    } else {
+        // Secteur tertiaire général
+        $usages = ['Chauffage', 'Eau chaude sanitaire'];
+    }
+    
+    return $usages;
+}
+    /**
+     * Box de détails
+     */
+    private function buildGazProfessionnelDetailBox($pdf, $x, $y, $width, $title, $items, $color) {
+        // Fond blanc
+        $pdf->SetFillColor(255, 255, 255);
+        $pdf->Rect($x, $y, $width, 70, 'F');
+        
+        // Bordure
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->SetLineWidth(0.5);
+        $pdf->Rect($x, $y, $width, 70, 'D');
+        
+        // Header coloré (utilise la couleur passée en paramètre)
+        $pdf->SetFillColor($color[0], $color[1], $color[2]);
+        $pdf->Rect($x, $y, $width, 12, 'F');
+        
+        // Titre avec gestion d'encodage
+        $pdf->SetFont('Arial', 'B', 9);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetXY($x, $y + 3);
+        $pdf->Cell($width, 6, $title, 0, 1, 'C'); // Le titre est déjà encodé avant l'appel
+        
+        // Contenu avec gestion d'erreurs
+        $yPos = $y + 16;
+        foreach ($items as $label => $value) {
+            // Vérification de l'espace disponible
+            if ($yPos > $y + 65) break;
+            
+            // Label
+            $pdf->SetFont('Arial', '', 8);
+            $pdf->SetTextColor(100, 100, 100);
+            $pdf->SetXY($x + 5, $yPos);
+            $pdf->Cell(35, 4, $label, 0, 0); // Le label est déjà encodé
+            
+            // Valeur
+            $pdf->SetFont('Arial', 'B', 8);
+            $pdf->SetTextColor(30, 30, 30);
+            $pdf->SetXY($x + 5, $yPos + 5);
+            
+            // Gérer les textes longs
+            $maxWidth = $width - 10;
+            if ($pdf->GetStringWidth($value) > $maxWidth) {
+                $value = substr($value, 0, 25) . '...';
+            }
+            
+            $pdf->Cell($maxWidth, 4, $value, 0, 1); // La valeur est déjà encodée
+            
+            $yPos += 10;
+        }
+    }
+    /**
+     * Footer du PDF
+     */
+private function buildGazProfessionnelFooter($pdf) {
+    // Footer ultra-compact qui tient forcément sur la première page
+    $currentY = $pdf->GetY();
+    $footerHeight = 25; // Footer très compact - seulement 25mm
+    $pageHeight = 297;
+    
+    // Calcul de la position : soit juste après le contenu, soit en bas de page
+    $minY = $currentY + 5; // 5mm après le contenu
+    $maxY = $pageHeight - $footerHeight; // En bas de page
+    $y = min($maxY, max($minY, $maxY)); // Prendre la position en bas de page
+    
+    // Si vraiment pas de place, réduire encore
+    if ($y < $currentY + 3) {
+        $y = $currentY + 3;
+        $footerHeight = $pageHeight - $y;
+    }
+    
+    // Aller à la position du footer
+    $pdf->SetY($y);
+    
+    // Background du footer - très discret
+    $pdf->SetFillColor(250, 250, 250);
+    $pdf->Rect(0, $y, 210, $footerHeight, 'F');
+    
+    // Ligne de séparation fine BLEU FONCÉ
+    $pdf->SetFillColor(34, 47, 70);
+    $pdf->Rect(0, $y, 210, 1, 'F');
+    
+    // Contenu minimaliste sur 2 lignes seulement
+    $pdf->SetFont('Arial', '', 8);
+    $pdf->SetTextColor(100, 100, 100);
+    $pdf->SetY($y + 4);
+    
+    // Ligne 1: Avantages - COMPACT
+    $advantages = $this->utf8_decode_text('Solutions gaz sur-mesure • Tarifs négociés • Accompagnement dédié');
+    $pdf->Cell(210, 4, $advantages, 0, 1, 'C');
+    
+    // Ligne 2: Copyright - COMPACT
+    $pdf->SetFont('Arial', '', 7);
+    $pdf->SetTextColor(120, 120, 120);
+    $pdf->SetY($y + 12);
+    $copyright = $this->utf8_decode_text('Copyright ' . date('Y') . ' GES Solutions - Devis gaz professionnel valable 30 jours - Tarifs HTVA');
+    $pdf->Cell(210, 4, $copyright, 0, 0, 'C');
+}
+
+    /**
+     * Version simple de secours
+     */
+    private function generateSimpleGazProfessionnelPDF($outputPath) {
+        require_once __DIR__ . '/../libs/fpdf/fpdf.php';
+        
+        $pdf = new FPDF();
+        $pdf->AddPage();
+        
+        // Titre
+        $pdf->SetFont('Arial', 'B', 18);
+        $pdf->SetTextColor(255, 111, 0);
+        $pdf->Cell(0, 15, 'DEVIS GAZ PROFESSIONNEL - GES SOLUTIONS', 0, 1, 'C');
+        $pdf->Ln(10);
+        
+        // Informations principales
+        $pdf->SetFont('Arial', '', 12);
+        $pdf->SetTextColor(50, 50, 50);
+        
+        $content = "ENTREPRISE: " . ($this->data['companyName'] ?? '') . "\n";
+        $content .= "Contact: " . ($this->data['firstName'] ?? '') . ' ' . ($this->data['lastName'] ?? '') . "\n";
+        $content .= "Email: " . ($this->data['email'] ?? '') . "\n";
+        $content .= "Telephone: " . ($this->data['phone'] ?? '') . "\n";
+        $content .= "SIRET: " . ($this->data['siret'] ?? '') . "\n\n";
+        
+        if ($this->data['isHighConsumption'] ?? false) {
+            $content .= "DEMANDE DE DEVIS PERSONNALISE\n";
+            $content .= "================================\n";
+            $content .= "Consommation annuelle: " . number_format($this->data['annualConsumption'] ?? 0, 0, ' ', ' ') . " kWh/an\n";
+            $content .= "Type: GROSSE CONSOMMATION\n";
+            $content .= "Contact sous 48h pour devis personnalise\n\n";
+        } else {
+            $content .= "RESULTATS DU DEVIS GAZ\n";
+            $content .= "================================\n";
+            $content .= "Estimation annuelle HTVA: " . number_format($this->data['annualCost'] ?? 0, 2, ',', ' ') . " EUR\n";
+            $content .= "Consommation annuelle: " . number_format($this->data['annualConsumption'] ?? 0, 0, ' ', ' ') . " kWh/an\n";
+            $content .= "Type de gaz: " . ($this->data['gasType'] ?? 'Non défini') . "\n";
+            $content .= "Type de contrat: " . (($this->data['contractType'] ?? '') === 'principal' ? 'Principal' : 'Site secondaire') . "\n";
+            $content .= "Usages: " . $this->buildUsagesTextGazPro() . "\n\n";
+        }
+        
+        $pdf->MultiCell(0, 6, $this->utf8_decode_text($content));
+        
+        // Footer
+        $pdf->SetY(260);
+        $pdf->SetFont('Arial', 'I', 10);
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(0, 10, 'Devis genere le ' . date('d/m/Y') . ' - GES Solutions Gaz Pro', 0, 1, 'C');
+        
+        $pdf->Output('F', $outputPath);
+        return true;
     }
 
 }

@@ -1,10 +1,66 @@
 <?php
 /**
- * Template email pour GES - simulation électricité résidentielle
+ * Template email pour GES - simulation électricité résidentielle - CORRIGÉ avec prix inversé
  * Fichier: includes/SendEmail/templates/elec-residentiel-ges.php
  */
 
-$priorite = $priorite ?? ['niveau' => 'NORMALE', 'couleur' => '#82C720'];
+// CORRECTION : Récupérer les montants avec fallbacks multiples
+$montantMensuel = 0;
+$montantAnnuel = 0;
+$consommationAnnuelle = 0;
+
+// Méthode 1: Depuis les clés directes
+if (isset($data['monthlyEstimate']) && $data['monthlyEstimate'] > 0) {
+    $montantMensuel = $data['monthlyEstimate'];
+}
+
+if (isset($data['annualEstimate']) && $data['annualEstimate'] > 0) {
+    $montantAnnuel = $data['annualEstimate'];
+}
+
+// Méthode 2: Depuis summary
+if ($montantMensuel == 0 && isset($data['summary']['totalMensuel'])) {
+    $montantMensuel = $data['summary']['totalMensuel'];
+}
+
+if ($montantAnnuel == 0 && isset($data['summary']['totalAnnuel'])) {
+    $montantAnnuel = $data['summary']['totalAnnuel'];
+}
+
+// Méthode 3: Calculer depuis les tarifs
+if ($montantMensuel == 0 && isset($data['tarifs']) && isset($data['pricingType'])) {
+    $tarifChoisi = $data['pricingType'];
+    if (isset($data['tarifs'][$tarifChoisi]['total_annuel'])) {
+        $montantAnnuel = intval($data['tarifs'][$tarifChoisi]['total_annuel']);
+        $montantMensuel = round($montantAnnuel / 10);
+    }
+}
+
+// Méthode 4: Depuis results (ancienne structure)
+if ($montantMensuel == 0 && isset($data['results']['estimation_mensuelle'])) {
+    $montantMensuel = $data['results']['estimation_mensuelle'];
+}
+
+// Calculer l'annuel si on a que le mensuel
+if ($montantAnnuel == 0 && $montantMensuel > 0) {
+    $montantAnnuel = $montantMensuel * 10; // Sur 10 mois, pas 12
+}
+
+// Consommation annuelle
+$consommationAnnuelle = $data['annualConsumption'] ?? 
+                       $data['summary']['consommationAnnuelle'] ?? 
+                       $data['results']['consommation_annuelle'] ?? 0;
+
+// Timestamp formaté
+$timestamp = date('d/m/Y à H:i');
+
+// Récupérer les informations de simulation
+$typeLogement = $data['housingType'] ?? $data['simulation']['type_logement'] ?? 'Non spécifié';
+$surface = $data['surface'] ?? $data['simulation']['surface'] ?? 'N/A';
+$nbPersonnes = $data['residents'] ?? $data['simulation']['nb_personnes'] ?? 'N/A';
+$puissanceRecommandee = $data['contractPower'] ?? $data['summary']['puissanceRecommandee'] ?? 'N/A';
+$tarifChoisi = $data['pricingType'] ?? $data['summary']['tarifChoisi'] ?? 'BASE';
+
 ?>
 <html>
 <head>
@@ -13,8 +69,7 @@ $priorite = $priorite ?? ['niveau' => 'NORMALE', 'couleur' => '#82C720'];
         .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .header { background: #222F46; color: white; padding: 20px; text-align: center; }
         .header h2 { margin: 0; font-size: 24px; }
-        .priority-badge { display: inline-block; background: <?php echo $priorite['couleur']; ?>; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-top: 10px; }
-        .content { padding: 30px; }
+       .content { padding: 30px; }
         .section { background: #f9f9f9; border-left: 4px solid #222F46; padding: 15px; margin: 20px 0; border-radius: 4px; }
         .info-grid { display: table; width: 100%; }
         .info-row { display: table-row; }
@@ -25,22 +80,23 @@ $priorite = $priorite ?? ['niveau' => 'NORMALE', 'couleur' => '#82C720'];
         .footer { background: #f5f5f5; padding: 20px; text-align: center; color: #666; font-size: 12px; }
         .action-required { background: #fff3cd; border-left: 4px solid #E39411; padding: 15px; margin: 20px 0; }
         .documents { background: #e3f2fd; padding: 10px; border-radius: 4px; margin-top: 10px; }
+        .debug-box { background: #ffebee; border: 1px solid #f44336; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 11px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h2>NOUVELLE SIMULATION</h2>
-            <div class="priority-badge">Priorité <?php echo $priorite['niveau']; ?></div>
+            <h2>NOUVELLE SIMULATION ÉLECTRICITÉ</h2>
             <p style="margin: 10px 0 0 0; font-size: 14px;">Reçue le <?php echo $timestamp; ?></p>
         </div>
         
         <div class="content">
-            <!-- Montant principal en évidence -->
+            <!-- MONTANT INVERSÉ : ANNUEL EN PREMIER -->
             <div class="highlight-box" style="text-align: center;">
-                <div style="color: #666; margin-bottom: 10px;">Estimation mensuelle client</div>
-                <div class="amount"><?php echo number_format($results['estimation_mensuelle'], 0, ',', ' '); ?> € TTC</div>
-                <div style="color: #666; margin-top: 5px;">soit <?php echo number_format($results['estimation_mensuelle'] * 12, 0, ',', ' '); ?> €/an</div>
+                <div style="color: #666; margin-bottom: 10px;">Estimation annuelle client</div>
+                <div class="amount"><?php echo number_format($montantAnnuel, 0, ',', ' '); ?> € TTC</div>
+                <div style="color: #666; margin-top: 5px;">soit <?php echo number_format($montantMensuel, 0, ',', ' '); ?> € TTC/mois</div>
+                <div style="color: #999; font-size: 12px; margin-top: 5px;">*Réparti sur 10 mois</div>
             </div>
             
             <!-- Informations client -->
@@ -49,19 +105,19 @@ $priorite = $priorite ?? ['niveau' => 'NORMALE', 'couleur' => '#82C720'];
                 <div class="info-grid">
                     <div class="info-row">
                         <div class="info-label">Nom complet :</div>
-                        <div class="info-value"><strong><?php echo htmlspecialchars(($client['prenom'] ?? '') . ' ' . strtoupper($client['nom'] ?? '')); ?></strong></div>
+                        <div class="info-value"><strong><?php echo htmlspecialchars(($data['firstName'] ?? '') . ' ' . strtoupper($data['lastName'] ?? '')); ?></strong></div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Email :</div>
-                        <div class="info-value"><a href="mailto:<?php echo htmlspecialchars($client['email']); ?>"><?php echo htmlspecialchars($client['email']); ?></a></div>
+                        <div class="info-value"><a href="mailto:<?php echo htmlspecialchars($data['email'] ?? ''); ?>"><?php echo htmlspecialchars($data['email'] ?? ''); ?></a></div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Téléphone :</div>
-                        <div class="info-value"><strong style="color: #E39411;"><?php echo htmlspecialchars($client['telephone']); ?></strong></div>
+                        <div class="info-value"><strong style="color: #E39411;"><?php echo htmlspecialchars($data['phone'] ?? ''); ?></strong></div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Code postal :</div>
-                        <div class="info-value"><?php echo htmlspecialchars($simulation['code_postal']); ?></div>
+                        <div class="info-value"><?php echo htmlspecialchars($data['postalCode'] ?? ''); ?></div>
                     </div>
                 </div>
             </div>
@@ -72,37 +128,37 @@ $priorite = $priorite ?? ['niveau' => 'NORMALE', 'couleur' => '#82C720'];
                 <div class="info-grid">
                     <div class="info-row">
                         <div class="info-label">Type logement :</div>
-                        <div class="info-value"><?php echo ucfirst($simulation['type_logement'] ?? 'Non spécifié'); ?></div>
+                        <div class="info-value"><?php echo ucfirst($typeLogement); ?></div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Surface :</div>
-                        <div class="info-value"><?php echo ($simulation['surface'] ?? 'N/A') . ' m²'; ?></div>
+                        <div class="info-value"><?php echo $surface . ' m²'; ?></div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Nb occupants :</div>
-                        <div class="info-value"><?php echo ($simulation['nb_personnes'] ?? 'N/A') . ' personnes'; ?></div>
+                        <div class="info-value"><?php echo $nbPersonnes . ' personne(s)'; ?></div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Consommation :</div>
-                        <div class="info-value"><strong><?php echo number_format($results['consommation_annuelle'], 0, ' ', ' '); ?> kWh/an</strong></div>
+                        <div class="info-value"><strong><?php echo number_format($consommationAnnuelle, 0, ' ', ' '); ?> kWh/an</strong></div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Puissance :</div>
-                        <div class="info-value"><?php echo ($results['puissance_recommandee'] ?? 'N/A') . ' kVA'; ?></div>
+                        <div class="info-value"><?php echo $puissanceRecommandee . ' kVA'; ?></div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Option tarifaire :</div>
-                        <div class="info-value"><span style="background: #222F46; color: white; padding: 2px 8px; border-radius: 3px;"><?php echo strtoupper($results['tarif_choisi'] ?? 'BASE'); ?></span></div>
+                        <div class="info-value"><span style="background: #222F46; color: white; padding: 2px 8px; border-radius: 3px;"><?php echo strtoupper($tarifChoisi); ?></span></div>
                     </div>
                 </div>
             </div>
             
-            <?php if (!empty($documents)): ?>
+            <?php if (isset($data['uploaded_files']) && !empty($data['uploaded_files'])): ?>
             <!-- Documents joints -->
             <div class="documents">
                 <strong>📎 Documents fournis par le client :</strong>
                 <ul style="margin: 5px 0;">
-                    <?php foreach ($documents as $file_key => $file_info): ?>
+                    <?php foreach ($data['uploaded_files'] as $file_key => $file_info): ?>
                         <li><?php echo htmlspecialchars($file_info['name'] ?? ucfirst(str_replace('_', ' ', $file_key))); ?></li>
                     <?php endforeach; ?>
                 </ul>
@@ -118,6 +174,12 @@ $priorite = $priorite ?? ['niveau' => 'NORMALE', 'couleur' => '#82C720'];
                     <li>Proposer les offres adaptées</li>
                     <li>Planifier la mise en service si accord</li>
                 </ul>
+                
+                <?php if (isset($priorite) && $priorite['niveau'] === 'HAUTE'): ?>
+                <div style="background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                    🚨 <strong>CLIENT PRIORITAIRE</strong> - Consommation élevée (<?php echo number_format($consommationAnnuelle); ?> kWh) - Contact urgent recommandé
+                </div>
+                <?php endif; ?>
             </div>
             
             <p style="text-align: center; color: #666; margin-top: 30px;">

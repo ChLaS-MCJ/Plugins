@@ -1,6 +1,6 @@
 <?php
 /**
- * Template Email Électricité Résidentielle - Version simplifiée
+ * Template Email Électricité Résidentielle - Version corrigée avec prix inversé
  * includes/SendEmail/templates/elec-residentiel.php
  */
 
@@ -15,7 +15,57 @@ $client = [
     'prenom' => $data['client']['prenom'] ?? ''
 ];
 
-// Contenu simplifié
+// CORRECTION : Récupérer le montant mensuel avec plusieurs fallbacks
+$montantMensuel = 0;
+$montantAnnuel = 0;
+
+// Méthode 1: Depuis les clés directes
+if (isset($data['monthlyEstimate']) && $data['monthlyEstimate'] > 0) {
+    $montantMensuel = $data['monthlyEstimate'];
+}
+
+if (isset($data['annualEstimate']) && $data['annualEstimate'] > 0) {
+    $montantAnnuel = $data['annualEstimate'];
+}
+
+// Méthode 2: Depuis summary
+if ($montantMensuel == 0 && isset($data['summary']['totalMensuel'])) {
+    $montantMensuel = $data['summary']['totalMensuel'];
+}
+
+if ($montantAnnuel == 0 && isset($data['summary']['totalAnnuel'])) {
+    $montantAnnuel = $data['summary']['totalAnnuel'];
+}
+
+// Méthode 3: Calculer depuis les tarifs si disponibles
+if ($montantMensuel == 0 && isset($data['tarifs']) && isset($data['pricingType'])) {
+    $tarifChoisi = $data['pricingType'];
+    if (isset($data['tarifs'][$tarifChoisi]['total_annuel'])) {
+        $montantAnnuel = intval($data['tarifs'][$tarifChoisi]['total_annuel']);
+        $montantMensuel = round($montantAnnuel / 10); // Sur 10 mois
+    }
+}
+
+// Méthode 4: Depuis results (ancienne structure)
+if ($montantMensuel == 0 && isset($data['results']['estimation_mensuelle'])) {
+    $montantMensuel = $data['results']['estimation_mensuelle'];
+}
+
+if ($montantAnnuel == 0 && isset($data['results']['estimation_annuelle'])) {
+    $montantAnnuel = $data['results']['estimation_annuelle'];
+}
+
+// Si on a seulement l'annuel, calculer le mensuel
+if ($montantMensuel == 0 && $montantAnnuel > 0) {
+    $montantMensuel = round($montantAnnuel / 10);
+}
+
+// Si on a seulement le mensuel, calculer l'annuel
+if ($montantAnnuel == 0 && $montantMensuel > 0) {
+    $montantAnnuel = $montantMensuel * 10;
+}
+
+// Contenu du template
 ob_start();
 ?>
 
@@ -23,13 +73,21 @@ ob_start();
     <h3 style="color: #222F46;">✅ Simulation bien reçue !</h3>
     <p>Nous avons bien reçu votre demande de simulation pour votre contrat d'électricité.</p>
     
+    <!-- PRIX INVERSÉ : ANNUEL EN PREMIER -->
     <p style="margin-top: 20px;">
-        <strong style="font-size: 18px; color: #222F46;">Votre estimation mensuelle :</strong><br>
+        <strong style="font-size: 18px; color: #222F46;">Votre estimation annuelle :</strong><br>
         <span style="font-size: 32px; color: #82C720; font-weight: bold;">
-            <?php echo number_format($data['results']['estimation_mensuelle'] ?? 0, 0, ',', ' '); ?> €
+            <?php echo number_format($montantAnnuel, 0, ',', ' '); ?> €
         </span>
-        <span style="font-size: 14px; color: #666;">TTC/mois</span>
+        <span style="font-size: 14px; color: #666;">TTC/an</span>
     </p>
+    
+    <?php if ($montantMensuel > 0): ?>
+    <p style="margin-top: 10px; font-size: 16px; color: #666;">
+        <em>Soit <?php echo number_format($montantMensuel, 0, ',', ' '); ?> € TTC/mois</em><br>
+        <small>*Réparti sur 10 mois </small>
+    </p>
+    <?php endif; ?>
 </div>
 
 <div class="result-box">
@@ -74,9 +132,9 @@ ob_start();
     Merci de votre confiance. L'équipe GES Solutions
 </p>
 
-<?php
+<?php 
 $content = ob_get_clean();
 
 // Générer l'email complet avec le template de base
-echo render_email_base($title, $content, $client, false);
+echo render_email_base($title, $content, $client, false); 
 ?>

@@ -7,17 +7,6 @@
 $annualHTVA = $results['estimation_annuelle'] ?? 0;
 $totalTTC = round($annualHTVA * 1.2);
 
-// Déterminer la priorité selon le montant HTVA
-$priorite = 'NORMALE';
-$prioriteColor = '#222F46';
-if ($annualHTVA > 5000) {
-    $priorite = 'HAUTE';
-    $prioriteColor = '#f59e0b';
-}
-if ($annualHTVA > 10000) {
-    $priorite = 'URGENTE';
-    $prioriteColor = '#ef4444';
-}
 ?>
 <html>
 <head>
@@ -25,7 +14,6 @@ if ($annualHTVA > 10000) {
         body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .header { background: #222F46; color: white; padding: 20px; text-align: center; }
-        .priority-badge { display: inline-block; background: <?php echo $prioriteColor; ?>; color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; margin-top: 10px; }
         .content { padding: 30px; }
         .section { background: #f9f9f9; border-left: 4px solid #222F46; padding: 15px; margin: 20px 0; border-radius: 4px; }
         .info-grid { display: table; width: 100%; }

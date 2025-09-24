@@ -423,68 +423,88 @@ class HticSimulateurEnergieAdmin {
     }
 
     public function process_electricity_form() {
-        // Vérifier le nonce
-        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
-            wp_send_json_error('Erreur de sécurité');
-            return;
-        }
-        
-        // Récupérer les données JSON
-        $form_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : array();
-        
-        if (empty($form_data)) {
-            wp_send_json_error('Aucune donnée reçue');
-            return;
-        }
-        
-        // **NOUVEAU** : Détecter le type de simulation
-        $simulationType = $form_data['simulationType'] ?? 'elec-residentiel';
-        
-        // Traiter les fichiers selon le type
-        if ($simulationType === 'elec-professionnel') {
-            $uploaded_files = $this->process_uploaded_files_professional();
-        } else {
-            $uploaded_files = $this->process_uploaded_files();
-        }
-        
-        try {
-            require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
+            error_log('=== DÉBUT process_electricity_form ===');
             
-            // Ajouter les fichiers aux données
-            $form_data['uploaded_files'] = $uploaded_files;
-            
-            $emailHandler = new EmailHandler();
-            
-            // **NOUVEAU** : Router selon le type
-            if ($simulationType === 'elec-professionnel') {
-                $result = $emailHandler->processBusinessFormData(json_encode($form_data));
-            } else {
-                $result = $emailHandler->processFormData(json_encode($form_data));
+            // Vérifier le nonce
+            if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+                error_log('ERREUR: Nonce invalide');
+                wp_send_json_error('Erreur de sécurité');
+                return;
             }
             
-            // Nettoyer les fichiers temporaires
-            $this->cleanup_uploaded_files($uploaded_files);
+            // Récupérer les données JSON
+            $form_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : array();
             
-            if ($result['success']) {
-                // Sauvegarder selon le type
+            if (empty($form_data)) {
+                error_log('ERREUR: Aucune donnée form_data reçue');
+                error_log('POST data keys: ' . implode(', ', array_keys($_POST)));
+                wp_send_json_error('Aucune donnée reçue');
+                return;
+            }
+            
+            error_log('Form data keys: ' . implode(', ', array_keys($form_data)));
+            
+            // **NOUVEAU** : Détecter le type de simulation
+            $simulationType = $form_data['simulationType'] ?? 'elec-residentiel';
+            error_log('Type de simulation détecté: ' . $simulationType);
+            
+            // Traiter les fichiers selon le type
+            if ($simulationType === 'elec-professionnel') {
+                $uploaded_files = $this->process_uploaded_files_professional();
+            } else {
+                $uploaded_files = $this->process_uploaded_files();
+            }
+            
+            error_log('Fichiers uploadés: ' . count($uploaded_files));
+            
+            try {
+                require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
+                
+                // Ajouter les fichiers aux données
+                $form_data['uploaded_files'] = $uploaded_files;
+                
+                $emailHandler = new EmailHandler();
+                
+                // **NOUVEAU** : Router selon le type
                 if ($simulationType === 'elec-professionnel') {
-                    $this->save_business_simulation_to_db($form_data);
+                    error_log('Appel EmailHandler->processBusinessFormData');
+                    $result = $emailHandler->processBusinessFormData(json_encode($form_data));
                 } else {
-                    $this->save_simulation_to_db($form_data);
+                    error_log('Appel EmailHandler->processFormData');
+                    $result = $emailHandler->processFormData(json_encode($form_data));
                 }
                 
-                wp_send_json_success([
-                    'message' => $result['message'],
-                    'referenceNumber' => $result['referenceNumber'] ?? 'SIM-' . date('Ymd') . '-' . rand(1000, 9999)
-                ]);
-            } else {
-                wp_send_json_error($result['message']);
+                error_log('Résultat EmailHandler - Success: ' . ($result['success'] ? 'OUI' : 'NON'));
+                
+                // Nettoyer les fichiers temporaires
+                $this->cleanup_uploaded_files($uploaded_files);
+                
+                if ($result['success']) {
+                    // Sauvegarder selon le type
+                    if ($simulationType === 'elec-professionnel') {
+                        $this->save_business_simulation_to_db($form_data);
+                    } else {
+                        $this->save_simulation_to_db($form_data);
+                    }
+                    
+                    error_log('SUCCESS: Simulation sauvegardée');
+                    
+                    wp_send_json_success([
+                        'message' => $result['message'],
+                        'referenceNumber' => $result['referenceNumber'] ?? 'SIM-' . date('Ymd') . '-' . rand(1000, 9999)
+                    ]);
+                } else {
+                    error_log('ERREUR EmailHandler: ' . $result['message']);
+                    wp_send_json_error($result['message']);
+                }
+                
+            } catch (Exception $e) {
+                error_log('EXCEPTION process_electricity_form: ' . $e->getMessage());
+                wp_send_json_error('Erreur: ' . $e->getMessage());
             }
             
-        } catch (Exception $e) {
-            wp_send_json_error('Erreur: ' . $e->getMessage());
+            error_log('=== FIN process_electricity_form ===');
         }
-    }
 
     /**
      * Traiter les fichiers uploadés
@@ -2493,58 +2513,88 @@ public function ajax_process_contact() {
         }
     }
 
-    public function process_gaz_form() {
-        // Vérifier le nonce
-        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
-            wp_send_json_error('Erreur de sécurité');
-            return;
-        }
-        
-        // Récupérer les données JSON
-        $form_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : array();
-        
-        if (empty($form_data)) {
-            wp_send_json_error('Aucune donnée reçue');
-            return;
-        }
-        
-        // Identifier le type de formulaire gaz
-        $form_type = $_POST['form_type'] ?? 'gaz-residentiel';
-        
-        // Traiter les fichiers uploadés si présents
-        $uploaded_files = $this->process_uploaded_files();
-        
-        try {
-            require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
-            
-            // Ajouter les fichiers aux données
-            $form_data['uploaded_files'] = $uploaded_files;
-            $form_data['simulationType'] = $form_type;
-            
-            $emailHandler = new EmailHandler();
-            
-            // Appeler la méthode spécifique pour le gaz
-            $result = $emailHandler->processGazFormData(json_encode($form_data));
-            
-            // Nettoyer les fichiers temporaires
-            $this->cleanup_uploaded_files($uploaded_files);
-            
-            if ($result['success']) {
-                // Sauvegarder en base de données
-                $this->save_gaz_simulation_to_db($form_data);
-                
-                wp_send_json_success([
-                    'message' => $result['message'],
-                    'referenceNumber' => $result['referenceNumber'] ?? 'GAZ-' . date('Ymd') . '-' . rand(1000, 9999)
-                ]);
-            } else {
-                wp_send_json_error($result['message']);
-            }
-            
-        } catch (Exception $e) {
-            wp_send_json_error('Erreur: ' . $e->getMessage());
+public function process_gaz_form() {
+    error_log('=== DÉBUT process_gaz_form ===');
+    
+    // Vérifier le nonce
+    if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+        error_log('ERREUR: Nonce invalide');
+        wp_send_json_error('Erreur de sécurité');
+        return;
+    }
+    
+    // Récupérer les données JSON
+    $form_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : array();
+    
+    if (empty($form_data)) {
+        error_log('ERREUR: Aucune donnée form_data reçue');
+        error_log('POST data keys: ' . implode(', ', array_keys($_POST)));
+        wp_send_json_error('Aucune donnée reçue');
+        return;
+    }
+    
+    error_log('Form data keys: ' . implode(', ', array_keys($form_data)));
+    error_log('Files received in $_FILES: ' . implode(', ', array_keys($_FILES)));
+    
+    // CORRECTION : Détecter le type de simulation GAZ
+    $simulationType = $form_data['simulationType'] ?? 'gaz-residentiel';
+    
+    // Auto-détecter si des fichiers professionnels sont présents
+    if ($simulationType === 'gaz-residentiel') {
+        if (isset($_FILES['kbis_file']) || isset($_FILES['rib_entreprise']) || isset($_FILES['mandat_signature'])) {
+            $simulationType = 'gaz-professionnel';
+            $form_data['simulationType'] = 'gaz-professionnel';
+            error_log('Type auto-détecté: gaz-professionnel basé sur les fichiers présents');
         }
     }
+    
+    error_log('Type de simulation final: ' . $simulationType);
+    
+    // NE PAS traiter les fichiers ici - laisser EmailHandler les gérer directement depuis $_FILES
+    // Car les fichiers temporaires peuvent être supprimés entre le traitement et l'envoi email
+    
+    try {
+        require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
+        
+        $emailHandler = new EmailHandler();
+        
+        // Router selon le type
+        if ($simulationType === 'gaz-professionnel') {
+            error_log('Appel EmailHandler->processGazProfessionnelFormData');
+            $result = $emailHandler->processGazProfessionnelFormData(json_encode($form_data));
+        } else {
+            error_log('Appel EmailHandler->processGazFormData (résidentiel)');
+            $result = $emailHandler->processGazFormData(json_encode($form_data));
+        }
+        
+        error_log('Résultat EmailHandler - Success: ' . ($result['success'] ? 'OUI' : 'NON'));
+        
+        if ($result['success']) {
+            // Sauvegarder selon le type APRÈS l'envoi email
+            if ($simulationType === 'gaz-professionnel') {
+                $this->save_gas_professional_simulation_to_db($form_data);
+            } else {
+                $this->save_gaz_simulation_to_db($form_data);
+            }
+            
+            error_log('SUCCESS: Simulation sauvegardée');
+            
+            wp_send_json_success([
+                'message' => $result['message'],
+                'referenceNumber' => $result['referenceNumber'] ?? 'GAZ-PRO-' . date('Ymd') . '-' . rand(1000, 9999)
+            ]);
+        } else {
+            error_log('ERREUR EmailHandler: ' . $result['message']);
+            wp_send_json_error($result['message']);
+        }
+        
+    } catch (Exception $e) {
+        error_log('EXCEPTION process_gaz_form: ' . $e->getMessage());
+        wp_send_json_error('Erreur: ' . $e->getMessage());
+    }
+    
+    error_log('=== FIN process_gaz_form ===');
+}
 
     // Méthode pour sauvegarder la simulation gaz en base
     private function save_gaz_simulation_to_db($data) {
@@ -2651,6 +2701,324 @@ public function ajax_process_contact() {
         
         return 'non_defini';
     }
+   
+    /**
+     * Extension pour gestion gaz professionnel
+     * À ajouter dans la classe HticSimulateurEnergieAdmin
+     */
+
+public function process_gas_form() {
+    error_log('=== DÉBUT process_gas_form ===');
+    
+    // Vérifier le nonce
+    if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+        error_log('ERREUR: Nonce invalide');
+        wp_send_json_error('Erreur de sécurité');
+        return;
+    }
+    
+    // Récupérer les données JSON
+    $form_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : array();
+    
+    if (empty($form_data)) {
+        error_log('ERREUR: Aucune donnée form_data reçue');
+        wp_send_json_error('Aucune donnée reçue');
+        return;
+    }
+    
+    error_log('Form data keys: ' . implode(', ', array_keys($form_data)));
+    
+    // CORRECTION: Détecter le type de simulation GAZ
+    $simulationType = $form_data['simulationType'] ?? 'gaz-residentiel';
+    error_log('Type de simulation détecté: ' . $simulationType);
+    
+    // Router selon le type de gaz (résidentiel ou professionnel)
+    if ($simulationType === 'gaz-professionnel') {
+        $uploaded_files = $this->process_uploaded_files_gas_professional();
+        error_log('Traitement gaz professionnel avec ' . count($uploaded_files) . ' fichiers');
+    } else {
+        $uploaded_files = $this->process_uploaded_files_gas_residential();
+        error_log('Traitement gaz résidentiel avec ' . count($uploaded_files) . ' fichiers');
+    }
+    
+    try {
+        require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
+        
+        // Ajouter les fichiers aux données
+        $form_data['uploaded_files'] = $uploaded_files;
+        $form_data['simulationType'] = $simulationType;
+        
+        $emailHandler = new EmailHandler();
+        
+        // CORRECTION: Router vers la bonne méthode selon le type
+        if ($simulationType === 'gaz-professionnel') {
+            error_log('Appel EmailHandler->processGazProfessionnelFormData');
+            $result = $emailHandler->processGazProfessionnelFormData(json_encode($form_data));
+        } else {
+            error_log('Appel EmailHandler->processGazFormData (résidentiel)');
+            $result = $emailHandler->processGazFormData(json_encode($form_data));
+        }
+        
+        error_log('Résultat EmailHandler - Success: ' . ($result['success'] ? 'OUI' : 'NON'));
+        
+        // Nettoyer les fichiers temporaires
+        $this->cleanup_uploaded_files($uploaded_files);
+        
+        if ($result['success']) {
+            // Sauvegarder selon le type
+            if ($simulationType === 'gaz-professionnel') {
+                $this->save_gas_professional_simulation_to_db($form_data);
+            } else {
+                $this->save_gaz_simulation_to_db($form_data);
+            }
+            
+            error_log('SUCCESS: Simulation sauvegardée');
+            
+            wp_send_json_success([
+                'message' => $result['message'],
+                'referenceNumber' => $result['referenceNumber'] ?? 'GAZ-PRO-' . date('Ymd') . '-' . rand(1000, 9999)
+            ]);
+        } else {
+            error_log('ERREUR EmailHandler: ' . $result['message']);
+            wp_send_json_error($result['message']);
+        }
+        
+    } catch (Exception $e) {
+        error_log('EXCEPTION process_gas_form: ' . $e->getMessage());
+        wp_send_json_error('Erreur: ' . $e->getMessage());
+    }
+    
+    error_log('=== FIN process_gas_form ===');
+}
+
+    /**
+     * Traiter les fichiers uploadés pour le gaz professionnel
+     */
+private function process_uploaded_files_gas_professional() {
+    $files = array();
+    
+    // CORRECTION: Fichiers gaz professionnel attendus (mêmes noms que dans $_FILES)
+    $expected_files = array('kbis_file', 'rib_entreprise', 'mandat_signature');
+    
+    foreach ($expected_files as $file_key) {
+        if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = wp_upload_dir();
+            $temp_dir = $upload_dir['basedir'] . '/temp-documents-gaz-pro';
+            
+            if (!file_exists($temp_dir)) {
+                wp_mkdir_p($temp_dir);
+            }
+            
+            $file_extension = pathinfo($_FILES[$file_key]['name'], PATHINFO_EXTENSION);
+            $safe_filename = $file_key . '_' . time() . '.' . $file_extension;
+            $file_path = $temp_dir . '/' . $safe_filename;
+            
+            if (move_uploaded_file($_FILES[$file_key]['tmp_name'], $file_path)) {
+                $files[$file_key] = array(
+                    'path' => $file_path,
+                    'name' => $_FILES[$file_key]['name'],
+                    'type' => $_FILES[$file_key]['type'],
+                    'size' => $_FILES[$file_key]['size'],
+                    'tmp_name' => $file_path // CORRECTION: Pour compatibilité EmailHandler
+                );
+                
+                error_log("Fichier gaz professionnel uploadé: $file_key -> $file_path");
+            } else {
+                error_log("Erreur upload fichier gaz professionnel: $file_key");
+            }
+        } else {
+            error_log("Fichier gaz professionnel manquant: $file_key");
+        }
+    }
+    
+    return $files;
+}
+
+    /**
+     * Traiter les fichiers uploadés pour le gaz résidentiel
+     */
+private function process_uploaded_files_gas_residential() {
+    $files = array();
+    
+    // CORRECTION: Fichiers gaz résidentiel (avec préfixe file_)
+    $expected_files = array('rib_file', 'carte_identite_recto', 'carte_identite_verso');
+    
+    foreach ($expected_files as $file_key) {
+        $file_field_name = 'file_' . $file_key; // Nom complet dans $_FILES
+        
+        if (isset($_FILES[$file_field_name]) && $_FILES[$file_field_name]['error'] === UPLOAD_ERR_OK) {
+            $file_data = $_FILES[$file_field_name];
+            $upload_dir = wp_upload_dir();
+            $temp_dir = $upload_dir['basedir'] . '/temp-documents-gaz';
+            
+            if (!file_exists($temp_dir)) {
+                wp_mkdir_p($temp_dir);
+            }
+            
+            $file_extension = pathinfo($file_data['name'], PATHINFO_EXTENSION);
+            $safe_filename = $file_key . '_' . time() . '.' . $file_extension;
+            $file_path = $temp_dir . '/' . $safe_filename;
+            
+            if (move_uploaded_file($file_data['tmp_name'], $file_path)) {
+                $files[$file_key] = array(
+                    'path' => $file_path,
+                    'name' => $file_data['name'],
+                    'type' => $file_data['type'],
+                    'size' => $file_data['size'],
+                    'tmp_name' => $file_path // CORRECTION: Pour compatibilité EmailHandler
+                );
+                
+                error_log("Fichier gaz résidentiel uploadé: $file_key -> $file_path");
+            } else {
+                error_log("Erreur upload fichier gaz résidentiel: $file_key");
+            }
+        } else {
+            error_log("Fichier gaz résidentiel manquant: $file_field_name");
+        }
+    }
+    
+    return $files;
+}
+
+    /**
+     * Sauvegarder la simulation gaz professionnel
+     */
+    private function save_gas_professional_simulation_to_db($data) {
+    global $wpdb;
+    
+    // Créer la table si elle n'existe pas
+    $this->create_gas_professional_simulations_table();
+    
+    $table_name = $wpdb->prefix . 'simulations_gaz_pro';
+    
+    // Déterminer si c'est une grosse consommation
+    $consumption = intval($data['consommation_previsionnelle'] ?? 0);
+    $is_high_consumption = $consumption > 35000;
+    
+    $wpdb->insert(
+        $table_name,
+        [
+            'company_name' => $data['raison_sociale'] ?? '',
+            'legal_form' => $data['forme_juridique'] ?? '',
+            'siret' => $data['siret'] ?? '',
+            'naf_code' => $data['code_naf'] ?? '',
+            'contact_first_name' => $data['responsable_prenom'] ?? '',
+            'contact_last_name' => $data['responsable_nom'] ?? '',
+            'contact_email' => $data['responsable_email'] ?? '',
+            'contact_phone' => $data['responsable_telephone'] ?? '',
+            'contact_function' => $data['responsable_fonction'] ?? '',
+            'company_address' => $data['entreprise_adresse'] ?? '',
+            'company_postal_code' => $data['entreprise_code_postal'] ?? '',
+            'company_city' => $data['entreprise_ville'] ?? '',
+            'commune' => $data['commune'] ?? '',
+            'annual_consumption' => $consumption,
+            'gas_type' => $this->determine_gas_type_from_data($data),
+            'contract_type' => $data['type_contrat'] ?? 'principal',
+            'selected_tariff' => $data['tarif_choisi'] ?? '',
+            'is_high_consumption' => $is_high_consumption ? 1 : 0,
+            'estimated_annual_cost' => $is_high_consumption ? 0 : ($data['cout_annuel'] ?? 0),
+            'accept_conditions' => ($data['accept_conditions_pro'] ?? false) ? 1 : 0,
+            'accept_direct_debit' => ($data['accept_prelevement_pro'] ?? false) ? 1 : 0,
+            'certify_authority' => ($data['certifie_pouvoir'] ?? false) ? 1 : 0,
+            'data_json' => json_encode($data),
+            'created_at' => current_time('mysql'),
+            'status' => 'non_traite'
+        ]
+    );
+    
+    if ($wpdb->last_error) {
+        error_log('Erreur sauvegarde BDD gaz pro: ' . $wpdb->last_error);
+    } else {
+        error_log('Simulation gaz professionnel sauvegardée avec ID: ' . $wpdb->insert_id);
+    }
+}
+
+    /**
+     * Créer la table pour les simulations gaz professionnel
+     */
+    private function create_gas_professional_simulations_table() {
+    global $wpdb;
+    
+    $table_name = $wpdb->prefix . 'simulations_gaz_pro';
+    $charset_collate = $wpdb->get_charset_collate();
+    
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id INT(11) NOT NULL AUTO_INCREMENT,
+        company_name VARCHAR(200),
+        legal_form VARCHAR(100),
+        siret VARCHAR(14),
+        naf_code VARCHAR(10),
+        contact_first_name VARCHAR(100),
+        contact_last_name VARCHAR(100),
+        contact_email VARCHAR(100),
+        contact_phone VARCHAR(20),
+        contact_function VARCHAR(100),
+        company_address TEXT,
+        company_postal_code VARCHAR(10),
+        company_city VARCHAR(100),
+        commune VARCHAR(100),
+        annual_consumption INT(11),
+        gas_type VARCHAR(50),
+        contract_type VARCHAR(50),
+        selected_tariff VARCHAR(50),
+        is_high_consumption TINYINT(1) DEFAULT 0,
+        estimated_annual_cost DECIMAL(10,2),
+        accept_conditions TINYINT(1) DEFAULT 0,
+        accept_direct_debit TINYINT(1) DEFAULT 0,
+        certify_authority TINYINT(1) DEFAULT 0,
+        data_json LONGTEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        status VARCHAR(50) DEFAULT 'non_traite',
+        treated_at DATETIME NULL,
+        treated_by BIGINT(20) NULL,
+        notes TEXT,
+        PRIMARY KEY (id),
+        INDEX idx_consumption (annual_consumption),
+        INDEX idx_status (status),
+        INDEX idx_high_consumption (is_high_consumption),
+        INDEX idx_created (created_at),
+        INDEX idx_company (company_name)
+    ) $charset_collate;";
+    
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+}
+
+    /**
+     * Déterminer le type de gaz depuis les données
+     */
+private function determine_gas_type_from_data($data) {
+    // Vérifier d'abord le type choisi explicitement
+    if (isset($data['type_gaz_autre'])) {
+        return $data['type_gaz_autre'] === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
+    }
+    
+    // Déterminer depuis la commune
+    $commune = $data['commune'] ?? '';
+    
+    if ($commune === 'autre') {
+        return 'Non défini'; // Sera défini par type_gaz_autre normalement
+    }
+    
+    // Communes gaz naturel (même liste que résidentiel)
+    $communes_naturel = [
+        'AIRE SUR L\'ADOUR',
+        'BARCELONNE DU GERS',
+        'GAAS',
+        'LABATUT',
+        'LALUQUE',
+        'MISSON',
+        'POUILLON'
+    ];
+    
+    if (in_array(strtoupper($commune), $communes_naturel)) {
+        return 'Gaz naturel';
+    }
+    
+    // Par défaut propane pour les autres communes listées
+    return 'Gaz propane';
+}
+
 
 }
 

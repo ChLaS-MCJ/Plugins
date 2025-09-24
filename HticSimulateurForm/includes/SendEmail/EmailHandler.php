@@ -551,39 +551,94 @@ public function processGazFormData($jsonData) {
 }
 
 private function processUploadedFiles() {
-    error_log('EmailHandler GAZ: Traitement des fichiers $_FILES');
-    error_log('EmailHandler GAZ: $_FILES contenu: ' . print_r($_FILES, true));
+    error_log('EmailHandler: Traitement des fichiers $_FILES');
+    error_log('EmailHandler: $_FILES contenu: ' . print_r($_FILES, true));
     
     // Initialiser uploaded_files si pas présent
     if (!isset($this->data['uploaded_files'])) {
         $this->data['uploaded_files'] = array();
     }
     
-    // Traiter tous les fichiers qui commencent par 'file_'
-    foreach ($_FILES as $field_name => $file_info) {
-        // Les fichiers du gaz résidentiel arrivent comme 'file_rib_file', 'file_carte_identite_recto', etc.
-        if (strpos($field_name, 'file_') === 0 && $file_info['error'] === UPLOAD_ERR_OK) {
-            
-            // Extraire le nom du type de fichier (enlever le préfixe 'file_')
-            $file_type = substr($field_name, 5); // Enlever 'file_'
-            
-            error_log("EmailHandler GAZ: Traitement fichier $file_type depuis $_FILES[$field_name]");
-            
-            // Ajouter le fichier avec le format attendu par sendGazGESEmailBrevo()
-            $this->data['uploaded_files'][$file_type] = array(
-                'name' => $file_info['name'],
-                'tmp_name' => $file_info['tmp_name'],  // ← Important pour sendGazGESEmailBrevo()
-                'size' => $file_info['size'],
-                'type' => $file_info['type'],
-                'error' => $file_info['error']
-            );
-            
-            error_log("EmailHandler GAZ: Fichier $file_type ajouté - " . $file_info['name'] . " (" . $file_info['size'] . " bytes)");
+    // CORRECTION CRITIQUE: Détecter le type de simulation depuis les données
+    $simulationType = $this->data['simulationType'] ?? 'gaz-residentiel';
+    
+    // CORRECTION: Si pas défini dans les données, essayer de le détecter depuis $_FILES
+    if ($simulationType === 'gaz-residentiel') {
+        // Si on trouve des fichiers professionnels, c'est forcément du gaz professionnel
+        if (isset($_FILES['kbis_file']) || isset($_FILES['rib_entreprise']) || isset($_FILES['mandat_signature'])) {
+            $simulationType = 'gaz-professionnel';
+            $this->data['simulationType'] = 'gaz-professionnel'; // Corriger dans les données
+            error_log("EmailHandler: Type corrigé automatiquement vers gaz-professionnel basé sur les fichiers");
         }
     }
     
-    error_log('EmailHandler GAZ: Fichiers traités - ' . count($this->data['uploaded_files']) . ' fichier(s)');
-    error_log('EmailHandler GAZ: uploaded_files final: ' . print_r($this->data['uploaded_files'], true));
+    error_log("EmailHandler: Type de simulation final - $simulationType");
+    
+    if ($simulationType === 'gaz-professionnel') {
+        // Traiter les fichiers professionnels (noms directs)
+        $professional_files = ['kbis_file', 'rib_entreprise', 'mandat_signature'];
+        
+        foreach ($professional_files as $file_type) {
+            if (isset($_FILES[$file_type]) && $_FILES[$file_type]['error'] === UPLOAD_ERR_OK) {
+                error_log("EmailHandler GAZ PRO: Traitement fichier $file_type");
+                
+                // CORRECTION CRITIQUE : Ne PAS copier le fichier, garder la référence au temporaire
+                // Le fichier temporaire sera accessible pendant toute la durée du script
+                $this->data['uploaded_files'][$file_type] = array(
+                    'name' => $_FILES[$file_type]['name'],
+                    'tmp_name' => $_FILES[$file_type]['tmp_name'],  // IMPORTANT: Chemin vers fichier temporaire
+                    'size' => $_FILES[$file_type]['size'],
+                    'type' => $_FILES[$file_type]['type'],
+                    'error' => $_FILES[$file_type]['error']
+                );
+                
+                error_log("EmailHandler GAZ PRO: Fichier référencé $file_type - " . $_FILES[$file_type]['name'] . " -> " . $_FILES[$file_type]['tmp_name']);
+                
+                // VÉRIFICATION : S'assurer que le fichier temporaire existe bien
+                if (!file_exists($_FILES[$file_type]['tmp_name'])) {
+                    error_log("EmailHandler GAZ PRO: ERREUR - Fichier temporaire introuvable pour $file_type: " . $_FILES[$file_type]['tmp_name']);
+                } else {
+                    $fileSize = filesize($_FILES[$file_type]['tmp_name']);
+                    error_log("EmailHandler GAZ PRO: Fichier temporaire OK pour $file_type - Taille: $fileSize bytes");
+                }
+            } else {
+                $errorCode = $_FILES[$file_type]['error'] ?? 'N/A';
+                error_log("EmailHandler GAZ PRO: Fichier $file_type manquant ou erreur $errorCode");
+            }
+        }
+    } else {
+        // Traiter les fichiers résidentiels avec préfixe 'file_'
+        foreach ($_FILES as $field_name => $file_info) {
+            // Les fichiers du gaz résidentiel arrivent comme 'file_rib_file', 'file_carte_identite_recto', etc.
+            if (strpos($field_name, 'file_') === 0 && $file_info['error'] === UPLOAD_ERR_OK) {
+                
+                // Extraire le nom du type de fichier (enlever le préfixe 'file_')
+                $file_type = substr($field_name, 5); // Enlever 'file_'
+                
+                error_log("EmailHandler GAZ: Traitement fichier $file_type depuis \$_FILES[" . $field_name . "]");
+                
+                // Conserver la référence au fichier temporaire
+                $this->data['uploaded_files'][$file_type] = array(
+                    'name' => $file_info['name'],
+                    'tmp_name' => $file_info['tmp_name'],
+                    'size' => $file_info['size'],
+                    'type' => $file_info['type'],
+                    'error' => $file_info['error']
+                );
+                
+                error_log("EmailHandler GAZ: Fichier référencé $file_type - " . $file_info['name'] . " (" . $file_info['size'] . " bytes)");
+            }
+        }
+    }
+    
+    error_log('EmailHandler: Fichiers traités - ' . count($this->data['uploaded_files']) . ' fichier(s) référencé(s)');
+    
+    // LOG des fichiers finaux
+    foreach ($this->data['uploaded_files'] as $file_key => $file_info) {
+        $exists = isset($file_info['tmp_name']) && file_exists($file_info['tmp_name']);
+        $size = $exists ? filesize($file_info['tmp_name']) : 0;
+        error_log("EmailHandler: $file_key -> " . ($file_info['name'] ?? 'N/A') . " | Existe: " . ($exists ? 'OUI' : 'NON') . " | Taille: $size bytes");
+    }
 }
 
 /**
@@ -916,4 +971,434 @@ private function sendGazClientEmailBrevo() {
             }
         }
     }
+
+
+    /**
+     * Traite les données du formulaire gaz professionnel et envoie les emails
+     */
+public function processGazProfessionnelFormData($jsonData) {
+    try {
+        // Décoder les données JSON
+        $this->data = json_decode($jsonData, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception('Erreur de décodage JSON: ' . json_last_error_msg());
+        }
+        
+        error_log('EmailHandler GAZ PRO: Données reçues - ' . print_r(array_keys($this->data), true));
+        
+        // CORRECTION CRITIQUE : Traiter les fichiers uploadés AVANT toute validation
+        $this->processUploadedFiles();
+        
+        // CORRECTION CRITIQUE : Normaliser les données AVANT la validation de l'email
+        $this->normalizeGazProfessionnelData();
+        
+        error_log('EmailHandler GAZ PRO: Après normalisation - email=' . ($this->data['email'] ?? 'MANQUANT'));
+        
+        // Vérifier que les données essentielles sont présentes APRÈS normalisation
+        if (empty($this->data['email'])) {
+            error_log('EmailHandler GAZ PRO: Email manquant après normalisation. Données disponibles: ' . print_r(array_keys($this->data), true));
+            throw new Exception('Email responsable manquant');
+        }
+        
+        if (empty($this->data['companyName'])) {
+            error_log('EmailHandler GAZ PRO: Nom entreprise manquant après normalisation');
+            throw new Exception('Nom entreprise manquant');
+        }
+        
+        error_log('EmailHandler GAZ PRO: Validation passée - email=' . $this->data['email'] . ', company=' . $this->data['companyName']);
+        
+        // Générer le PDF gaz professionnel
+        $this->generateGazProfessionnelPDF();
+        
+        // Vérifier la clé API Brevo
+        if (empty($this->brevoApiKey) || $this->brevoApiKey === 'xkeysib-VOTRE-CLE-API-BREVO') {
+            throw new Exception('Clé API Brevo non configurée');
+        }
+
+        $clientSent = $this->sendGazProfessionnelClientEmailBrevo();
+        $gesSent = $this->sendGazProfessionnelGESEmailBrevo();
+        
+        // Nettoyer le PDF temporaire
+        if (file_exists($this->pdfPath)) {
+            unlink($this->pdfPath);
+        }
+        
+        if ($clientSent && $gesSent) {
+            return [
+                'success' => true,
+                'message' => 'Devis gaz professionnel envoyé avec succès',
+                'referenceNumber' => 'GAZ-PRO-' . date('Ymd') . '-' . rand(1000, 9999)
+            ];
+        } else {
+            return [
+                'success' => false,
+                'message' => 'Erreur lors de l\'envoi du devis gaz professionnel'
+            ];
+        }
+        
+    } catch (Exception $e) {
+        error_log('EmailHandler Gaz Professionnel: Exception - ' . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => 'Erreur: ' . $e->getMessage()
+        ];
+    }
+}
+
+    /**
+     * Traiter les fichiers uploadés gaz professionnel depuis $_FILES
+     */
+private function processUploadedGazProFiles() {
+    error_log('EmailHandler GAZ PRO: Traitement des fichiers $_FILES');
+    error_log('EmailHandler GAZ PRO: $_FILES contenu: ' . print_r($_FILES, true));
+    
+    // Initialiser uploaded_files si pas présent
+    if (!isset($this->data['uploaded_files'])) {
+        $this->data['uploaded_files'] = array();
+    }
+    
+    // CORRECTION: Traiter les fichiers professionnels directement depuis $_FILES
+    $professional_files = ['kbis_file', 'rib_entreprise', 'mandat_signature'];
+    
+    foreach ($professional_files as $file_type) {
+        if (isset($_FILES[$file_type]) && $_FILES[$file_type]['error'] === UPLOAD_ERR_OK) {
+            error_log("EmailHandler GAZ PRO: Traitement fichier $file_type");
+            
+            // CORRECTION: Ajouter directement le fichier avec le bon format
+            $this->data['uploaded_files'][$file_type] = array(
+                'name' => $_FILES[$file_type]['name'],
+                'tmp_name' => $_FILES[$file_type]['tmp_name'],  // Important pour sendGazGESEmailBrevo()
+                'path' => $_FILES[$file_type]['tmp_name'],      // Alias pour compatibilité
+                'size' => $_FILES[$file_type]['size'],
+                'type' => $_FILES[$file_type]['type'],
+                'error' => $_FILES[$file_type]['error']
+            );
+            
+            error_log("EmailHandler GAZ PRO: Fichier $file_type ajouté - " . $_FILES[$file_type]['name']);
+        } else {
+            error_log("EmailHandler GAZ PRO: Fichier $file_type manquant ou erreur");
+        }
+    }
+    
+    error_log('EmailHandler GAZ PRO: Fichiers traités - ' . count($this->data['uploaded_files']) . ' fichier(s)');
+    error_log('EmailHandler GAZ PRO: uploaded_files final: ' . print_r($this->data['uploaded_files'], true));
+}
+
+    /**
+     * Normalise les données gaz professionnel pour être compatibles avec le format standard
+     */
+private function normalizeGazProfessionnelData() {
+    error_log('EmailHandler GAZ PRO: Début normalisation des données');
+    error_log('EmailHandler GAZ PRO: Champs disponibles avant: ' . implode(', ', array_keys($this->data)));
+    
+    // CORRECTION CRITIQUE : Vérifier d'abord si les données sont déjà au bon format
+    if (!empty($this->data['email']) && !empty($this->data['companyName'])) {
+        error_log('EmailHandler GAZ PRO: Données déjà normalisées');
+        return; // Données déjà correctes
+    }
+    
+    // CORRECTION CRITIQUE : S'assurer que l'email est bien mappé
+    if (!empty($this->data['responsable_email']) && empty($this->data['email'])) {
+        $this->data['email'] = $this->data['responsable_email'];
+        error_log('EmailHandler GAZ PRO: Email mappé depuis responsable_email: ' . $this->data['email']);
+    }
+    
+    // CORRECTION : S'assurer que companyName est bien mappé
+    if (!empty($this->data['raison_sociale']) && empty($this->data['companyName'])) {
+        $this->data['companyName'] = $this->data['raison_sociale'];
+        error_log('EmailHandler GAZ PRO: CompanyName mappé depuis raison_sociale: ' . $this->data['companyName']);
+    }
+    
+    // Mapping complet des champs (garder les originaux ET créer les normalisés)
+    $mappings = [
+        'companyName' => 'raison_sociale',
+        'legalForm' => 'forme_juridique',
+        'siret' => 'siret',
+        'nafCode' => 'code_naf',
+        'firstName' => 'responsable_prenom',
+        'lastName' => 'responsable_nom',
+        'email' => 'responsable_email',
+        'phone' => 'responsable_telephone',
+        'fonction' => 'responsable_fonction',
+        'companyAddress' => 'entreprise_adresse',
+        'companyPostalCode' => 'entreprise_code_postal',
+        'companyCity' => 'entreprise_ville'
+    ];
+    
+    foreach ($mappings as $normalized => $original) {
+        if (!empty($this->data[$original]) && empty($this->data[$normalized])) {
+            $this->data[$normalized] = $this->data[$original];
+        }
+    }
+    
+    // CORRECTION: S'assurer que les champs critiques sont présents
+    if (empty($this->data['firstName']) && !empty($this->data['responsable_prenom'])) {
+        $this->data['firstName'] = $this->data['responsable_prenom'];
+    }
+    if (empty($this->data['lastName']) && !empty($this->data['responsable_nom'])) {
+        $this->data['lastName'] = $this->data['responsable_nom'];
+    }
+    
+    // Données gaz
+    $this->data['commune'] = $this->data['commune'] ?? '';
+    $this->data['annualConsumption'] = intval($this->data['consommation_previsionnelle'] ?? 0);
+    $this->data['gasType'] = $this->determineGazType();
+    $this->data['contractType'] = $this->data['type_contrat'] ?? 'principal';
+    $this->data['selectedTariff'] = $this->data['tarif_choisi'] ?? '';
+    
+    // Déterminer si grosse consommation
+    $this->data['isHighConsumption'] = $this->data['annualConsumption'] > 35000;
+    
+    // Coût estimé (seulement si pas grosse consommation)
+    if (!$this->data['isHighConsumption']) {
+        $this->data['annualCost'] = floatval($this->data['cout_annuel'] ?? 0);
+        $this->data['monthlyCost'] = round($this->data['annualCost'] / 10, 2);
+    } else {
+        $this->data['annualCost'] = 0;
+        $this->data['monthlyCost'] = 0;
+    }
+    
+    // Conditions acceptées avec conversion booléenne robuste
+    $this->data['acceptConditions'] = $this->toBool($this->data['accept_conditions_pro'] ?? false);
+    $this->data['acceptPrelevement'] = $this->toBool($this->data['accept_prelevement_pro'] ?? false);
+    $this->data['certifiePouvoir'] = $this->toBool($this->data['certifie_pouvoir'] ?? false);
+    
+    error_log('EmailHandler GAZ PRO: Normalisation terminée');
+    error_log('EmailHandler GAZ PRO: Email final: ' . ($this->data['email'] ?? 'TOUJOURS MANQUANT'));
+    error_log('EmailHandler GAZ PRO: CompanyName final: ' . ($this->data['companyName'] ?? 'MANQUANT'));
+    error_log('EmailHandler GAZ PRO: firstName final: ' . ($this->data['firstName'] ?? 'MANQUANT'));
+    error_log('EmailHandler GAZ PRO: lastName final: ' . ($this->data['lastName'] ?? 'MANQUANT'));
+}
+
+private function toBool($value) {
+    if (is_bool($value)) return $value;
+    if (is_string($value)) return in_array(strtolower($value), ['true', '1', 'yes', 'oui', 'on']);
+    if (is_numeric($value)) return $value != 0;
+    return false;
+}
+
+
+    /**
+     * Déterminer le type de gaz
+     */
+private function determineGazType() {
+    // Vérifier le type choisi explicitement
+    if (isset($this->data['type_gaz_autre'])) {
+        $type = $this->data['type_gaz_autre'] === 'naturel' ? 'Gaz naturel' : 'Gaz propane';
+        error_log('EmailHandler GAZ PRO: Type gaz déterminé par choix explicite: ' . $type);
+        return $type;
+    }
+    
+    // Déterminer depuis la commune
+    $commune = $this->data['commune'] ?? '';
+    
+    // Communes gaz naturel
+    $communes_naturel = [
+        'AIRE SUR L\'ADOUR', 'BARCELONNE DU GERS', 'GAAS', 
+        'LABATUT', 'LALUQUE', 'MISSON', 'POUILLON'
+    ];
+    
+    if (in_array(strtoupper($commune), $communes_naturel)) {
+        error_log('EmailHandler GAZ PRO: Type gaz déterminé par commune (naturel): ' . $commune);
+        return 'Gaz naturel';
+    }
+    
+    error_log('EmailHandler GAZ PRO: Type gaz par défaut (propane) pour commune: ' . $commune);
+    return 'Gaz propane';
+}
+
+    /**
+     * Génère le PDF pour le gaz professionnel
+     */
+    private function generateGazProfessionnelPDF() {
+        $temp_dir = wp_upload_dir()['basedir'] . '/temp-simulations';
+        if (!file_exists($temp_dir)) {
+            wp_mkdir_p($temp_dir);
+        }
+        
+        $this->pdfPath = $temp_dir . '/devis_gaz_professionnel_' . time() . '.pdf';
+        
+        $pdfGenerator = new PDFGenerator();
+        $success = $pdfGenerator->generateGazProfessionnelPDF($this->data, $this->pdfPath);
+        
+        if (!$success) {
+            throw new Exception('Erreur lors de la génération du PDF gaz professionnel');
+        }
+    }
+
+    /**
+     * Envoie l'email au client professionnel gaz
+     */
+    private function sendGazProfessionnelClientEmailBrevo() {
+        $params = [
+            'to' => [
+                [
+                    'email' => $this->data['email'],
+                    'name' => $this->data['firstName'] . ' ' . $this->data['lastName']
+                ]
+            ],
+            'sender' => [
+                'email' => 'contact@applitwo.com',
+                'name' => 'GES Solutions'
+            ],
+            'subject' => $this->data['isHighConsumption'] 
+                ? 'Votre demande de devis gaz professionnel - GES Solutions'
+                : 'Votre devis gaz professionnel - GES Solutions',
+            'htmlContent' => $this->loadTemplate('gaz-professionnel-client'),
+            'attachment' => [
+                [
+                    'name' => 'devis_gaz_professionnel.pdf',
+                    'content' => base64_encode(file_get_contents($this->pdfPath)),
+                    'type' => 'application/pdf'
+                ]
+            ]
+        ];
+        
+        return $this->callBrevoAPI($params);
+    }
+
+    /**
+     * Envoie l'email à GES pour le gaz professionnel
+     */
+private function sendGazProfessionnelGESEmailBrevo() {
+    $gesEmail = function_exists('get_option') ? 
+                get_option('ges_notification_email', 'commercial@ges-solutions.fr') : 
+                'commercial@ges-solutions.fr';
+    
+    $attachments = [];
+    
+    // PDF de devis
+    if (file_exists($this->pdfPath)) {
+        $attachments[] = [
+            'name' => 'devis_gaz_professionnel.pdf',
+            'content' => base64_encode(file_get_contents($this->pdfPath))
+        ];
+        error_log('EmailHandler GAZ PRO: PDF ajouté - ' . basename($this->pdfPath));
+    } else {
+        error_log('EmailHandler GAZ PRO: ERREUR - PDF introuvable: ' . $this->pdfPath);
+    }
+    
+    // CORRECTION CRITIQUE: Documents uploadés avec vérification exhaustive
+    if (isset($this->data['uploaded_files']) && is_array($this->data['uploaded_files'])) {
+        error_log('EmailHandler GAZ PRO: Traitement des fichiers uploadés - ' . count($this->data['uploaded_files']) . ' fichier(s)');
+        
+        foreach ($this->data['uploaded_files'] as $file_key => $file_info) {
+            error_log("EmailHandler GAZ PRO: Analyse fichier $file_key - " . print_r($file_info, true));
+            
+            $file_added = false;
+            $file_content = null;
+            $file_name = null;
+            
+            // FORMAT 1: Fichier avec 'path' (méthode standard après upload)
+            if (isset($file_info['path']) && file_exists($file_info['path'])) {
+                $file_content = file_get_contents($file_info['path']);
+                $file_name = $file_info['name'] ?? basename($file_info['path']);
+                error_log("EmailHandler GAZ PRO: Fichier lu via path - " . $file_info['path'] . " (" . strlen($file_content) . " bytes)");
+                $file_added = true;
+            }
+            // FORMAT 2: Fichier avec 'tmp_name' (directement depuis $_FILES)
+            elseif (isset($file_info['tmp_name']) && file_exists($file_info['tmp_name'])) {
+                $file_content = file_get_contents($file_info['tmp_name']);
+                $file_name = $file_info['name'] ?? 'document_' . $file_key . '.pdf';
+                error_log("EmailHandler GAZ PRO: Fichier lu via tmp_name - " . $file_info['tmp_name'] . " (" . strlen($file_content) . " bytes)");
+                $file_added = true;
+            }
+            // FORMAT 3: Fichier avec 'file_path' (alternative)
+            elseif (isset($file_info['file_path']) && file_exists($file_info['file_path'])) {
+                $file_content = file_get_contents($file_info['file_path']);
+                $file_name = $file_info['name'] ?? basename($file_info['file_path']);
+                error_log("EmailHandler GAZ PRO: Fichier lu via file_path - " . $file_info['file_path'] . " (" . strlen($file_content) . " bytes)");
+                $file_added = true;
+            }
+            // FORMAT 4: Fichier avec 'content' en base64 (déjà traité)
+            elseif (isset($file_info['content']) && isset($file_info['name'])) {
+                // Le contenu est déjà en base64
+                $attachments[] = [
+                    'name' => $file_info['name'],
+                    'content' => $file_info['content']  // Déjà en base64
+                ];
+                error_log("EmailHandler GAZ PRO: Fichier déjà encodé - " . $file_info['name']);
+                continue;
+            }
+            // NOUVEAU FORMAT 5: Accès direct via $_FILES (dernier recours)
+            elseif (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
+                $file_content = file_get_contents($_FILES[$file_key]['tmp_name']);
+                $file_name = $_FILES[$file_key]['name'];
+                error_log("EmailHandler GAZ PRO: Fichier lu directement via \$_FILES[$file_key] - " . $_FILES[$file_key]['tmp_name'] . " (" . strlen($file_content) . " bytes)");
+                $file_added = true;
+            }
+            
+            // Ajouter le fichier s'il a été trouvé et lu
+            if ($file_added && $file_content && $file_name) {
+                $attachments[] = [
+                    'name' => $file_name,
+                    'content' => base64_encode($file_content)
+                ];
+                error_log("EmailHandler GAZ PRO: ✅ Fichier ajouté avec succès - $file_name (" . strlen($file_content) . " bytes)");
+            } else {
+                error_log("EmailHandler GAZ PRO: ❌ Impossible d'ajouter le fichier $file_key");
+                error_log("EmailHandler GAZ PRO: Debug - file_added=$file_added, file_content=" . (empty($file_content) ? 'VIDE' : 'OK') . ", file_name=$file_name");
+            }
+        }
+    } else {
+        error_log('EmailHandler GAZ PRO: Aucun fichier uploadé dans uploaded_files');
+    }
+    
+    // FALLBACK : Si aucun fichier n'a été trouvé via uploaded_files, essayer directement $_FILES
+    if (count($attachments) <= 1) { // Seulement le PDF
+        error_log('EmailHandler GAZ PRO: FALLBACK - Tentative lecture directe $_FILES');
+        $expected_files = ['kbis_file', 'rib_entreprise', 'mandat_signature'];
+        
+        foreach ($expected_files as $file_key) {
+            if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
+                if (file_exists($_FILES[$file_key]['tmp_name'])) {
+                    $file_content = file_get_contents($_FILES[$file_key]['tmp_name']);
+                    if ($file_content) {
+                        $attachments[] = [
+                            'name' => $_FILES[$file_key]['name'],
+                            'content' => base64_encode($file_content)
+                        ];
+                        error_log("EmailHandler GAZ PRO: ✅ FALLBACK - Fichier ajouté $file_key - " . $_FILES[$file_key]['name']);
+                    }
+                } else {
+                    error_log("EmailHandler GAZ PRO: ❌ FALLBACK - Fichier temporaire introuvable pour $file_key");
+                }
+            }
+        }
+    }
+    
+    error_log('EmailHandler GAZ PRO: Total attachments finaux: ' . count($attachments));
+    foreach ($attachments as $i => $attachment) {
+        error_log("EmailHandler GAZ PRO: Attachment $i: " . $attachment['name'] . ' (' . strlen($attachment['content']) . ' chars en base64)');
+    }
+    
+    $subject = $this->data['isHighConsumption'] 
+        ? 'Nouvelle demande de devis gaz professionnel (grosse consommation)'
+        : 'Nouveau devis gaz professionnel reçu';
+    
+    $params = [
+        'to' => [
+            [
+                'email' => $gesEmail,
+                'name' => 'GES Commercial Gaz Pro'
+            ]
+        ],
+        'sender' => [
+            'email' => 'contact@applitwo.com',
+            'name' => 'GES Solutions'
+        ],
+        'subject' => $subject,
+        'htmlContent' => $this->loadTemplate('gaz-professionnel-ges')
+    ];
+    
+    if (!empty($attachments)) {
+        $params['attachment'] = $attachments;
+        error_log('EmailHandler GAZ PRO: Email avec ' . count($attachments) . ' pièce(s) jointe(s)');
+    } else {
+        error_log('EmailHandler GAZ PRO: ⚠️ EMAIL SANS PIÈCE JOINTE !');
+    }
+    
+    return $this->callBrevoAPI($params);
+}
 }

@@ -1,5 +1,5 @@
 /**
- * JavaScript pour le formulaire de contact multi-étapes
+ * JavaScript modifié pour le formulaire de contact avec étape statut client
  * Fichier: formulaires/contact/contact-form.js
  */
 
@@ -8,75 +8,144 @@
 
     // Configuration globale
     let currentStep = 1;
-    let totalSteps = 3;
-    let formData = {};
+    const totalSteps = 4;
     let uploadedFile = null;
-    let typesConfig = {};
+    let clientStatus = null;
 
     // Initialisation
     $(document).ready(function () {
-        initContactForm();
-    });
+        console.log('📞 Initialisation du formulaire de contact');
 
-    function initContactForm() {
-        // Charger la configuration des types de demandes
-        loadTypesConfig();
+        // Vérifier la configuration
+        if (typeof hticContactConfig === 'undefined') {
+            console.warn('⚠️ Configuration manquante - Utilisation des valeurs par défaut');
+            window.hticContactConfig = {
+                ajaxUrl: '/wp-admin/admin-ajax.php',
+                nonce: $('#contact-form input[name="nonce"]').val()
+            };
+        }
 
         // Initialiser les événements
         initEvents();
 
-        // Initialiser la première étape
+        // Initialiser la progression
         updateProgress();
 
-        console.log('📞 Formulaire de contact initialisé');
-    }
-
-    function loadTypesConfig() {
-        const configElement = $('#contact-config');
-        if (configElement.length) {
-            try {
-                typesConfig = JSON.parse(configElement.text());
-            } catch (e) {
-                console.error('Erreur lors du chargement de la configuration:', e);
-            }
-        }
-    }
+        console.log('✅ Formulaire de contact prêt');
+    });
 
     function initEvents() {
+        // ====== GESTION ÉTAPE 1 - STATUT CLIENT ======
+
+        // Gestion du statut client
+        $('input[name="client_status"]').on('change', function () {
+            const status = $(this).val();
+            console.log('📍 Statut sélectionné:', status);
+            clientStatus = status;
+
+            // Activer le bouton suivant
+            $('#btn-next-status').prop('disabled', false);
+
+            // Plus besoin d'afficher/masquer conditionnellement car la bannière est toujours visible
+        });
+
+        // Ouvrir la modal de création de compte
+        $('#show-account-modal').on('click', function (e) {
+            e.preventDefault();
+            $('#account-modal').fadeIn(300);
+            $('body').addClass('modal-open');
+        });
+
+        // Fermer la modal
+        $('.modal-close').on('click', function () {
+            $('#account-modal, #client-redirect-modal').fadeOut(300);
+            $('body').removeClass('modal-open');
+        });
+
+        $('.modal-overlay').on('click', function (e) {
+            if (e.target === this) {
+                $('#account-modal, #client-redirect-modal').fadeOut(300);
+                $('body').removeClass('modal-open');
+            }
+        });
+
+        // Bouton pour continuer le formulaire depuis la modal client
+        $('#continue-form-anyway').on('click', function () {
+            $('#client-redirect-modal').fadeOut(300);
+            $('body').removeClass('modal-open');
+            goToStep(2); // Aller directement à l'étape 2
+        });
+
+        $('#show-general-account-info').on('click', function (e) {
+            e.preventDefault();
+            $('#account-modal').fadeIn(300);
+            $('body').addClass('modal-open');
+        });
+
+        // ====== NAVIGATION ENTRE ÉTAPES ======
+
         // Navigation entre étapes
-        $(document).on('click', '.btn-next', handleNextStep);
-        $(document).on('click', '.btn-prev', handlePrevStep);
+        $('.btn-next').on('click', handleNextStep);
+        $('.btn-prev').on('click', handlePrevStep);
 
         // Validation en temps réel
-        $(document).on('input change', '.form-control', validateField);
-
-        // Type de demande
-        $(document).on('change', '#type_demande', handleTypeDemandeChange);
+        $('.form-control').on('blur', validateField);
 
         // Upload de fichiers
         initFileUpload();
 
         // Soumission du formulaire
-        $(document).on('submit', '#contact-form', handleFormSubmit);
+        $('#btn-submit-contact').on('click', handleFormSubmit);
 
-        // Checkbox CAPTCHA
-        $(document).on('change', '#captcha-check', function () {
-            // Simple vérification côté client (le vrai contrôle sera côté serveur)
-            if (this.checked) {
-                setTimeout(() => {
-                    $(this).closest('.form-group').addClass('success');
-                }, 500);
+        // Empêcher la soumission native du formulaire
+        $('#contact-form').on('submit', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Formatage automatique du téléphone
+        $('#telephone').on('input', function () {
+            let value = this.value.replace(/\D/g, '');
+            if (value.length > 0) {
+                const parts = value.match(/.{1,2}/g);
+                if (parts) {
+                    this.value = parts.slice(0, 5).join(' ');
+                }
             }
+        });
+
+        // Code postal - limiter à 5 chiffres
+        $('#code_postal').on('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 5);
         });
     }
 
-    // ==========================================
-    // NAVIGATION ENTRE ÉTAPES
-    // ==========================================
-
+    // Navigation entre étapes
     function handleNextStep(e) {
         e.preventDefault();
-        const nextStep = parseInt($(this).data('next'));
+        const $btn = $(this);
+        let nextStep = parseInt($btn.data('next'));
+
+        // Si on est sur l'étape 1, vérifier le statut
+        if (currentStep === 1) {
+            if (!$('input[name="client_status"]:checked').length) {
+                alert('Veuillez sélectionner votre statut');
+                return;
+            }
+
+            clientStatus = $('input[name="client_status"]:checked').val();
+            console.log('Statut sélectionné pour navigation:', clientStatus);
+
+            // Si c'est un client existant, afficher la modal de redirection
+            if (clientStatus === 'is-client') {
+                $('#client-redirect-modal').fadeIn(300);
+                $('body').addClass('modal-open');
+                return; // Arrêter ici, la modal gère la suite
+            } else {
+                // Si ce n'est pas un client, continuer normalement vers l'étape 2
+                nextStep = 2;
+            }
+        }
 
         if (validateCurrentStep()) {
             goToStep(nextStep);
@@ -86,11 +155,19 @@
     function handlePrevStep(e) {
         e.preventDefault();
         const prevStep = parseInt($(this).data('prev'));
+
+        // Si on revient à l'étape 1
+        if (prevStep === 1) {
+            $('#client-info-box').hide();
+        }
+
         goToStep(prevStep);
     }
 
     function goToStep(step) {
         if (step < 1 || step > totalSteps) return;
+
+        console.log('Navigation vers étape', step);
 
         // Masquer l'étape actuelle
         $(`.form-step[data-step="${currentStep}"]`).removeClass('active');
@@ -106,14 +183,17 @@
         updateProgress();
 
         // Actions spéciales par étape
-        if (step === 3) {
+        if (step === 4) {
             generateSummary();
         }
 
         // Scroll vers le haut
-        $('html, body').animate({
-            scrollTop: $('#htic-contact-form').offset().top - 50
-        }, 300);
+        const $form = $('#htic-contact-form');
+        if ($form.length) {
+            $('html, body').animate({
+                scrollTop: $form.offset().top - 50
+            }, 300);
+        }
     }
 
     function updateStepIndicators(step) {
@@ -133,24 +213,37 @@
         $('#progress-fill').css('width', progressPercent + '%');
     }
 
-    // ==========================================
-    // VALIDATION
-    // ==========================================
-
+    // Validation
     function validateCurrentStep() {
         let isValid = true;
         const currentStepElement = $(`.form-step[data-step="${currentStep}"]`);
 
-        // Valider tous les champs requis de l'étape actuelle
+        // Réinitialiser les erreurs
+        currentStepElement.find('.error-message').text('');
+        currentStepElement.find('.form-control').removeClass('error');
+
+        // Validation spéciale pour l'étape 1
+        if (currentStep === 1) {
+            return true; // Déjà vérifié dans handleNextStep
+        }
+
+        // Valider tous les champs requis de l'étape courante
         currentStepElement.find('.form-control[required]').each(function () {
             if (!validateField.call(this)) {
                 isValid = false;
             }
         });
 
-        // Validations spéciales par étape
-        if (currentStep === 2) {
-            isValid = validateStep2() && isValid;
+        // Validation spéciale pour l'étape 4 (confirmation)
+        if (currentStep === 4) {
+            if (!$('#captcha-check').is(':checked')) {
+                showFieldError('#captcha-check', 'Veuillez confirmer que vous n\'êtes pas un robot');
+                isValid = false;
+            }
+            if (!$('#rgpd-consent').is(':checked')) {
+                showFieldError('#rgpd-consent', 'Vous devez accepter la politique de confidentialité');
+                isValid = false;
+            }
         }
 
         return isValid;
@@ -180,15 +273,15 @@
                 errorMessage = 'Format d\'email invalide';
             }
         }
-        // Validation téléphone
+        // Validation téléphone français
         else if ($field.attr('name') === 'telephone' && value) {
-            const phoneRegex = /^[\d\s\-\+\(\)\.]{10,}$/;
-            if (!phoneRegex.test(value)) {
+            const phoneClean = value.replace(/[\s\-\+\(\)\.]/g, '');
+            if (phoneClean.length < 10) {
                 isValid = false;
-                errorMessage = 'Format de téléphone invalide';
+                errorMessage = 'Le téléphone doit contenir au moins 10 chiffres';
             }
         }
-        // Validation code postal
+        // Validation code postal français
         else if ($field.attr('name') === 'code_postal' && value) {
             const postalRegex = /^[0-9]{5}$/;
             if (!postalRegex.test(value)) {
@@ -199,8 +292,7 @@
 
         // Afficher le résultat
         if (!isValid) {
-            $field.addClass('error');
-            $field.siblings('.error-message').text(errorMessage);
+            showFieldError($field, errorMessage);
         } else if (value) {
             $field.addClass('success');
         }
@@ -208,118 +300,197 @@
         return isValid;
     }
 
-    function validateStep2() {
-        let isValid = true;
-        const typeDemandeValue = $('#type_demande').val();
-
-        if (!typeDemandeValue) {
-            $('#type_demande').addClass('error');
-            $('#type_demande').siblings('.error-message').text('Veuillez sélectionner un type de demande');
-            isValid = false;
+    function showFieldError($field, message) {
+        if (typeof $field === 'string') {
+            $field = $($field);
         }
-
-        // Vérifier l'upload si requis
-        const typeConfig = typesConfig[typeDemandeValue];
-        if (typeConfig && typeConfig.upload && typeConfig.upload_required && !uploadedFile) {
-            $('#upload-zone .error-message').text('Un fichier est requis pour ce type de demande');
-            isValid = false;
-        }
-
-        return isValid;
+        $field.addClass('error');
+        $field.siblings('.error-message').text(message);
     }
 
-    // ==========================================
-    // GESTION DU TYPE DE DEMANDE
-    // ==========================================
+    // Soumission du formulaire
+    function handleFormSubmit(e) {
+        e.preventDefault();
+        e.stopPropagation();
 
-    function handleTypeDemandeChange() {
-        const selectedValue = $(this).val();
-        const typeConfig = typesConfig[selectedValue];
-
-        if (!typeConfig) {
-            hideConditionalFields();
-            return;
+        const $btn = $(this);
+        if ($btn.hasClass('submitting')) {
+            console.log('Soumission déjà en cours');
+            return false;
         }
 
-        // Afficher la description
-        showDescription(typeConfig.description);
+        console.log('📤 Début soumission formulaire de contact');
 
-        // Gérer l'upload conditionnel
-        handleConditionalUpload(typeConfig);
+        // Valider l'étape actuelle
+        if (!validateCurrentStep()) {
+            console.log('❌ Validation échouée');
+            return false;
+        }
 
-        // Gérer le champ libre conditionnel
-        handleConditionalMessage(typeConfig);
-    }
+        // Marquer comme en cours de soumission
+        $btn.addClass('submitting loading').prop('disabled', true);
 
-    function showDescription(description) {
-        const $desc = $('#demande-description');
-        $desc.find('.description-text').text(description);
-        $desc.slideDown();
-    }
+        // Changer le texte du bouton
+        const originalText = $btn.html();
+        $btn.html('<span class="spinner"></span> Envoi en cours...');
 
-    function handleConditionalUpload(config) {
-        const $uploadZone = $('#upload-zone');
+        // Préparer FormData pour les fichiers
+        const formData = new FormData();
 
-        if (config.upload) {
-            // Mettre à jour le label
-            $('#upload-label-text').text(config.upload_label || 'Fichier joint');
+        // Action AJAX
+        formData.append('action', 'htic_process_contact');
 
-            // Marquer comme requis si nécessaire
-            const $fileInput = $('#file-input');
-            if (config.upload_required) {
-                $fileInput.prop('required', true);
-                $('.upload-label').addClass('required');
-            } else {
-                $fileInput.prop('required', false);
-                $('.upload-label').removeClass('required');
+        // Utiliser le nonce
+        const nonce = (typeof hticSimulateur !== 'undefined' && hticSimulateur.nonce)
+            ? hticSimulateur.nonce
+            : (typeof hticContactConfig !== 'undefined' && hticContactConfig.nonce)
+                ? hticContactConfig.nonce
+                : $('#contact-form input[name="nonce"]').val();
+
+        formData.append('nonce', nonce);
+
+        // Collecter toutes les données du formulaire
+        const contactData = {
+            clientStatus: clientStatus,
+            civilite: $('#civilite').val(),
+            firstName: $('#prenom').val(),
+            lastName: $('#nom').val(),
+            email: $('#email').val(),
+            phone: $('#telephone').val(),
+            postalCode: $('#code_postal').val(),
+            ville: $('#ville').val(),
+            adresse: $('#adresse').val(),
+            objet: $('#objet_demande').val(),
+            message: $('#message').val(),
+            type: 'contact',
+            timestamp: new Date().toISOString(),
+            source: 'website'
+        };
+
+        console.log('📋 Données collectées:', contactData);
+        formData.append('form_data', JSON.stringify(contactData));
+
+        // Ajouter le fichier si présent
+        if (uploadedFile) {
+            formData.append('fichier', uploadedFile);
+            console.log('📎 Fichier ajouté:', uploadedFile.name);
+        }
+
+        // URL AJAX
+        const ajaxUrl = (typeof hticSimulateur !== 'undefined' && hticSimulateur.ajaxUrl)
+            ? hticSimulateur.ajaxUrl
+            : '/wp-admin/admin-ajax.php';
+
+        console.log('📡 Envoi vers:', ajaxUrl);
+
+        // Envoyer la requête AJAX
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            timeout: 30000,
+            success: function (response) {
+                console.log('✅ Réponse reçue:', response);
+
+                if (response.success) {
+                    showMessage('✅ Votre demande a été envoyée avec succès !', 'success');
+                    setTimeout(() => {
+                        resetForm();
+                        window.location.href = '/merci-contact';
+                    }, 100);
+                } else {
+                    const errorMsg = response.data || 'Une erreur est survenue lors de l\'envoi';
+                    showMessage('❌ ' + errorMsg, 'error');
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Erreur AJAX:', {
+                    status: status,
+                    error: error,
+                    response: xhr.responseText
+                });
+                showMessage('❌ Erreur de connexion. Veuillez réessayer.', 'error');
+            },
+            complete: function () {
+                $btn.removeClass('submitting loading disabled').prop('disabled', false).html(originalText);
             }
+        });
 
-            $uploadZone.slideDown();
-        } else {
-            $uploadZone.slideUp();
-            $('#file-input').prop('required', false);
+        return false;
+    }
+
+    function showMessage(text, type) {
+        let $messages = $('#form-messages');
+
+        if (!$messages.length) {
+            $messages = $('<div id="form-messages" class="form-messages"></div>');
+            $('#contact-form').prepend($messages);
+        }
+
+        const messageClass = `message-${type}`;
+
+        $messages.html(`
+            <div class="message ${messageClass}">
+                ${text}
+            </div>
+        `).fadeIn();
+
+        $('html, body').animate({
+            scrollTop: $messages.offset().top - 100
+        }, 300);
+
+        if (type === 'success') {
+            setTimeout(() => {
+                $messages.fadeOut();
+            }, 10000);
         }
     }
 
-    function handleConditionalMessage(config) {
-        const $champLibre = $('#champ-libre-zone');
-
-        if (config.champ_libre) {
-            // Mettre à jour le label
-            $('#champ-libre-label').text(config.champ_libre_label || 'Message');
-            $champLibre.slideDown();
-        } else {
-            $champLibre.slideUp();
-        }
+    function resetForm() {
+        currentStep = 1;
+        clientStatus = null;
+        $('#contact-form')[0].reset();
+        resetFileUpload();
+        $('.error-message').text('');
+        $('.form-control').removeClass('error success');
+        $('#client-info-box').hide();
+        $('#btn-next-status').prop('disabled', true);
     }
 
-    function hideConditionalFields() {
-        $('#demande-description').slideUp();
-        $('#upload-zone').slideUp();
-        $('#champ-libre-zone').slideUp();
-    }
-
-    // ==========================================
-    // UPLOAD DE FICHIERS
-    // ==========================================
-
+    // Upload de fichiers
     function initFileUpload() {
         const $uploadArea = $('#upload-area');
         const $fileInput = $('#file-input');
 
-        // Événements de drag & drop
+        if (!$uploadArea.length || !$fileInput.length) {
+            console.log('Zone upload non trouvée');
+            return;
+        }
+
+        $uploadArea.on('click', function (e) {
+            if (!$(e.target).hasClass('btn-remove-file')) {
+                $fileInput.click();
+            }
+        });
+
         $uploadArea.on('dragover dragenter', function (e) {
             e.preventDefault();
+            e.stopPropagation();
             $(this).addClass('dragover');
         });
 
         $uploadArea.on('dragleave dragend', function (e) {
             e.preventDefault();
+            e.stopPropagation();
             $(this).removeClass('dragover');
         });
 
         $uploadArea.on('drop', function (e) {
             e.preventDefault();
+            e.stopPropagation();
             $(this).removeClass('dragover');
 
             const files = e.originalEvent.dataTransfer.files;
@@ -328,50 +499,49 @@
             }
         });
 
-        // Sélection de fichier classique
         $fileInput.on('change', function () {
             if (this.files.length > 0) {
                 handleFileSelection(this.files[0]);
             }
         });
 
-        // Supprimer le fichier
-        $(document).on('click', '.btn-remove-file', function () {
+        $(document).on('click', '.btn-remove-file', function (e) {
+            e.stopPropagation();
             resetFileUpload();
         });
     }
 
     function handleFileSelection(file) {
-        // Vérifier la taille
-        const maxSize = 10 * 1024 * 1024; // 10 Mo
+        console.log('📎 Fichier sélectionné:', file.name, file.size, file.type);
+
+        // Vérifier la taille (5 Mo max)
+        const maxSize = 5 * 1024 * 1024;
         if (file.size > maxSize) {
-            showUploadError('Le fichier est trop volumineux (max. 10 Mo)');
+            showUploadError('Le fichier est trop volumineux (max. 5 Mo)');
             return;
         }
 
         // Vérifier le type
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf',
             'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
         if (!allowedTypes.includes(file.type)) {
-            showUploadError('Type de fichier non autorisé');
+            showUploadError('Type de fichier non autorisé. Formats acceptés : JPG, PNG, PDF, DOC, DOCX');
             return;
         }
 
-        // Simuler l'upload
         simulateFileUpload(file);
     }
 
     function simulateFileUpload(file) {
         const $uploadArea = $('#upload-area');
 
-        // Masquer le contenu et afficher la progression
         $uploadArea.find('.upload-content').hide();
         $uploadArea.find('.upload-progress').show();
 
-        // Simuler la progression
         let progress = 0;
         const interval = setInterval(() => {
-            progress += Math.random() * 20;
+            progress += Math.random() * 30;
             if (progress >= 100) {
                 progress = 100;
                 clearInterval(interval);
@@ -380,9 +550,7 @@
             $('.upload-progress-fill').css('width', progress + '%');
         }, 200);
 
-        // Stocker le fichier
         uploadedFile = file;
-        $('#uploaded-file').val(file.name);
     }
 
     function showUploadSuccess(file) {
@@ -390,14 +558,18 @@
 
         $uploadArea.find('.upload-progress').hide();
         $uploadArea.find('.upload-success').show();
-        $uploadArea.find('.upload-success-text').text(`${file.name} uploadé avec succès`);
 
-        // Effacer les erreurs
-        $('#upload-zone .error-message').text('');
+        let fileName = file.name;
+        if (fileName.length > 30) {
+            fileName = fileName.substring(0, 27) + '...';
+        }
+        $uploadArea.find('.upload-success-text').text(fileName);
+
+        $('#upload-area').siblings('.error-message').text('');
     }
 
     function showUploadError(message) {
-        $('#upload-zone .error-message').text(message);
+        $('#upload-area').siblings('.error-message').text(message);
         resetFileUpload();
     }
 
@@ -409,163 +581,91 @@
         $('.upload-progress-fill').css('width', '0%');
 
         $('#file-input').val('');
-        $('#uploaded-file').val('');
         uploadedFile = null;
     }
 
-    // ==========================================
-    // RÉCAPITULATIF
-    // ==========================================
-
+    // Récapitulatif
     function generateSummary() {
         const $summary = $('#form-summary');
+        if (!$summary.length) return;
+
         $summary.empty();
 
-        // Récupérer toutes les données
-        const formDataCurrent = {
+        const formData = {
+            statut_client: clientStatus === 'is-client' ? 'Client existant' : 'Non client',
             civilite: $('#civilite').val(),
             nom: $('#nom').val(),
             prenom: $('#prenom').val(),
             email: $('#email').val(),
             telephone: $('#telephone').val(),
             adresse: $('#adresse').val(),
-            complement_adresse: $('#complement_adresse').val(),
             code_postal: $('#code_postal').val(),
             ville: $('#ville').val(),
-            type_demande: $('#type_demande').val(),
+            objet_demande: $('#objet_demande').val(),
             message: $('#message').val()
         };
 
-        // Générer le récapitulatif
-        const items = [
-            { label: 'Civilité', value: formDataCurrent.civilite },
-            { label: 'Nom', value: formDataCurrent.nom },
-            { label: 'Prénom', value: formDataCurrent.prenom },
-            { label: 'Email', value: formDataCurrent.email },
-            { label: 'Téléphone', value: formDataCurrent.telephone },
-            { label: 'Adresse', value: formDataCurrent.adresse },
-        ];
-
-        // Ajouter le complément d'adresse si rempli
-        if (formDataCurrent.complement_adresse) {
-            items.push({ label: 'Complément d\'adresse', value: formDataCurrent.complement_adresse });
-        }
-
-        items.push(
-            { label: 'Code postal', value: formDataCurrent.code_postal },
-            { label: 'Ville', value: formDataCurrent.ville },
-            { label: 'Type de demande', value: $('#type_demande option:selected').text() }
-        );
-
-        if (formDataCurrent.message) {
-            items.push({ label: 'Message', value: formDataCurrent.message });
-        }
-
-        if (uploadedFile) {
-            items.push({ label: 'Fichier joint', value: uploadedFile.name });
-        }
-
-        // Afficher les items
-        items.forEach(item => {
-            if (item.value) {
-                $summary.append(`
-                    <div class="summary-item">
-                        <span class="summary-label">${item.label}:</span>
-                        <span class="summary-value">${item.value}</span>
-                    </div>
-                `);
-            }
-        });
-    }
-
-    // ==========================================
-    // SOUMISSION DU FORMULAIRE
-    // ==========================================
-
-    function handleFormSubmit(e) {
-        e.preventDefault();
-
-        if (!validateCurrentStep()) {
-            return;
-        }
-
-        const $submitBtn = $('.btn-submit');
-        $submitBtn.addClass('loading').prop('disabled', true);
-
-        // Préparer les données
-        const formData = new FormData();
-
-        // Ajouter tous les champs
-        $('#contact-form').find('input, select, textarea').each(function () {
-            const $field = $(this);
-            const name = $field.attr('name');
-            const value = $field.val();
-
-            if (name && value && $field.attr('type') !== 'file') {
-                formData.append(name, value);
-            }
-        });
-
-        // Ajouter le fichier si présent
-        if (uploadedFile) {
-            formData.append('fichier', uploadedFile);
-        }
-
-        // Envoyer via AJAX
-        $.ajax({
-            url: hticContactConfig.ajaxUrl,
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function (response) {
-                if (response.success) {
-                    showMessage('Votre demande a été envoyée avec succès ! Nous vous recontacterons dans les plus brefs délais.', 'success');
-                    resetForm();
-                } else {
-                    showMessage(response.data || 'Une erreur est survenue lors de l\'envoi', 'error');
-                }
-            },
-            error: function () {
-                showMessage('Erreur de connexion. Veuillez réessayer.', 'error');
-            },
-            complete: function () {
-                $submitBtn.removeClass('loading').prop('disabled', false);
-            }
-        });
-    }
-
-    function showMessage(text, type) {
-        const $messages = $('#form-messages');
-        const messageClass = `message-${type}`;
-
-        $messages.html(`
-            <div class="message ${messageClass}">
-                ${type === 'success' ? '✅' : '❌'} ${text}
+        let summaryHtml = `
+            <div class="summary-section">
+                <h5>🏠 Statut</h5>
+                <div class="summary-item">
+                    <span class="summary-label">Type de demande :</span>
+                    <span class="summary-value">${formData.statut_client}</span>
+                </div>
             </div>
-        `);
+            
+            <div class="summary-section">
+                <h5>👤 Vos informations</h5>
+                <div class="summary-item">
+                    <span class="summary-label">Nom complet :</span>
+                    <span class="summary-value">${formData.civilite || ''} ${formData.prenom || ''} ${formData.nom || ''}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Email :</span>
+                    <span class="summary-value">${formData.email || ''}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Téléphone :</span>
+                    <span class="summary-value">${formData.telephone || ''}</span>
+                </div>`;
 
-        // Scroll vers le message
-        $('html, body').animate({
-            scrollTop: $messages.offset().top - 100
-        }, 300);
-    }
+        if (formData.adresse) {
+            summaryHtml += `
+                <div class="summary-item">
+                    <span class="summary-label">Adresse :</span>
+                    <span class="summary-value">${formData.adresse}</span>
+                </div>`;
+        }
 
-    function resetForm() {
-        // Remettre à l'étape 1
-        currentStep = 1;
-        goToStep(1);
+        summaryHtml += `
+                <div class="summary-item">
+                    <span class="summary-label">Ville :</span>
+                    <span class="summary-value">${formData.code_postal || ''} ${formData.ville || ''}</span>
+                </div>
+            </div>
+            
+            <div class="summary-section">
+                <h5>📋 Votre demande</h5>
+                <div class="summary-item">
+                    <span class="summary-label">Objet :</span>
+                    <span class="summary-value">${formData.objet_demande || ''}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Message :</span>
+                    <span class="summary-value">${formData.message || ''}</span>
+                </div>`;
 
-        // Vider le formulaire
-        $('#contact-form')[0].reset();
-        $('.form-control').removeClass('error success');
-        $('.error-message').text('');
+        if (uploadedFile) {
+            summaryHtml += `
+                <div class="summary-item">
+                    <span class="summary-label">Pièce jointe :</span>
+                    <span class="summary-value">📎 ${uploadedFile.name}</span>
+                </div>`;
+        }
 
-        // Reset de l'upload
-        resetFileUpload();
+        summaryHtml += `</div>`;
 
-        // Masquer les champs conditionnels
-        hideConditionalFields();
+        $summary.html(summaryHtml);
     }
 
 })(jQuery);

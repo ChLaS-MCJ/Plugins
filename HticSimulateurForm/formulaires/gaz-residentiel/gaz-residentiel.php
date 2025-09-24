@@ -1,6 +1,6 @@
 <?php
 /**
- * Template du formulaire Gaz Résidentiel
+ * Template du formulaire Gaz Résidentiel - 8 étapes
  * Fichier: formulaires/gaz-residentiel/gaz-residentiel.php
  */
 
@@ -46,11 +46,15 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
             </div>
             <div class="step" data-step="5">
                 <span class="step-number">5</span>
-                <span class="step-label">Contact</span>
+                <span class="step-label">Résultats</span>
             </div>
             <div class="step" data-step="6">
                 <span class="step-number">6</span>
-                <span class="step-label">Résultats</span>
+                <span class="step-label">Contact</span>
+            </div>
+            <div class="step" data-step="7">
+                <span class="step-number">7</span>
+                <span class="step-label">Récapitulatif</span>
             </div>
         </div>
     </div>
@@ -104,9 +108,6 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
                                 <!-- Sera rempli par JavaScript -->
                             </optgroup>
                             
-                            <optgroup label="🗺️ Autres">
-                                <option value="autre" data-type="autre">Autre commune (saisie libre)</option>
-                            </optgroup>
                         </select>
                         
                         <!-- Section conditionnelle pour "Autre commune" -->
@@ -393,107 +394,8 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
             </div>
         </div>
         
-        <!-- ÉTAPE 5: Informations client -->
+        <!-- ÉTAPE 5: Résultats -->
         <div class="form-step" data-step="5">
-            <div class="step-header">
-                <h2>📧 Vos coordonnées</h2>
-                <p>Pour recevoir votre simulation personnalisée et être recontacté si vous le souhaitez</p>
-            </div>
-            
-            <div class="form-grid">
-                <!-- Nom -->
-                <div class="form-group">
-                    <label for="client_nom" class="form-label">Nom *</label>
-                    <input type="text" 
-                        id="client_nom" 
-                        name="client_nom" 
-                        required 
-                        class="form-input"
-                        placeholder="Votre nom">
-                </div>
-                
-                <!-- Prénom -->
-                <div class="form-group">
-                    <label for="client_prenom" class="form-label">Prénom *</label>
-                    <input type="text" 
-                        id="client_prenom" 
-                        name="client_prenom" 
-                        required 
-                        class="form-input"
-                        placeholder="Votre prénom">
-                </div>
-                
-                <!-- Email -->
-                <div class="form-group">
-                    <label for="client_email" class="form-label">Email *</label>
-                    <input type="email" 
-                        id="client_email" 
-                        name="client_email" 
-                        required 
-                        class="form-input"
-                        placeholder="exemple@email.com">
-                    <small class="form-help">Pour recevoir votre simulation</small>
-                </div>
-                
-                <!-- Téléphone -->
-                <div class="form-group">
-                    <label for="client_telephone" class="form-label">Téléphone *</label>
-                    <input type="tel" 
-                        id="client_telephone" 
-                        name="client_telephone" 
-                        required 
-                        class="form-input"
-                        placeholder="06 XX XX XX XX">
-                    <small class="form-help">Pour être recontacté si besoin</small>
-                </div>
-                
-                <!-- Adresse -->
-                <div class="form-group full-width">
-                    <label for="client_adresse" class="form-label">Adresse complète (optionnel)</label>
-                    <input type="text" 
-                        id="client_adresse" 
-                        name="client_adresse" 
-                        class="form-input"
-                        placeholder="Numéro et nom de rue">
-                </div>
-                
-                <!-- Code postal et Ville sur la même ligne -->
-                <div class="form-group">
-                    <label for="client_code_postal" class="form-label">Code postal (optionnel)</label>
-                    <input type="text" 
-                        id="client_code_postal" 
-                        name="client_code_postal" 
-                        pattern="[0-9]{5}"
-                        maxlength="5"
-                        class="form-input"
-                        placeholder="40000">
-                </div>
-                
-                <div class="form-group">
-                    <label for="client_ville" class="form-label">Ville (optionnel)</label>
-                    <input type="text" 
-                        id="client_ville" 
-                        name="client_ville" 
-                        class="form-input"
-                        placeholder="Votre ville">
-                </div>
-                
-                <!-- Information RGPD avec le même style que les autres info-box -->
-                <div class="form-group full-width">
-                    <div class="info-box">
-                        <div class="info-icon">🔒</div>
-                        <div class="info-content">
-                            <h4>Vos données sont protégées</h4>
-                            <p><strong>Envoi immédiat :</strong> Vos résultats détaillés seront envoyés directement à notre adresse email.</p>
-                            <p><strong>Confidentialité :</strong> Aucune donnée n'est conservée sur nos serveurs après l'envoi.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ÉTAPE 6: Résultat -->
-        <div class="form-step" data-step="6">
             <div class="step-header">
                 <h2>📊 Vos résultats personnalisés</h2>
                 <p>Estimation basée sur vos informations</p>
@@ -503,29 +405,318 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
             <div id="results-container">
                 <!-- Les résultats seront injectés ici par JavaScript -->
             </div>
+        </div>
+        
+        <!-- ÉTAPE 6: Informations client -->
+        <div class="form-step" data-step="6">
+            <div class="step-header">
+                <h2>Informations de contact</h2>
+                <p>Dernière étape avant votre souscription</p>
+            </div>
             
-            <!-- NOUVELLE SECTION : Actions après résultats -->
-            <div class="results-actions" style="display: none;">
-                <div class="actions-grid">
-                    <!-- Bouton télécharger PDF -->
-                    <button type="button" class="btn btn-secondary" id="btn-download-pdf">
-                        <span class="btn-icon">📄</span>
-                        Télécharger le PDF
-                    </button>
+            <div class="form-content">
+                
+                <!-- Localisation -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon location">📍</div>
+                        <div class="card-title">Localisation</div>
+                    </div>
                     
-                    <!-- Bouton envoyer par mail -->
-                    <button type="button" class="btn btn-primary" id="btn-send-email">
-                        <span class="btn-icon">✉️</span>
-                        Recevoir par email
-                    </button>
-                    
+                    <div class="card-body">
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="pdl_adresse" 
+                                    name="pdl_adresse" 
+                                    placeholder=" " 
+                                    >
+                                <label for="pdl_adresse">Point de livraison</label>
+                                <span class="input-hint">Format: BT/40001/000001</span>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="numero_compteur" 
+                                    name="numero_compteur" 
+                                    placeholder=" " 
+                                    >
+                                <label for="numero_compteur">N° Point Référence Mesure</label>
+                                <span class="input-hint">Écran N°6 Linky</span>
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="toggle-btn" id="btn-no-info">
+                            <span class="toggle-text">Je n'ai pas ces informations</span>
+                            <span class="toggle-icon">+</span>
+                        </button>
+                        
+                        <div class="collapsible-section" id="address-section">
+                            <div class="dual-input">
+                                <div class="input-box flex-2">
+                                    <input type="text" 
+                                        id="client_adresse" 
+                                        name="client_adresse" 
+                                        placeholder=" ">
+                                    <label for="client_adresse">Adresse complète</label>
+                                </div>
+                                
+                                <div class="input-box">
+                                    <input type="text" 
+                                        id="client_code_postal" 
+                                        name="client_code_postal" 
+                                        placeholder=" " 
+                                        maxlength="5">
+                                    <label for="client_code_postal">Code postal</label>
+                                </div>
+                            </div>
+                            
+                            <div class="dual-input">
+                                <div class="input-box">
+                                    <input type="text" 
+                                        id="client_complement" 
+                                        name="client_complement" 
+                                        placeholder=" ">
+                                    <label for="client_complement">Complément (optionnel)</label>
+                                </div>
+                                
+                                <div class="input-box">
+                                    <input type="text" 
+                                        id="client_ville" 
+                                        name="client_ville" 
+                                        placeholder=" ">
+                                    <label for="client_ville">Ville</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <!-- Message de confirmation (caché par défaut) -->
-                <div class="confirmation-message" id="email-confirmation" style="display: none;">
-                    <div class="success-icon">✅</div>
-                    <p>Votre simulation a été envoyée avec succès à <strong id="email-display"></strong></p>
+                <!-- Ancien locataire -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon user">👤</div>
+                        <div class="card-title">Ancien locataire <span class="optional">(optionnel)</span></div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="ancien_nom" 
+                                    name="ancien_nom" 
+                                    placeholder=" ">
+                                <label for="ancien_nom">Nom</label>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="ancien_prenom" 
+                                    name="ancien_prenom" 
+                                    placeholder=" ">
+                                <label for="ancien_prenom">Prénom</label>
+                            </div>
+                        </div>
+                        
+                        <div class="input-box">
+                            <input type="text" 
+                                id="ancien_numero_compteur" 
+                                name="ancien_numero_compteur" 
+                                placeholder=" ">
+                            <label for="ancien_numero_compteur">Numéro de compteur</label>
+                        </div>
+                    </div>
                 </div>
+                
+                <!-- Informations personnelles -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon profile">✏️</div>
+                        <div class="card-title">Vos informations</div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="client_nom" 
+                                    name="client_nom" 
+                                    placeholder=" " 
+                                    >
+                                <label for="client_nom">Nom *</label>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="client_prenom" 
+                                    name="client_prenom" 
+                                    placeholder=" " 
+                                    >
+                                <label for="client_prenom">Prénom *</label>
+                            </div>
+                        </div>
+                        
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="email" 
+                                    id="client_email" 
+                                    name="client_email" 
+                                    placeholder=" " 
+                                    >
+                                <label for="client_email">Email *</label>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="tel" 
+                                    id="client_telephone" 
+                                    name="client_telephone" 
+                                    placeholder=" " 
+                                    >
+                                <label for="client_telephone">Téléphone *</label>
+                            </div>
+                        </div>
+                        
+                        <div class="dual-input">
+                            <div class="input-box">
+                                <input type="date" 
+                                    id="client_date_naissance" 
+                                    name="client_date_naissance" 
+                                    >
+                                <label for="client_date_naissance">Date de naissance *</label>
+                            </div>
+                            
+                            <div class="input-box">
+                                <input type="text" 
+                                    id="client_lieu_naissance" 
+                                    name="client_lieu_naissance" 
+                                    placeholder=" ">
+                                <label for="client_lieu_naissance">Lieu de naissance</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documents -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon documents">📎</div>
+                        <div class="card-title">Documents requis</div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="upload-grid">
+                            <div class="upload-card" data-file="rib_file">
+                                <div class="upload-visual">
+                                    <div class="upload-type rib">🏦</div>
+                                    <h4>RIB</h4>
+                                    <p>Relevé d'Identité Bancaire</p>
+                                </div>
+                                <div class="upload-action">
+                                    <button type="button" class="upload-trigger">Parcourir</button>
+                                    <span class="upload-info">PDF, JPG, PNG - 5Mo max</span>
+                                </div>
+                                <input type="file" 
+                                    id="rib_file" 
+                                    name="rib_file" 
+                                    accept=".pdf,.jpg,.jpeg,.png" 
+                                    >
+                                <div class="upload-result" id="rib-status"></div>
+                            </div>
+                            
+                            <div class="upload-card" data-file="carte_identite_recto">
+                                <div class="upload-visual">
+                                    <div class="upload-type identity">🆔</div>
+                                    <h4>Pièce d'identité</h4>
+                                    <p>Recto</p>
+                                </div>
+                                <div class="upload-action">
+                                    <button type="button" class="upload-trigger">Parcourir</button>
+                                    <span class="upload-info">JPG, PNG - 5Mo max</span>
+                                </div>
+                                <input type="file" 
+                                    id="carte_identite_recto" 
+                                    name="carte_identite_recto" 
+                                    accept=".jpg,.jpeg,.png" 
+                                    >
+                                <div class="upload-result" id="recto-status"></div>
+                            </div>
+                            
+                            <div class="upload-card" data-file="carte_identite_verso">
+                                <div class="upload-visual">
+                                    <div class="upload-type identity">🆔</div>
+                                    <h4>Pièce d'identité</h4>
+                                    <p>Verso</p>
+                                </div>
+                                <div class="upload-action">
+                                    <button type="button" class="upload-trigger">Parcourir</button>
+                                    <span class="upload-info">JPG, PNG - 5Mo max</span>
+                                </div>
+                                <input type="file" 
+                                    id="carte_identite_verso" 
+                                    name="carte_identite_verso" 
+                                    accept=".jpg,.jpeg,.png" 
+                                    >
+                                <div class="upload-result" id="verso-status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Conditions -->
+                <div class="modern-card">
+                    <div class="card-header">
+                        <div class="card-icon validation">✅</div>
+                        <div class="card-title">Validation finale</div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="check-list">
+                            <label class="check-item">
+                                <input type="checkbox" 
+                                    id="accept_conditions" 
+                                    name="accept_conditions" 
+                                    >
+                                <span class="checkmark"></span>
+                                <span class="check-text">
+                                    J'accepte les <a href="#" target="_blank">conditions générales</a> 
+                                    et <a href="#" target="_blank">conditions particulières</a>
+                                </span>
+                            </label>
+                            
+                            <label class="check-item">
+                                <input type="checkbox" 
+                                    id="accept_prelevement" 
+                                    name="accept_prelevement" 
+                                    >
+                                <span class="checkmark"></span>
+                                <span class="check-text">
+                                    J'autorise le prélèvement automatique
+                                </span>
+                            </label>
+                            
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="form-step" data-step="7">
+            <div class="step-header">
+                <h2>📋 Récapitulatif de votre simulation gaz</h2>
+                <p>Vérifiez toutes vos informations avant finalisation</p>
+            </div>
+            
+            <div class="form-content">
+                <!-- Container pour le récapitulatif généré dynamiquement -->
+                <div id="recap-container-final-pro">
+                    <div class="loading-recap">
+                        <div class="spinner"></div>
+                        <p>Génération du récapitulatif complet...</p>
+                    </div>
+                </div>
+                
+               
             </div>
         </div>
         
@@ -542,7 +733,15 @@ $config_data = get_option('htic_simulateur_gaz_residentiel_data', array());
             </button>
             
             <button type="button" id="btn-calculate" class="btn btn-success" style="display: none;">
-                🔍 Calculer
+                🔍 Calculer ma consommation
+            </button>
+            
+            <button type="button" id="btn-select-offer" class="btn btn-primary" style="display: none;">
+                📋 Sélectionner cette offre
+            </button>
+            
+            <button type="button" id="btn-send-simulation" class="btn btn-success" style="display: none;">
+                📧 Envoyer ma simulation
             </button>
             
             <button type="button" id="btn-restart" class="btn btn-outline" style="display: none;">

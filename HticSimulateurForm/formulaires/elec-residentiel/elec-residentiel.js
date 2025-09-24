@@ -586,7 +586,7 @@
             ];
 
             const requiredCheckboxes = [
-                'accept_conditions', 'accept_prelevement'
+                'accept_conditions'
             ];
 
             // Vérifier les champs texte
@@ -1010,9 +1010,6 @@
                     </div>
                     
                     <div class="results-actions">
-                        <button class="btn btn-outline" onclick="location.reload()">
-                            🔄 Nouvelle simulation
-                        </button>
                         <button class="btn btn-primary btn-large" id="btn-subscribe">
                             📝 Je souscris
                         </button>

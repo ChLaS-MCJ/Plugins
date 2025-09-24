@@ -43,20 +43,19 @@ class HticSimulateurEnergieAdmin {
         add_action('wp_ajax_nopriv_htic_get_communes_gaz', array($this, 'ajax_get_communes_gaz'));
 
         add_shortcode('htic_contact_form', array($this, 'shortcode_contact_form'));
-        add_action('wp_ajax_htic_contact_submit', array($this, 'ajax_contact_submit'));
-        add_action('wp_ajax_nopriv_htic_contact_submit', array($this, 'ajax_contact_submit'));
-        
+ 
         add_action('wp_ajax_htic_recalculate_with_power', array($this, 'ajax_recalculate_with_power'));
         add_action('wp_ajax_nopriv_htic_recalculate_with_power', array($this, 'ajax_recalculate_with_power'));
 
         add_action('wp_ajax_process_electricity_form', array($this, 'process_electricity_form'));
         add_action('wp_ajax_nopriv_process_electricity_form', array($this, 'process_electricity_form'));
         
-        // Initialiser le système d'emails
-        $this->init_email_system();
 
-        // Test email Brevo
-        add_action('wp_ajax_test_brevo_email', array($this, 'test_brevo_email'));
+        add_action('wp_ajax_htic_process_contact', array($this, 'ajax_process_contact'));
+        add_action('wp_ajax_nopriv_htic_process_contact', array($this, 'ajax_process_contact'));
+
+        add_action('wp_ajax_process_gaz_form', array($this, 'process_gaz_form'));
+        add_action('wp_ajax_nopriv_process_gaz_form', array($this, 'process_gaz_form'));
     }
         
     public function activate() {
@@ -438,30 +437,45 @@ class HticSimulateurEnergieAdmin {
             return;
         }
         
-        // Traiter les fichiers uploadés
-        $uploaded_files = $this->process_uploaded_files();
+        // **NOUVEAU** : Détecter le type de simulation
+        $simulationType = $form_data['simulationType'] ?? 'elec-residentiel';
+        
+        // Traiter les fichiers selon le type
+        if ($simulationType === 'elec-professionnel') {
+            $uploaded_files = $this->process_uploaded_files_professional();
+        } else {
+            $uploaded_files = $this->process_uploaded_files();
+        }
         
         try {
-            // Inclure EmailHandler
             require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
             
             // Ajouter les fichiers aux données
             $form_data['uploaded_files'] = $uploaded_files;
             
-            // Traiter avec EmailHandler
             $emailHandler = new EmailHandler();
-            $result = $emailHandler->processFormData(json_encode($form_data));
             
-            // Nettoyer les fichiers temporaires après envoi
+            // **NOUVEAU** : Router selon le type
+            if ($simulationType === 'elec-professionnel') {
+                $result = $emailHandler->processBusinessFormData(json_encode($form_data));
+            } else {
+                $result = $emailHandler->processFormData(json_encode($form_data));
+            }
+            
+            // Nettoyer les fichiers temporaires
             $this->cleanup_uploaded_files($uploaded_files);
             
             if ($result['success']) {
-                // Sauvegarder en base
-                $this->save_simulation_to_db($form_data);
+                // Sauvegarder selon le type
+                if ($simulationType === 'elec-professionnel') {
+                    $this->save_business_simulation_to_db($form_data);
+                } else {
+                    $this->save_simulation_to_db($form_data);
+                }
                 
                 wp_send_json_success([
-                    'message' => 'Simulation envoyée avec succès',
-                    'referenceNumber' => 'SIM-' . date('Ymd') . '-' . rand(1000, 9999)
+                    'message' => $result['message'],
+                    'referenceNumber' => $result['referenceNumber'] ?? 'SIM-' . date('Ymd') . '-' . rand(1000, 9999)
                 ]);
             } else {
                 wp_send_json_error($result['message']);
@@ -503,6 +517,44 @@ class HticSimulateurEnergieAdmin {
                     );
                     
                     error_log("Fichier uploadé: $file_key -> $file_path");
+                }
+            }
+        }
+        
+        return $files;
+    }
+
+    /**
+     * Traiter les fichiers uploadés pour les professionnels
+     */
+    private function process_uploaded_files_professional() {
+        $files = array();
+        
+        // Fichiers professionnels attendus
+        $expected_files = array('kbis_file', 'rib_entreprise', 'mandat_signature');
+        
+        foreach ($expected_files as $file_key) {
+            if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
+                $upload_dir = wp_upload_dir();
+                $temp_dir = $upload_dir['basedir'] . '/temp-documents-pro';
+                
+                if (!file_exists($temp_dir)) {
+                    wp_mkdir_p($temp_dir);
+                }
+                
+                $file_extension = pathinfo($_FILES[$file_key]['name'], PATHINFO_EXTENSION);
+                $safe_filename = $file_key . '_' . time() . '.' . $file_extension;
+                $file_path = $temp_dir . '/' . $safe_filename;
+                
+                if (move_uploaded_file($_FILES[$file_key]['tmp_name'], $file_path)) {
+                    $files[$file_key] = array(
+                        'path' => $file_path,
+                        'name' => $_FILES[$file_key]['name'],
+                        'type' => $_FILES[$file_key]['type'],
+                        'size' => $_FILES[$file_key]['size']
+                    );
+                    
+                    error_log("Fichier professionnel uploadé: $file_key -> $file_path");
                 }
             }
         }
@@ -1230,6 +1282,89 @@ private function handle_simulation_action($post_data) {
                 'created_at' => current_time('mysql')
             ]
         );
+    }
+
+    /**
+     * Sauvegarder la simulation professionnelle
+     */
+    private function save_business_simulation_to_db($data) {
+        global $wpdb;
+        
+        // Créer la table si elle n'existe pas
+        $this->create_business_simulations_table();
+        
+        $table_name = $wpdb->prefix . 'simulations_electricite_pro';
+        
+        $wpdb->insert(
+            $table_name,
+            [
+                'company_name' => $data['companyName'] ?? '',
+                'legal_form' => $data['legalForm'] ?? '',
+                'siret' => $data['siret'] ?? '',
+                'naf_code' => $data['nafCode'] ?? '',
+                'contact_first_name' => $data['firstName'] ?? '',
+                'contact_last_name' => $data['lastName'] ?? '',
+                'contact_email' => $data['email'] ?? '',
+                'contact_phone' => $data['phone'] ?? '',
+                'company_address' => $data['companyAddress'] ?? '',
+                'company_postal_code' => $data['companyPostalCode'] ?? '',
+                'company_city' => $data['companyCity'] ?? '',
+                'category' => $data['category'] ?? '',
+                'contract_power' => $data['contractPower'] ?? 0,
+                'annual_consumption' => $data['annualConsumption'] ?? 0,
+                'monthly_estimate' => $data['monthlyEstimate'] ?? 0,
+                'annual_estimate' => $data['annualEstimate'] ?? 0,
+                'pricing_type' => $data['pricingType'] ?? '',
+                'contract_type' => $data['contractType'] ?? 'principal',
+                'selected_offer' => json_encode($data['selectedOffer'] ?? []),
+                'data_json' => json_encode($data),
+                'created_at' => current_time('mysql'),
+                'status' => 'non_traite'
+            ]
+        );
+    }
+
+    /**
+     * Créer la table pour les simulations professionnelles
+     */
+    private function create_business_simulations_table() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'simulations_electricite_pro';
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+            id INT(11) NOT NULL AUTO_INCREMENT,
+            company_name VARCHAR(200),
+            legal_form VARCHAR(100),
+            siret VARCHAR(14),
+            naf_code VARCHAR(10),
+            contact_first_name VARCHAR(100),
+            contact_last_name VARCHAR(100),
+            contact_email VARCHAR(100),
+            contact_phone VARCHAR(20),
+            company_address TEXT,
+            company_postal_code VARCHAR(10),
+            company_city VARCHAR(100),
+            category VARCHAR(50),
+            contract_power INT(11),
+            annual_consumption INT(11),
+            monthly_estimate DECIMAL(10,2),
+            annual_estimate DECIMAL(10,2),
+            pricing_type VARCHAR(50),
+            contract_type VARCHAR(50),
+            selected_offer TEXT,
+            data_json LONGTEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(50) DEFAULT 'non_traite',
+            treated_at DATETIME NULL,
+            treated_by BIGINT(20) NULL,
+            notes TEXT,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
+        
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
     }
 
 
@@ -1994,12 +2129,13 @@ private function handle_simulation_action($post_data) {
             true
         );
         
+        // CORRECTION : Utiliser le même nonce que le simulateur
         wp_localize_script(
             'htic-contact-form-js',
             'hticContactConfig',
             array(
                 'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('htic_contact_nonce'),
+                'nonce' => wp_create_nonce('htic_simulateur_calculate'), // MÊME NONCE
                 'maxFileSize' => wp_max_upload_size(),
                 'allowedTypes' => array('jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'),
                 'messages' => array(
@@ -2014,25 +2150,6 @@ private function handle_simulation_action($post_data) {
         );
     }
 
-    /**
-     * Traitement AJAX du formulaire de contact
-     */
-    public function ajax_contact_submit() {
-        // Vérification de sécurité
-        if (!wp_verify_nonce($_POST['nonce'], 'htic_contact_nonce')) {
-            wp_send_json_error('Nonce invalide');
-            return;
-        }
-        
-        $contact_handler = new HTIC_Contact_Handler();
-        $result = $contact_handler->process_contact_form($_POST);
-        
-        if ($result['success']) {
-            wp_send_json_success($result['data']);
-        } else {
-            wp_send_json_error($result['message']);
-        }
-    }
 
     /**
      * Page d'administration du formulaire de contact
@@ -2240,6 +2357,301 @@ private function handle_simulation_action($post_data) {
             wp_send_json_error('Erreur technique lors du recalcul: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Handler AJAX pour le formulaire de contact
+     */
+public function ajax_process_contact() {
+    // DEBUGGING : Identifier les appels multiples
+    $call_id = 'CONTACT-' . time() . '-' . rand(1000, 9999);
+    error_log("=== DÉBUT APPEL $call_id ===");
+    error_log("Request URI: " . $_SERVER['REQUEST_URI']);
+    error_log("HTTP Referer: " . ($_SERVER['HTTP_REFERER'] ?? 'N/A'));
+    error_log("User Agent: " . $_SERVER['HTTP_USER_AGENT']);
+    
+    // Utiliser le même nonce que le simulateur
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+        error_log("$call_id: Nonce verification failed");
+        wp_send_json_error('Erreur de sécurité');
+        return;
+    }
+    
+    // Récupérer les données JSON
+    $form_data_json = isset($_POST['form_data']) ? stripslashes($_POST['form_data']) : '';
+    $form_data = json_decode($form_data_json, true);
+    
+    if (!$form_data) {
+        error_log("$call_id: Invalid form data");
+        wp_send_json_error('Données invalides');
+        return;
+    }
+    
+    error_log("$call_id: Form data received - Email: " . ($form_data['email'] ?? 'N/A'));
+    
+    // DEBUGGING : Vérifier si c'est un appel dupliqué
+    $cache_key = 'contact_processing_' . md5($form_data['email'] . ($form_data['message'] ?? ''));
+    $last_process = get_transient($cache_key);
+    
+    if ($last_process && (time() - $last_process) < 30) {
+        error_log("$call_id: DUPLICATE CALL DETECTED - Last processed " . (time() - $last_process) . " seconds ago");
+        wp_send_json_error('Demande en cours de traitement, veuillez patienter...');
+        return;
+    }
+    
+    // Marquer comme en cours de traitement
+    set_transient($cache_key, time(), 60);
+    
+    // Traiter le fichier uploadé si présent
+    if (isset($_FILES['fichier']) && $_FILES['fichier']['error'] === UPLOAD_ERR_OK) {
+        $uploaded_file = $this->process_uploaded_contact_file($_FILES['fichier']);
+        if ($uploaded_file) {
+            $form_data['uploaded_files']['fichier'] = $uploaded_file;
+        }
+    }
+    
+    try {
+        require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
+        
+        $emailHandler = new EmailHandler();
+        
+        error_log("$call_id: Calling EmailHandler->processContactForm");
+        $result = $emailHandler->processContactForm($form_data);
+        error_log("$call_id: EmailHandler result - Success: " . ($result['success'] ? 'YES' : 'NO'));
+        
+        // Nettoyer le fichier temporaire
+        if (isset($form_data['uploaded_files']['fichier']['path'])) {
+            $temp_file = $form_data['uploaded_files']['fichier']['path'];
+            if (file_exists($temp_file)) {
+                @unlink($temp_file);
+            }
+        }
+        
+        // Nettoyer le cache
+        delete_transient($cache_key);
+        
+        if ($result['success']) {
+            error_log("$call_id: SUCCESS - Sending response");
+            wp_send_json_success([
+                'message' => $result['message'],
+                'reference' => $call_id
+            ]);
+        } else {
+            error_log("$call_id: ERROR - " . $result['message']);
+            wp_send_json_error($result['message']);
+        }
+        
+    } catch (Exception $e) {
+        error_log("$call_id: EXCEPTION - " . $e->getMessage());
+        delete_transient($cache_key);
+        wp_send_json_error('Erreur technique: ' . $e->getMessage());
+    }
+    
+    error_log("=== FIN APPEL $call_id ===");
+}
+
+    /**
+     * Helper pour traiter les fichiers du contact
+     */
+    private function process_uploaded_contact_file($file) {
+        try {
+            $max_size = 5 * 1024 * 1024; // 5 Mo
+            if ($file['size'] > $max_size) {
+                return false;
+            }
+            
+            $allowed_types = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
+            $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            
+            if (!in_array($file_extension, $allowed_types)) {
+                return false;
+            }
+            
+            $upload_dir = wp_upload_dir();
+            $temp_dir = $upload_dir['basedir'] . '/temp-contact';
+            
+            if (!file_exists($temp_dir)) {
+                wp_mkdir_p($temp_dir);
+            }
+            
+            $safe_filename = 'contact_' . time() . '_' . sanitize_file_name($file['name']);
+            $file_path = $temp_dir . '/' . $safe_filename;
+            
+            if (move_uploaded_file($file['tmp_name'], $file_path)) {
+                return [
+                    'name' => $file['name'],
+                    'path' => $file_path,
+                    'type' => $file['type'],
+                    'size' => $file['size']
+                ];
+            }
+            
+            return false;
+            
+        } catch (Exception $e) {
+            error_log('Erreur upload fichier contact: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function process_gaz_form() {
+        // Vérifier le nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'htic_simulateur_calculate')) {
+            wp_send_json_error('Erreur de sécurité');
+            return;
+        }
+        
+        // Récupérer les données JSON
+        $form_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : array();
+        
+        if (empty($form_data)) {
+            wp_send_json_error('Aucune donnée reçue');
+            return;
+        }
+        
+        // Identifier le type de formulaire gaz
+        $form_type = $_POST['form_type'] ?? 'gaz-residentiel';
+        
+        // Traiter les fichiers uploadés si présents
+        $uploaded_files = $this->process_uploaded_files();
+        
+        try {
+            require_once HTIC_SIMULATEUR_PATH . 'includes/SendEmail/EmailHandler.php';
+            
+            // Ajouter les fichiers aux données
+            $form_data['uploaded_files'] = $uploaded_files;
+            $form_data['simulationType'] = $form_type;
+            
+            $emailHandler = new EmailHandler();
+            
+            // Appeler la méthode spécifique pour le gaz
+            $result = $emailHandler->processGazFormData(json_encode($form_data));
+            
+            // Nettoyer les fichiers temporaires
+            $this->cleanup_uploaded_files($uploaded_files);
+            
+            if ($result['success']) {
+                // Sauvegarder en base de données
+                $this->save_gaz_simulation_to_db($form_data);
+                
+                wp_send_json_success([
+                    'message' => $result['message'],
+                    'referenceNumber' => $result['referenceNumber'] ?? 'GAZ-' . date('Ymd') . '-' . rand(1000, 9999)
+                ]);
+            } else {
+                wp_send_json_error($result['message']);
+            }
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Erreur: ' . $e->getMessage());
+        }
+    }
+
+    // Méthode pour sauvegarder la simulation gaz en base
+    private function save_gaz_simulation_to_db($data) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'simulations_gaz';
+        
+        // Créer la table si elle n'existe pas
+        $this->create_gaz_simulations_table();
+        
+        $wpdb->insert(
+            $table_name,
+            [
+                'first_name' => $data['client_data']['prenom'] ?? '',
+                'last_name' => $data['client_data']['nom'] ?? '',
+                'email' => $data['client_data']['email'] ?? '',
+                'phone' => $data['client_data']['telephone'] ?? '',
+                'commune' => $data['form_data']['commune'] ?? '',
+                'type_gaz' => $this->determine_type_gaz($data),
+                'consommation_annuelle' => $data['results_data']['consommation_annuelle'] ?? 0,
+                'cout_annuel' => $data['results_data']['cout_annuel_ttc'] ?? 0,
+                'data_json' => json_encode($data),
+                'created_at' => current_time('mysql'),
+                'status' => 'non_traite'
+            ]
+        );
+    }
+    /**
+     * Créer la table pour les simulations gaz
+     */
+    private function create_gaz_simulations_table() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'simulations_gaz';
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+            id INT(11) NOT NULL AUTO_INCREMENT,
+            first_name VARCHAR(100),
+            last_name VARCHAR(100),
+            email VARCHAR(100),
+            phone VARCHAR(20),
+            commune VARCHAR(100),
+            type_gaz VARCHAR(50),
+            type_logement VARCHAR(50),
+            surface INT(11),
+            nb_personnes INT(11),
+            chauffage_gaz VARCHAR(10),
+            eau_chaude VARCHAR(50),
+            cuisson VARCHAR(50),
+            isolation VARCHAR(50),
+            offre VARCHAR(50),
+            consommation_annuelle INT(11),
+            cout_annuel DECIMAL(10,2),
+            cout_mensuel DECIMAL(10,2),
+            data_json LONGTEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(50) DEFAULT 'non_traite',
+            treated_at DATETIME NULL,
+            treated_by BIGINT(20) NULL,
+            notes TEXT,
+            PRIMARY KEY (id),
+            INDEX idx_status (status),
+            INDEX idx_created (created_at),
+            INDEX idx_email (email)
+        ) $charset_collate;";
+        
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
+    }
+
+    /**
+     * Méthode helper pour déterminer le type de gaz
+     */
+    private function determine_type_gaz($data) {
+        // Vérifier dans form_data
+        if (isset($data['form_data']['type_gaz_autre'])) {
+            return $data['form_data']['type_gaz_autre'];
+        }
+        
+        // Vérifier la commune
+        if (isset($data['form_data']['commune'])) {
+            $commune = $data['form_data']['commune'];
+            
+            // Liste des communes gaz naturel
+            $communes_naturel = [
+                'AIRE SUR L\'ADOUR',
+                'BARCELONNE DU GERS',
+                'GAAS',
+                'LABATUT',
+                'LALUQUE',
+                'MISSON',
+                'POUILLON'
+            ];
+            
+            if (in_array(strtoupper($commune), $communes_naturel)) {
+                return 'naturel';
+            }
+            
+            // Si pas dans la liste naturel et pas "autre", c'est propane
+            if ($commune !== 'autre') {
+                return 'propane';
+            }
+        }
+        
+        return 'non_defini';
+    }
+
 }
 
 new HticSimulateurEnergieAdmin();

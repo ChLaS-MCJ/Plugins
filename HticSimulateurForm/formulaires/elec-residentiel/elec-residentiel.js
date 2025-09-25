@@ -1030,8 +1030,15 @@
                                 <div class="tarif-details">
                                     <small>300j bleus, 43j blancs, 22j rouges</small>
                                 </div>
+                                
                                 ${tarifRecommande === 'tempo' ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
                                 <small class="tarif-note">* Moyenne mensuelle calculée sur 10 mois</small>
+                                <div class="tempo-info-card">
+                                    <span class="tempo-info-text">Tarif variable selon les jours</span>
+                                    <button type="button" class="tempo-info-inline" onclick="openTempoModal('residentiel')">
+                                        <span class="info-icon">i</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         
@@ -2112,6 +2119,79 @@
 
             return documents.length > 0 ? documents.join('<br>') : 'Aucun document uploadé';
         }
+
+        /**
+         * TEMPO MODAL
+         */
+
+        /**
+         * Ouvre la modal Tempo
+         * @param {string} type - 'residentiel' ou 'pro'
+         */
+        function openTempoModal(type) {
+            const modal = document.getElementById('tempoModal-' + type);
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.classList.remove('closing');
+
+                modal.focus();
+
+                document.body.style.overflow = 'hidden';
+
+                document.addEventListener('keydown', handleEscapeKey);
+
+                modal.addEventListener('click', handleOutsideClick);
+            }
+        }
+
+        /**
+         * Ferme la modal Tempo
+         * @param {string} type - 'residentiel' ou 'pro'
+         */
+        function closeTempoModal(type) {
+            const modal = document.getElementById('tempoModal-' + type);
+            if (modal) {
+                modal.classList.add('closing');
+
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    modal.classList.remove('closing');
+                }, 300);
+
+                document.body.style.overflow = '';
+
+                document.removeEventListener('keydown', handleEscapeKey);
+                modal.removeEventListener('click', handleOutsideClick);
+            }
+        }
+
+        /**
+         * Gère la fermeture avec la touche Échap
+         */
+        function handleEscapeKey(event) {
+            if (event.key === 'Escape') {
+                if (document.getElementById('tempoModal-residentiel')?.style.display === 'flex') {
+                    closeTempoModal('residentiel');
+                } else if (document.getElementById('tempoModal-pro')?.style.display === 'flex') {
+                    closeTempoModal('pro');
+                }
+            }
+        }
+
+        /**
+         * Gère le clic en dehors du modal
+         */
+        function handleOutsideClick(event) {
+            if (event.target.classList.contains('tempo-modal-overlay')) {
+                const modalId = event.target.id;
+                const type = modalId.replace('tempoModal-', '');
+                closeTempoModal(type);
+            }
+        }
+
+        // Export des fonctions pour utilisation globale
+        window.openTempoModal = openTempoModal;
+        window.closeTempoModal = closeTempoModal;
 
         // ================================
         // API PUBLIQUE

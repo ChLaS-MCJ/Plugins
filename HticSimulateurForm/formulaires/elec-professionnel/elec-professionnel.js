@@ -705,19 +705,30 @@ jQuery(document).ready(function ($) {
         if (offre.nom.includes('Tempo')) typeClass = 'tempo';
         if (offre.nom.includes('française') || offre.nom.includes('100%')) typeClass = 'verte';
 
+        // Information Tempo si c'est une offre Tempo - appel au composant PHP
+        const tempoInfo = offre.nom.includes('Tempo') ?
+            `<div class="tempo-info-card">
+                <span class="tempo-info-text">Tarif variable selon les jours</span>
+                <button type="button" class="tempo-info-inline" onclick="openTempoModal('pro')">
+                    <span class="info-icon">i</span>
+                </button>
+            </div>` : '';
+
+
         return `
-            <div class="tarif-card ${typeClass} ${isRecommended ? 'recommended' : ''}">
-                <h4>${offre.nom}</h4>
-                <div class="tarif-prix">${totalAnnuel.toLocaleString()}€<span>/an HTVA</span></div>
-                <div class="tarif-mensuel">${totalMensuel.toLocaleString()}€/mois HTVA (sur 10 mois)</div>
-                <div class="tarif-details">
-                    <div>Abonnement : ${Math.round(offre.abonnement_annuel).toLocaleString()}€/an HTVA</div>
-                    <div>Consommation : ${Math.round(offre.cout_consommation).toLocaleString()}€/an HTVA</div>
-                    <div>Prix : ${offre.details}</div>
-                </div>
-                ${isRecommended ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
+        <div class="tarif-card ${typeClass} ${isRecommended ? 'recommended' : ''}">
+            <h4>${offre.nom}</h4>
+            <div class="tarif-prix">${totalAnnuel.toLocaleString()}€<span>/an HTVA</span></div>
+            <div class="tarif-mensuel">${totalMensuel.toLocaleString()}€/mois HTVA (sur 10 mois)</div>
+            <div class="tarif-details">
+                <div>Abonnement : ${Math.round(offre.abonnement_annuel).toLocaleString()}€/an HTVA</div>
+                <div>Consommation : ${Math.round(offre.cout_consommation).toLocaleString()}€/an HTVA</div>
+                <div>Prix : ${offre.details}</div>
             </div>
-        `;
+            ${tempoInfo}
+            ${isRecommended ? '<span class="recommended-badge">⭐ Recommandé</span>' : ''}
+        </div>
+    `;
     }
 
     function generateResultsHTML(consommationAnnuelle, meilleureOffre, economieMax, offresCards) {
@@ -1663,6 +1674,79 @@ jQuery(document).ready(function ($) {
         }
         return phone;
     }
+
+    /**
+ * TEMPO MODAL
+ */
+
+    /**
+     * Ouvre la modal Tempo
+     * @param {string} type - 'residentiel' ou 'pro'
+     */
+    function openTempoModal(type) {
+        const modal = document.getElementById('tempoModal-' + type);
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.remove('closing');
+
+            modal.focus();
+
+            document.body.style.overflow = 'hidden';
+
+            document.addEventListener('keydown', handleEscapeKey);
+
+            modal.addEventListener('click', handleOutsideClick);
+        }
+    }
+
+    /**
+     * Ferme la modal Tempo
+     * @param {string} type - 'residentiel' ou 'pro'
+     */
+    function closeTempoModal(type) {
+        const modal = document.getElementById('tempoModal-' + type);
+        if (modal) {
+            modal.classList.add('closing');
+
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('closing');
+            }, 300);
+
+            document.body.style.overflow = '';
+
+            document.removeEventListener('keydown', handleEscapeKey);
+            modal.removeEventListener('click', handleOutsideClick);
+        }
+    }
+
+    /**
+     * Gère la fermeture avec la touche Échap
+     */
+    function handleEscapeKey(event) {
+        if (event.key === 'Escape') {
+            if (document.getElementById('tempoModal-residentiel')?.style.display === 'flex') {
+                closeTempoModal('residentiel');
+            } else if (document.getElementById('tempoModal-pro')?.style.display === 'flex') {
+                closeTempoModal('pro');
+            }
+        }
+    }
+
+    /**
+     * Gère le clic en dehors du modal
+     */
+    function handleOutsideClick(event) {
+        if (event.target.classList.contains('tempo-modal-overlay')) {
+            const modalId = event.target.id;
+            const type = modalId.replace('tempoModal-', '');
+            closeTempoModal(type);
+        }
+    }
+
+    // Export des fonctions pour utilisation globale
+    window.openTempoModal = openTempoModal;
+    window.closeTempoModal = closeTempoModal;
 
     // ===========================================
     // INITIALISATION ET API PUBLIQUE

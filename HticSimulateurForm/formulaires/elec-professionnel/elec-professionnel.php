@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+
 // Récupérer les données de configuration depuis l'admin
 $config_data = get_option('htic_simulateur_elec_professionnel_data', array());
 ?>
@@ -731,7 +732,119 @@ $config_data = get_option('htic_simulateur_elec_professionnel_data', array());
             </button>
         </div>
     </form>
-    
+
+    <!-- Modal Tempo Professionnel - À ajouter avant la fermeture du formulaire -->
+    <div class="tempo-modal-overlay" id="tempoModal-pro" style="display: none;">
+        <div class="tempo-modal-container">
+            <div class="tempo-modal-header">
+                <h2>
+                    <span class="tempo-modal-icon">⚡</span>
+                    L'option Tempo Pro - Tarif dynamique
+                </h2>
+                <button type="button" class="tempo-modal-close" onclick="closeTempoModal('pro')">&times;</button>
+            </div>
+            
+            <div class="tempo-modal-body">
+                <div class="tempo-intro">
+                    <p class="tempo-description">
+                        <strong>Tempo Pro</strong> est un tarif professionnel qui varie selon les jours de l'année, permettant d'importantes économies en adaptant sa consommation.
+                    </p>
+                </div>
+                
+                <div class="tempo-periods-info">
+                    <h3>Les 3 types de jours Tempo :</h3>
+                    
+                    <div class="period-info-card period-bleu-info">
+                        <div class="period-info-header">
+                            <div class="period-color-indicator bleu"></div>
+                            <h4>Jours BLEUS</h4>
+                            <span class="period-count">300 jours/an</span>
+                        </div>
+                        <p>Tarif le plus avantageux. Correspondent aux jours de faible demande électrique nationale.</p>
+                        <small>Prix kWh très attractif, idéal pour tous les usages</small>
+                    </div>
+                    
+                    <div class="period-info-card period-blanc-info">
+                        <div class="period-info-header">
+                            <div class="period-color-indicator blanc"></div>
+                            <h4>Jours BLANCS</h4>
+                            <span class="period-count">43 jours/an</span>
+                        </div>
+                        <p>Tarif intermédiaire. Généralement en automne et hiver, hors weekends.</p>
+                        <small>Prix modéré, consommation normale possible</small>
+                    </div>
+                    
+                    <div class="period-info-card period-rouge-info">
+                        <div class="period-info-header">
+                            <div class="period-color-indicator rouge"></div>
+                            <h4>Jours ROUGES</h4>
+                            <span class="period-count">22 jours/an</span>
+                        </div>
+                        <p>Tarif élevé. Jours de très forte demande, généralement en hiver lors des pics de consommation.</p>
+                        <small>Limiter la consommation ces jours-là pour optimiser les économies</small>
+                    </div>
+                </div>
+                
+                <div class="tempo-advantages">
+                    <h3>Avantages de Tempo Pro :</h3>
+                    <div class="advantages-grid">
+                        <div class="advantage-item">
+                            <div class="advantage-icon">💰</div>
+                            <div>
+                                <h4>Économies importantes</h4>
+                                <p>Jusqu'à 40% d'économies avec une consommation adaptée</p>
+                            </div>
+                        </div>
+                        <div class="advantage-item">
+                            <div class="advantage-icon">📱</div>
+                            <div>
+                                <h4>Prévisibilité</h4>
+                                <p>Couleur du lendemain annoncée chaque jour avant 11h</p>
+                            </div>
+                        </div>
+                        <div class="advantage-item">
+                            <div class="advantage-icon">🌱</div>
+                            <div>
+                                <h4>Écologique</h4>
+                                <p>Aide à lisser la consommation nationale d'électricité</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tempo-tips">
+                    <h3>Comment bien utiliser Tempo Pro :</h3>
+                    <ul>
+                        <li><strong>Jours bleus :</strong> Consommez normalement, profitez des prix bas</li>
+                        <li><strong>Jours blancs :</strong> Modérez si possible votre consommation</li>
+                        <li><strong>Jours rouges :</strong> Réduisez au maximum (chauffage, eau chaude, process industriels)</li>
+                        <li><strong>Anticipation :</strong> Consultez la couleur du lendemain sur l'app RTE</li>
+                    </ul>
+                </div>
+                
+                <div class="tempo-alert">
+                    <div class="alert-icon">⚠️</div>
+                    <div class="alert-content">
+                        <h4>Important à savoir</h4>
+                        <p>Tempo Pro nécessite un compteur Linky et une adaptation de vos habitudes de consommation pour être rentable.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tempo-modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeTempoModal('pro')">Fermer</button>
+                <a href="https://www.rte-france.com/eco2mix/les-donnees-de-marche" target="_blank" class="btn-primary rte-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15,3 21,3 21,9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    Voir les données RTE en temps réel
+                </a>
+            </div>
+        </div>
+    </div>
+
     <script type="application/json" id="simulateur-config-pro">
         <?php echo json_encode($config_data, JSON_PRETTY_PRINT); ?>
     </script>
